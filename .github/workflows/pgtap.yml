@@ -1,0 +1,59 @@
+name: Camada 1 — pgTAP
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+      - 'supabase/tests/**'
+  workflow_dispatch:
+
+env:
+  PGSSLMODE: require
+
+jobs:
+  pgtap:
+    name: Suite pgTAP (schema, triggers, RLS)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Instalar cliente PostgreSQL
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client
+
+      - name: Verificar conectividade
+        run: psql "$SUPABASE_DB_URL" -c "SELECT version();"
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+
+      - name: Ativar extensão pgTAP
+        run: psql "$SUPABASE_DB_URL" -c "CREATE EXTENSION IF NOT EXISTS pgtap;"
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+
+      - name: Instalar funções auxiliares (schema tests)
+        run: psql "$SUPABASE_DB_URL" -f supabase/tests/00_helpers.sql
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+
+      - name: Executar suite pgTAP
+        run: |
+          FALHOU=0
+          for f in $(ls supabase/tests/0[1-9]_*.sql | sort); do
+            echo ""
+            echo "══════════════════════════════════════════"
+            echo "▶  $(basename $f)"
+            echo "══════════════════════════════════════════"
+            psql "$SUPABASE_DB_URL" \
+              --no-psqlrc \
+              --set ON_ERROR_STOP=off \
+              -f "$f" \
+            || FALHOU=1
+          done
+          exit $FALHOU
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
