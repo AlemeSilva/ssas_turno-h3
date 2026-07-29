@@ -30,17 +30,26 @@ jobs:
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
 
+      - name: Aplicar migrações (idempotente — seguro re-executar)
+        run: |
+          for f in supabase/migrations/000[1-9]_*.sql; do
+            echo "▶ aplicar $(basename $f)"
+            psql "$SUPABASE_DB_URL" --no-psqlrc -f "$f"
+          done
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+
       - name: Ativar extensão pgTAP
         run: psql "$SUPABASE_DB_URL" -c "CREATE EXTENSION IF NOT EXISTS pgtap;"
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
 
-      - name: Instalar funções auxiliares (schema tests)
-        run: psql "$SUPABASE_DB_URL" -f supabase/tests/00_helpers.sql
+      - name: Instalar funções auxiliares de teste
+        run: psql "$SUPABASE_DB_URL" --no-psqlrc -f supabase/tests/00_helpers.sql
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
 
-      - name: Executar suite pgTAP
+      - name: Executar suite pgTAP (01–08)
         run: |
           FALHOU=0
           for f in $(ls supabase/tests/0[1-9]_*.sql | sort); do

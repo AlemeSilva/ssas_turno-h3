@@ -1,15 +1,12 @@
 -- =====================================================================
 -- Turno H3 — Row Level Security
 -- =====================================================================
--- Princípio geral: consulta aberta a toda a equipa autenticada;
--- escrita restrita a quem foi explicitamente autorizado em cada regra
--- de negócio fechada no levantamento (operador escalado do ciclo,
--- Gerente, ou substituto em delegação ativa). Todas as políticas são
--- restritas ao papel `authenticated` — nunca a `anon`.
+-- Migração idempotente: DROP POLICY IF EXISTS antes de cada CREATE POLICY.
+-- ALTER TABLE ... ENABLE ROW LEVEL SECURITY é sempre idempotente.
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
--- Funções auxiliares (security definer para evitar recursão de RLS)
+-- Funções auxiliares (CREATE OR REPLACE — sempre idempotente)
 -- ---------------------------------------------------------------------
 create or replace function usuario_ativo(p_id uuid) returns boolean as $$
     select coalesce((select ativo from usuarios where id = p_id), false);
@@ -39,23 +36,28 @@ $$ language sql stable security definer;
 -- ---------------------------------------------------------------------
 alter table usuarios enable row level security;
 
+drop policy if exists usuarios_select_all on usuarios;
 create policy usuarios_select_all on usuarios
     for select to authenticated using (true);
 
+drop policy if exists usuarios_update_gerente on usuarios;
 create policy usuarios_update_gerente on usuarios
     for update to authenticated using (is_gerente_ou_delegado());
 
+drop policy if exists usuarios_insert_gerente on usuarios;
 create policy usuarios_insert_gerente on usuarios
     for insert to authenticated with check (is_gerente_ou_delegado());
 
 -- ---------------------------------------------------------------------
--- ESCALA SEMANAL — leitura aberta, escrita só Gerente/delegado
+-- ESCALA SEMANAL
 -- ---------------------------------------------------------------------
 alter table escala_semanal enable row level security;
 
+drop policy if exists escala_select_all on escala_semanal;
 create policy escala_select_all on escala_semanal
     for select to authenticated using (true);
 
+drop policy if exists escala_write_gerente on escala_semanal;
 create policy escala_write_gerente on escala_semanal
     for all to authenticated using (is_gerente_ou_delegado()) with check (is_gerente_ou_delegado());
 
@@ -64,15 +66,15 @@ create policy escala_write_gerente on escala_semanal
 -- ---------------------------------------------------------------------
 alter table ferias enable row level security;
 
+drop policy if exists ferias_select_all on ferias;
 create policy ferias_select_all on ferias
     for select to authenticated using (true);
 
--- Qualquer um pede férias para si próprio.
+drop policy if exists ferias_insert_propria on ferias;
 create policy ferias_insert_propria on ferias
     for insert to authenticated with check (usuario_id = auth.uid());
 
--- O próprio pode editar o seu pedido enquanto pendente; Gerente/delegado
--- pode sempre aprovar/rejeitar/editar.
+drop policy if exists ferias_update on ferias;
 create policy ferias_update on ferias
     for update to authenticated using (
         (usuario_id = auth.uid() and status = 'PENDENTE')
@@ -80,19 +82,22 @@ create policy ferias_update on ferias
     );
 
 -- ---------------------------------------------------------------------
--- TROCAS DE ESCALA (só H3)
+-- TROCAS DE ESCALA
 -- ---------------------------------------------------------------------
 alter table trocas_escala enable row level security;
 
+drop policy if exists trocas_select_all on trocas_escala;
 create policy trocas_select_all on trocas_escala
     for select to authenticated using (true);
 
+drop policy if exists trocas_insert on trocas_escala;
 create policy trocas_insert on trocas_escala
     for insert to authenticated with check (
         usuario_proponente = auth.uid()
         and exists (select 1 from usuarios where id = auth.uid() and perfil = 'OPERADOR_H3' and ativo = true)
     );
 
+drop policy if exists trocas_update_gerente on trocas_escala;
 create policy trocas_update_gerente on trocas_escala
     for update to authenticated using (is_gerente_ou_delegado());
 
@@ -101,10 +106,11 @@ create policy trocas_update_gerente on trocas_escala
 -- ---------------------------------------------------------------------
 alter table delegacoes_aprovacao enable row level security;
 
+drop policy if exists delegacoes_select_all on delegacoes_aprovacao;
 create policy delegacoes_select_all on delegacoes_aprovacao
     for select to authenticated using (true);
 
--- Só um GERENTE (titular de si próprio) pode criar/gerir delegações.
+drop policy if exists delegacoes_write_titular on delegacoes_aprovacao;
 create policy delegacoes_write_titular on delegacoes_aprovacao
     for all to authenticated using (
         gerente_titular = auth.uid()
@@ -120,14 +126,17 @@ create policy delegacoes_write_titular on delegacoes_aprovacao
 -- ---------------------------------------------------------------------
 alter table planos enable row level security;
 
+drop policy if exists planos_select_all on planos;
 create policy planos_select_all on planos
     for select to authenticated using (true);
 
+drop policy if exists planos_insert on planos;
 create policy planos_insert on planos
     for insert to authenticated with check (
         is_gerente_ou_delegado() or is_operador_do_ciclo(data_inicio_ciclo)
     );
 
+drop policy if exists planos_update on planos;
 create policy planos_update on planos
     for update to authenticated using (pode_editar_plano(id));
 
@@ -136,14 +145,14 @@ create policy planos_update on planos
 -- ---------------------------------------------------------------------
 alter table tarefas_plano enable row level security;
 
+drop policy if exists tarefas_select_all on tarefas_plano;
 create policy tarefas_select_all on tarefas_plano
     for select to authenticated using (true);
 
+drop policy if exists tarefas_write on tarefas_plano;
 create policy tarefas_write on tarefas_plano
     for all to authenticated using (pode_editar_plano(id_plano)) with check (pode_editar_plano(id_plano));
 
--- Edição pós-APROVADO por quem não é Gerente/delegado reabre o ciclo
--- de aprovação (nunca trava a ação real, só o estado formal do plano).
 create or replace function trg_tarefas_reabre_aprovacao() returns trigger as $$
 declare
     v_plano planos%rowtype;
@@ -163,7 +172,7 @@ begin
 end;
 $$ language plpgsql security definer;
 
-create trigger trg_tarefas_plano_reabre
+create or replace trigger trg_tarefas_plano_reabre
 after insert or update or delete on tarefas_plano
 for each row execute function trg_tarefas_reabre_aprovacao();
 
@@ -172,9 +181,11 @@ for each row execute function trg_tarefas_reabre_aprovacao();
 -- ---------------------------------------------------------------------
 alter table checklist_itens enable row level security;
 
+drop policy if exists checklist_select_all on checklist_itens;
 create policy checklist_select_all on checklist_itens
     for select to authenticated using (true);
 
+drop policy if exists checklist_write on checklist_itens;
 create policy checklist_write on checklist_itens
     for all to authenticated using (pode_editar_plano(id_plano)) with check (pode_editar_plano(id_plano));
 
@@ -183,32 +194,38 @@ create policy checklist_write on checklist_itens
 -- ---------------------------------------------------------------------
 alter table cadeias_diarias enable row level security;
 
+drop policy if exists cadeias_select_all on cadeias_diarias;
 create policy cadeias_select_all on cadeias_diarias
     for select to authenticated using (true);
 
+drop policy if exists cadeias_write on cadeias_diarias;
 create policy cadeias_write on cadeias_diarias
     for all to authenticated using (pode_editar_plano(id_plano)) with check (pode_editar_plano(id_plano));
 
 -- ---------------------------------------------------------------------
--- LOGS DE AUDITORIA — imutável, insere-se, nunca se altera/apaga
+-- LOGS DE AUDITORIA — imutável
 -- ---------------------------------------------------------------------
 alter table logs_auditoria enable row level security;
 
+drop policy if exists logs_select_all on logs_auditoria;
 create policy logs_select_all on logs_auditoria
     for select to authenticated using (true);
 
+drop policy if exists logs_insert_proprio on logs_auditoria;
 create policy logs_insert_proprio on logs_auditoria
     for insert to authenticated with check (id_usuario = auth.uid());
 
--- Sem policy de update/delete: por omissão, RLS nega tudo o que não
--- tem policy explícita — o log é, portanto, inalterável por qualquer
--- utilizador da aplicação.
-
 -- ---------------------------------------------------------------------
--- CATÁLOGOS (leitura aberta, sem escrita pela aplicação)
+-- CATÁLOGOS
 -- ---------------------------------------------------------------------
 alter table cadeias_catalogo enable row level security;
-create policy cadeias_catalogo_select_all on cadeias_catalogo for select to authenticated using (true);
+
+drop policy if exists cadeias_catalogo_select_all on cadeias_catalogo;
+create policy cadeias_catalogo_select_all on cadeias_catalogo
+    for select to authenticated using (true);
 
 alter table gir_fl_dependencias enable row level security;
-create policy gir_fl_dependencias_select_all on gir_fl_dependencias for select to authenticated using (true);
+
+drop policy if exists gir_fl_dependencias_select_all on gir_fl_dependencias;
+create policy gir_fl_dependencias_select_all on gir_fl_dependencias
+    for select to authenticated using (true);

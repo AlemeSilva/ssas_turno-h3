@@ -2,10 +2,7 @@
 -- Turno H3 — Central de Controlo, Planeamento e Execução Operacional
 -- Accenture / Banco Montepio — Schema inicial (Postgres / Supabase)
 -- =====================================================================
--- Este ficheiro materializa as regras de negócio fechadas na fase de
--- levantamento de requisitos: perfis, escala semanal (H1-H4), férias,
--- trocas, delegação de aprovação, plano de fim de semana, checklist
--- imutável, cadeias diárias e auditoria.
+-- Migração idempotente: pode ser re-executada sem erros.
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
@@ -15,26 +12,45 @@ create extension if not exists "pgcrypto";
 
 -- ---------------------------------------------------------------------
 -- 1. TIPOS ENUMERADOS
+-- PostgreSQL não suporta CREATE TYPE IF NOT EXISTS — usa-se DO block.
 -- ---------------------------------------------------------------------
-create type perfil_usuario as enum ('OPERADOR', 'OPERADOR_H3', 'GERENTE');
-create type turno_tipo as enum ('H1', 'H2', 'H3', 'H4');
-create type tipo_fim_semana as enum ('NORMAL', 'MANUTENCAO');
-create type status_plano as enum ('RASCUNHO', 'PENDENTE_APROVACAO', 'APROVADO', 'EM_EXECUCAO', 'CONCLUIDO');
-create type status_ferias as enum ('PENDENTE', 'APROVADA', 'REJEITADA');
-create type status_troca as enum ('PROPOSTA', 'APROVADA', 'REJEITADA');
-create type categoria_cadeia as enum ('NORMAL', 'ASTERISCO', 'DUPLO_ASTERISCO');
-create type status_cadeia as enum ('PENDENTE', 'EM_ANDAMENTO', 'CONCLUIDO_AUTOMATICO', 'CONCLUIDO_MANUAL', 'ATRASADO');
-create type status_tarefa as enum ('PENDENTE', 'EM_ANDAMENTO', 'CONCLUIDO', 'ATRASADO');
-create type origem_tarefa as enum ('TEMPLATE', 'MANUTENCAO', 'EXCECIONAL');
-create type secao_checklist as enum ('PREPARACAO', 'REUNIAO', 'BATCH_SEX_SAB', 'BATCH_SAB_DOM', 'BATCH_DOM_SEG');
+do $$ begin create type perfil_usuario as enum ('OPERADOR', 'OPERADOR_H3', 'GERENTE');
+exception when duplicate_object then null; end $$;
+
+do $$ begin create type turno_tipo as enum ('H1', 'H2', 'H3', 'H4');
+exception when duplicate_object then null; end $$;
+
+do $$ begin create type tipo_fim_semana as enum ('NORMAL', 'MANUTENCAO');
+exception when duplicate_object then null; end $$;
+
+do $$ begin create type status_plano as enum ('RASCUNHO', 'PENDENTE_APROVACAO', 'APROVADO', 'EM_EXECUCAO', 'CONCLUIDO');
+exception when duplicate_object then null; end $$;
+
+do $$ begin create type status_ferias as enum ('PENDENTE', 'APROVADA', 'REJEITADA');
+exception when duplicate_object then null; end $$;
+
+do $$ begin create type status_troca as enum ('PROPOSTA', 'APROVADA', 'REJEITADA');
+exception when duplicate_object then null; end $$;
+
+do $$ begin create type categoria_cadeia as enum ('NORMAL', 'ASTERISCO', 'DUPLO_ASTERISCO');
+exception when duplicate_object then null; end $$;
+
+do $$ begin create type status_cadeia as enum ('PENDENTE', 'EM_ANDAMENTO', 'CONCLUIDO_AUTOMATICO', 'CONCLUIDO_MANUAL', 'ATRASADO');
+exception when duplicate_object then null; end $$;
+
+do $$ begin create type status_tarefa as enum ('PENDENTE', 'EM_ANDAMENTO', 'CONCLUIDO', 'ATRASADO');
+exception when duplicate_object then null; end $$;
+
+do $$ begin create type origem_tarefa as enum ('TEMPLATE', 'MANUTENCAO', 'EXCECIONAL');
+exception when duplicate_object then null; end $$;
+
+do $$ begin create type secao_checklist as enum ('PREPARACAO', 'REUNIAO', 'BATCH_SEX_SAB', 'BATCH_SAB_DOM', 'BATCH_DOM_SEG');
+exception when duplicate_object then null; end $$;
 
 -- ---------------------------------------------------------------------
 -- 2. USUÁRIOS
 -- ---------------------------------------------------------------------
--- id está ligado a auth.users(id) — nunca se apaga uma linha, só se
--- desativa (ativo=false + data_saida). O histórico de auditoria
--- referencia sempre este id, por isso tem de sobreviver para sempre.
-create table usuarios (
+create table if not exists usuarios (
     id uuid primary key references auth.users(id) on delete restrict,
     nome text not null,
     email text unique not null,
@@ -42,9 +58,6 @@ create table usuarios (
     empresa text not null default 'Accenture',
     ativo boolean not null default true,
     data_saida date,
-    -- trava genérica de "máximo de fins de semana H3 por mês", nula = sem trava.
-    -- Hoje só está definida para o Caique; qualquer novo elemento pode
-    -- receber uma trava semelhante sem alterar código.
     limite_h3_mensal int,
     criado_em timestamptz not null default now(),
     constraint chk_data_saida check (data_saida is null or ativo = false or data_saida >= current_date)
@@ -55,47 +68,45 @@ comment on column usuarios.limite_h3_mensal is 'Máximo de fins de semana H3 por
 -- ---------------------------------------------------------------------
 -- 3. CATÁLOGO DAS 18 CADEIAS DIÁRIAS
 -- ---------------------------------------------------------------------
-create table cadeias_catalogo (
+create table if not exists cadeias_catalogo (
     nome_cadeia text primary key,
     categoria categoria_cadeia not null default 'NORMAL',
     ordem smallint not null
 );
 
 insert into cadeias_catalogo (nome_cadeia, categoria, ordem) values
-    ('SD',               'NORMAL',         1),
-    ('SD_FL',            'ASTERISCO',      2),
-    ('SD_EXT',           'NORMAL',         3),
-    ('SD_SAS',           'NORMAL',         4),
-    ('MKT',              'NORMAL',         5),
-    ('ODS_SAS',          'NORMAL',         6),
-    ('ODS_GP',           'NORMAL',         7),
-    ('DDS',              'NORMAL',         8),
-    ('SB_DDS',           'NORMAL',         9),
-    ('GIR_FL',           'NORMAL',        10),
-    ('MDA',              'NORMAL',        11),
+    ('SD',               'NORMAL',          1),
+    ('SD_FL',            'ASTERISCO',       2),
+    ('SD_EXT',           'NORMAL',          3),
+    ('SD_SAS',           'NORMAL',          4),
+    ('MKT',              'NORMAL',          5),
+    ('ODS_SAS',          'NORMAL',          6),
+    ('ODS_GP',           'NORMAL',          7),
+    ('DDS',              'NORMAL',          8),
+    ('SB_DDS',           'NORMAL',          9),
+    ('GIR_FL',           'NORMAL',         10),
+    ('MDA',              'NORMAL',         11),
     ('EP_DDS',           'DUPLO_ASTERISCO',12),
-    ('NDOD',             'NORMAL',        13),
+    ('NDOD',             'NORMAL',         13),
     ('MARKET ABUSE',     'DUPLO_ASTERISCO',14),
-    ('MII DIARIO',       'NORMAL',        15),
-    ('EP_MDA',           'NORMAL',        16),
-    ('IMPARIDADE DIARIA','NORMAL',        17),
-    ('CRC',              'NORMAL',        18);
+    ('MII DIARIO',       'NORMAL',         15),
+    ('EP_MDA',           'NORMAL',         16),
+    ('IMPARIDADE DIARIA','NORMAL',         17),
+    ('CRC',              'NORMAL',         18)
+on conflict (nome_cadeia) do nothing;
 
--- Dependências do alerta preditivo do GIR_FL (colisão às 22h de Sábado
--- para Domingo). MKT e SB_DDS foram intencionalmente excluídas.
-create table gir_fl_dependencias (
+create table if not exists gir_fl_dependencias (
     nome_cadeia text primary key references cadeias_catalogo(nome_cadeia)
 );
 
 insert into gir_fl_dependencias (nome_cadeia) values
-    ('SD'), ('SD_FL'), ('SD_EXT'), ('SD_SAS'), ('ODS_SAS'), ('ODS_GP'), ('DDS');
+    ('SD'), ('SD_FL'), ('SD_EXT'), ('SD_SAS'), ('ODS_SAS'), ('ODS_GP'), ('DDS')
+on conflict (nome_cadeia) do nothing;
 
 -- ---------------------------------------------------------------------
 -- 4. ESCALA SEMANAL (H1 / H2 / H3 / H4)
 -- ---------------------------------------------------------------------
--- Uma linha por pessoa por semana. `semana_ref` é sempre a Quinta-feira
--- de referência dessa semana (mesma âncora usada em planos.data_inicio_ciclo).
-create table escala_semanal (
+create table if not exists escala_semanal (
     id bigserial primary key,
     semana_ref date not null,
     usuario_id uuid not null references usuarios(id),
@@ -105,10 +116,9 @@ create table escala_semanal (
     unique (semana_ref, usuario_id)
 );
 
-create index idx_escala_semanal_semana on escala_semanal (semana_ref);
-create index idx_escala_semanal_usuario on escala_semanal (usuario_id);
+create index if not exists idx_escala_semanal_semana on escala_semanal (semana_ref);
+create index if not exists idx_escala_semanal_usuario on escala_semanal (usuario_id);
 
--- Só OPERADOR_H3 pode ocupar o turno H3.
 create or replace function trg_valida_turno_h3() returns trigger as $$
 begin
     if new.turno = 'H3' then
@@ -123,14 +133,14 @@ begin
 end;
 $$ language plpgsql;
 
-create trigger trg_escala_semanal_valida_h3
+create or replace trigger trg_escala_semanal_valida_h3
 before insert or update on escala_semanal
 for each row execute function trg_valida_turno_h3();
 
 -- ---------------------------------------------------------------------
 -- 5. FÉRIAS / AUSÊNCIAS
 -- ---------------------------------------------------------------------
-create table ferias (
+create table if not exists ferias (
     id bigserial primary key,
     usuario_id uuid not null references usuarios(id),
     data_inicio date not null,
@@ -142,23 +152,15 @@ create table ferias (
     constraint chk_ferias_datas check (data_fim >= data_inicio)
 );
 
-create index idx_ferias_usuario on ferias (usuario_id);
-create index idx_ferias_periodo on ferias (data_inicio, data_fim);
+create index if not exists idx_ferias_usuario on ferias (usuario_id);
+create index if not exists idx_ferias_periodo on ferias (data_inicio, data_fim);
 
--- Dias úteis (seg-sex) entre duas datas, inclusive.
 create or replace function dias_uteis(p_inicio date, p_fim date) returns int as $$
     select count(*)::int
     from generate_series(p_inicio, p_fim, interval '1 day') d
     where extract(isodow from d) < 6;
 $$ language sql immutable;
 
--- Regras de validação de férias, todas aplicadas na submissão (mesmo
--- em estado PENDENTE, por decisão explícita):
---   a) sem sobreposição de férias entre pessoas diferentes da equipa
---      (toda a equipa, PENDENTE + APROVADA contam);
---   b) saldo anual de 22 dias úteis (soma de PENDENTE + APROVADA);
---   c) bloqueia se a pessoa já está escalada (qualquer turno) num dia
---      dentro do período pedido.
 create or replace function trg_valida_ferias() returns trigger as $$
 declare
     v_saldo int;
@@ -187,9 +189,7 @@ begin
         raise exception 'Este pedido ultrapassa o saldo anual de 22 dias úteis de férias.';
     end if;
 
-    -- (c) bloqueia se já há turno escalado nesse período. Cada linha de
-    -- escala_semanal cobre uma janela de 7 dias a partir de semana_ref
-    -- (a Quinta-feira de referência) até ao Quarta-feira seguinte.
+    -- (c) bloqueia se já há turno escalado nesse período
     if exists (
         select 1 from escala_semanal e
         where e.usuario_id = new.usuario_id
@@ -202,14 +202,14 @@ begin
 end;
 $$ language plpgsql;
 
-create trigger trg_ferias_valida
+create or replace trigger trg_ferias_valida
 before insert or update on ferias
 for each row execute function trg_valida_ferias();
 
 -- ---------------------------------------------------------------------
 -- 6. TROCAS PEER-TO-PEER (só H3)
 -- ---------------------------------------------------------------------
-create table trocas_escala (
+create table if not exists trocas_escala (
     id bigserial primary key,
     usuario_proponente uuid not null references usuarios(id),
     usuario_substituto uuid not null references usuarios(id),
@@ -221,7 +221,7 @@ create table trocas_escala (
     criado_em timestamptz not null default now()
 );
 
-create index idx_trocas_semana on trocas_escala (semana_ref);
+create index if not exists idx_trocas_semana on trocas_escala (semana_ref);
 
 create or replace function trg_valida_troca() returns trigger as $$
 begin
@@ -232,11 +232,10 @@ begin
 end;
 $$ language plpgsql;
 
-create trigger trg_trocas_valida
+create or replace trigger trg_trocas_valida
 before insert or update on trocas_escala
 for each row execute function trg_valida_troca();
 
--- Ao aprovar uma troca, atualiza (ou cria) a linha H3 da semana visada.
 create or replace function trg_aplica_troca_aprovada() returns trigger as $$
 begin
     if new.status = 'APROVADA' and old.status <> 'APROVADA' then
@@ -244,7 +243,6 @@ begin
         values (new.semana_ref, new.usuario_substituto, 'H3', new.aprovado_por)
         on conflict (semana_ref, usuario_id) do update set turno = 'H3';
 
-        -- remove a linha H3 antiga do proponente nessa semana, se existir
         delete from escala_semanal
          where semana_ref = new.semana_ref
            and usuario_id = new.usuario_proponente
@@ -254,16 +252,14 @@ begin
 end;
 $$ language plpgsql;
 
-create trigger trg_trocas_aplica
+create or replace trigger trg_trocas_aplica
 after update on trocas_escala
 for each row execute function trg_aplica_troca_aprovada();
 
 -- ---------------------------------------------------------------------
 -- 7. DELEGAÇÃO DE APROVAÇÃO
 -- ---------------------------------------------------------------------
--- Aditiva: o Gerente titular mantém sempre o seu próprio poder de
--- aprovar; o substituto (qualquer utilizador) ganha-o temporariamente.
-create table delegacoes_aprovacao (
+create table if not exists delegacoes_aprovacao (
     id bigserial primary key,
     gerente_titular uuid not null references usuarios(id),
     substituto uuid not null references usuarios(id),
@@ -273,7 +269,6 @@ create table delegacoes_aprovacao (
     constraint chk_delegacao_datas check (data_fim >= data_inicio)
 );
 
--- Impede duas delegações ativas simultâneas.
 create or replace function trg_valida_delegacao() returns trigger as $$
 begin
     if exists (
@@ -287,19 +282,18 @@ begin
 end;
 $$ language plpgsql;
 
-create trigger trg_delegacao_valida
+create or replace trigger trg_delegacao_valida
 before insert or update on delegacoes_aprovacao
 for each row execute function trg_valida_delegacao();
 
 -- ---------------------------------------------------------------------
 -- 8. PLANO DE FIM DE SEMANA
 -- ---------------------------------------------------------------------
--- Chave = data de início do ciclo H3 (a Quinta-feira), nunca "semana ISO".
-create table planos (
+create table if not exists planos (
     id bigserial primary key,
     data_inicio_ciclo date not null unique,
     tipo_fim_semana tipo_fim_semana not null,
-    tipo_fim_semana_manual boolean not null default false, -- true = Gerente substituiu o cálculo automático
+    tipo_fim_semana_manual boolean not null default false,
     status status_plano not null default 'RASCUNHO',
     observacoes_gerais text,
     criado_por uuid references usuarios(id),
@@ -308,13 +302,11 @@ create table planos (
     data_aprovacao timestamptz
 );
 
--- Último Sábado do mês corrente = fim de semana de manutenção.
 create or replace function calcula_tipo_fim_semana(p_data_inicio_ciclo date) returns tipo_fim_semana as $$
 declare
     v_sabado date;
     v_ultimo_sabado_do_mes date;
 begin
-    -- o Sábado do ciclo Quinta->Segunda é sempre 2 dias depois da Quinta
     v_sabado := (p_data_inicio_ciclo + interval '2 days')::date;
     v_ultimo_sabado_do_mes := (date_trunc('month', v_sabado) + interval '1 month - 1 day')::date;
     while extract(isodow from v_ultimo_sabado_do_mes) <> 6 loop
@@ -336,11 +328,10 @@ begin
 end;
 $$ language plpgsql;
 
-create trigger trg_planos_tipo
+create or replace trigger trg_planos_tipo
 before insert or update on planos
 for each row execute function trg_planos_default_tipo();
 
--- Resolve dinamicamente quem é o operador H3 responsável por um ciclo.
 create or replace function operador_do_ciclo(p_data_inicio_ciclo date) returns uuid as $$
     select usuario_id from escala_semanal
      where semana_ref = p_data_inicio_ciclo and turno = 'H3'
@@ -350,7 +341,7 @@ $$ language sql stable;
 -- ---------------------------------------------------------------------
 -- 9. TAREFAS DO PLANO
 -- ---------------------------------------------------------------------
-create table tarefas_plano (
+create table if not exists tarefas_plano (
     id bigserial primary key,
     id_plano bigint not null references planos(id) on delete cascade,
     data_execucao date not null,
@@ -359,7 +350,7 @@ create table tarefas_plano (
     hora_arranque time,
     dt_previsao date,
     hr_previsao_termino time,
-    hr_limite time, -- opcional, sem valor por defeito (risco de adoção aceite conscientemente)
+    hr_limite time,
     observacao text,
     status status_tarefa not null default 'PENDENTE',
     origem origem_tarefa not null default 'EXCECIONAL',
@@ -367,12 +358,12 @@ create table tarefas_plano (
     dt_hr_conclusao_real timestamptz
 );
 
-create index idx_tarefas_plano on tarefas_plano (id_plano);
+create index if not exists idx_tarefas_plano on tarefas_plano (id_plano);
 
 -- ---------------------------------------------------------------------
--- 10. CHECKLIST — modelo linha única + log de override do Gerente
+-- 10. CHECKLIST
 -- ---------------------------------------------------------------------
-create table checklist_itens (
+create table if not exists checklist_itens (
     id bigserial primary key,
     id_plano bigint not null references planos(id) on delete cascade,
     secao secao_checklist not null,
@@ -386,10 +377,8 @@ create table checklist_itens (
     destravado_motivo text
 );
 
-create index idx_checklist_plano on checklist_itens (id_plano);
+create index if not exists idx_checklist_plano on checklist_itens (id_plano);
 
--- Imutabilidade: uma vez concluido=true, só a função destravar_checklist_item
--- (abaixo) pode voltar a mexer nos campos de conclusão.
 create or replace function trg_checklist_imutavel() returns trigger as $$
 begin
     if old.concluido = true and current_setting('app.permitir_destravar', true) is distinct from 'true' then
@@ -403,13 +392,10 @@ begin
 end;
 $$ language plpgsql;
 
-create trigger trg_checklist_itens_imutavel
+create or replace trigger trg_checklist_itens_imutavel
 before update on checklist_itens
 for each row execute function trg_checklist_imutavel();
 
--- Único caminho para desfazer uma conclusão indevida: volta a
--- "não concluído" (não permite editar o carimbo diretamente) e grava
--- log de auditoria com a justificativa.
 create or replace function destravar_checklist_item(p_id bigint, p_motivo text) returns void as $$
 begin
     perform set_config('app.permitir_destravar', 'true', true);
@@ -431,9 +417,9 @@ end;
 $$ language plpgsql security definer;
 
 -- ---------------------------------------------------------------------
--- 11. CADEIAS DIÁRIAS (matriz das 18, por secção de batch)
+-- 11. CADEIAS DIÁRIAS
 -- ---------------------------------------------------------------------
-create table cadeias_diarias (
+create table if not exists cadeias_diarias (
     id bigserial primary key,
     id_plano bigint not null references planos(id) on delete cascade,
     secao secao_checklist not null,
@@ -446,25 +432,25 @@ create table cadeias_diarias (
     unique (id_plano, secao, nome_cadeia)
 );
 
-create index idx_cadeias_plano on cadeias_diarias (id_plano);
+create index if not exists idx_cadeias_plano on cadeias_diarias (id_plano);
 
 -- ---------------------------------------------------------------------
 -- 12. LOGS DE AUDITORIA
 -- ---------------------------------------------------------------------
-create table logs_auditoria (
+create table if not exists logs_auditoria (
     id bigserial primary key,
-    referencia_tipo text not null, -- 'PLANO' | 'CHECKLIST_ITEM' | 'ESCALA' | 'FERIAS' | 'TROCA' | 'DELEGACAO' | 'USUARIO' | 'CADEIA'
+    referencia_tipo text not null,
     referencia_id bigint,
     id_usuario uuid references usuarios(id),
-    acao text not null, -- ex.: 'ESCALONAMENTO_HR_LIMITE','ESCALONAMENTO_GIR_FL','ESCALONAMENTO_CHECAGEM_20H','OVERRIDE_CHECKLIST','APROVACAO_PLANO','APROVACAO_TROCA','DESATIVACAO_USUARIO','OVERRIDE_LIMITE_H3'
+    acao text not null,
     descricao_detalhada text,
     delegacao_id bigint references delegacoes_aprovacao(id),
     data_hora timestamptz not null default now()
 );
 
-create index idx_logs_referencia on logs_auditoria (referencia_tipo, referencia_id);
-create index idx_logs_usuario on logs_auditoria (id_usuario);
-create index idx_logs_data on logs_auditoria (data_hora);
+create index if not exists idx_logs_referencia on logs_auditoria (referencia_tipo, referencia_id);
+create index if not exists idx_logs_usuario on logs_auditoria (id_usuario);
+create index if not exists idx_logs_data on logs_auditoria (data_hora);
 
 -- =====================================================================
 -- Fim do schema base. Políticas de RLS em 0002_rls.sql.
