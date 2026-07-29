@@ -1,0 +1,214 @@
+/* =====================================================================
+   Turno H3 — Design tokens
+   Accenture (roxo de marca) + Banco Montepio (laranja/âmbar de marca)
+   Dark mode corporativo de alto contraste — operação desktop, noturna.
+   ===================================================================== */
+
+:root {
+  /* Marca */
+  --accenture-purple: #a100ff;
+  --accenture-purple-dim: #7a00c2;
+  --montepio-orange: #e8a018;
+  --montepio-orange-dim: #b87d13;
+
+  /* Base — dark mode de alto contraste (não o cinza-médio da foto,
+     que serve só de referência estética, não de valor de fundo) */
+  --bg-app: #0e0d11;
+  --bg-surface: #17161b;
+  --bg-surface-raised: #1f1e25;
+  --bg-surface-hover: #27262e;
+  --border-subtle: #2e2d35;
+  --border-strong: #45434e;
+
+  --text-primary: #f3f2f5;
+  --text-secondary: #b7b4bf;
+  --text-muted: #817e8a;
+
+  /* Estado operacional */
+  --status-verde: #2fb867;
+  --status-verde-bg: rgba(47, 184, 103, 0.14);
+  --status-amarelo: #e8b923;
+  --status-amarelo-bg: rgba(232, 185, 35, 0.14);
+  --status-vermelho: #e5484d;
+  --status-vermelho-bg: rgba(229, 72, 77, 0.16);
+  --status-neutro: #6d6a78;
+  --status-neutro-bg: rgba(109, 106, 120, 0.14);
+
+  /* Acento primário de interação = roxo Accenture; secundário = âmbar Montepio */
+  --accent-primary: var(--accenture-purple);
+  --accent-primary-hover: #b52bff;
+  --accent-secondary: var(--montepio-orange);
+  --accent-secondary-hover: #f4ad2e;
+
+  --focus-ring: 0 0 0 3px rgba(161, 0, 255, 0.35);
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
+
+  --font-sans: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "SFMono-Regular", "JetBrains Mono", Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg-app);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* App de operação — só desktop, largura mínima para não colapsar o layout */
+#root {
+  min-width: 1180px;
+  overflow-x: auto;
+}
+
+a {
+  color: var(--accent-secondary);
+}
+
+/* ---------------------------------------------------------------------
+   Componentes base
+   --------------------------------------------------------------------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.05s ease;
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.btn-primary {
+  background: var(--accent-primary);
+  color: #fff;
+}
+.btn-primary:hover {
+  background: var(--accent-primary-hover);
+}
+
+.btn-secondary {
+  background: var(--accent-secondary);
+  color: #1a1204;
+}
+.btn-secondary:hover {
+  background: var(--accent-secondary-hover);
+}
+
+.btn-ghost {
+  background: transparent;
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+.btn-ghost:hover {
+  background: var(--bg-surface-hover);
+}
+
+.btn-danger {
+  background: var(--status-vermelho);
+  color: #fff;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 1.25rem;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.badge-verde {
+  background: var(--status-verde-bg);
+  color: var(--status-verde);
+}
+.badge-amarelo {
+  background: var(--status-amarelo-bg);
+  color: var(--status-amarelo);
+}
+.badge-vermelho {
+  background: var(--status-vermelho-bg);
+  color: var(--status-vermelho);
+}
+.badge-neutro {
+  background: var(--status-neutro-bg);
+  color: var(--status-neutro);
+}
+
+.badge-lock {
+  background: rgba(161, 0, 255, 0.12);
+  color: var(--accent-primary);
+}
+
+input,
+select,
+textarea {
+  background: var(--bg-surface-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  padding: 0.5rem 0.7rem;
+  font-family: inherit;
+  font-size: 0.85rem;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: var(--focus-ring);
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 999px;
+}
