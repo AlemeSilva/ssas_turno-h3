@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { calcularProximoAlerta } from '../lib/alertas'
-import { semanaRefDe, paraISO } from '../lib/datas'
+import { semanaRefDe, paraISO, agora as getNow } from '../lib/datas'
 
 export function AlertBar() {
-  const [agora, setAgora] = useState(new Date())
+  const [agora, setAgora] = useState(getNow())
   const [online, setOnline] = useState(navigator.onLine)
   const [ehManutencao, setEhManutencao] = useState(false)
 
   useEffect(() => {
-    const t = setInterval(() => setAgora(new Date()), 30_000)
+    const t = setInterval(() => setAgora(getNow()), 30_000)
     const onOnline = () => setOnline(true)
     const onOffline = () => setOnline(false)
     window.addEventListener('online', onOnline)

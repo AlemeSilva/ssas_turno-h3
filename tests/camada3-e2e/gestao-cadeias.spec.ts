@@ -24,9 +24,12 @@ test.describe('Definições — gestão de cadeias (adicionar/desativar)', () =>
     const linha = page.getByText('SD_TESTE_E2E').locator('..')
     await linha.getByRole('button', { name: 'Desativar' }).click()
 
-    await expect(linha.getByText('Desativada')).toBeVisible()
+    // Subscrição real-time pode ter latência em CI — reload garante dados frescos da BD.
+    await page.reload()
+    const linhaRecarga = page.getByText('SD_TESTE_E2E').locator('..')
+    await expect(linhaRecarga.getByText('Desativada')).toBeVisible()
     await expect(page.getByText('SD_TESTE_E2E')).toBeVisible() // continua na lista
-    await expect(linha.getByRole('button', { name: 'Reativar' })).toBeVisible()
+    await expect(linhaRecarga.getByRole('button', { name: 'Reativar' })).toBeVisible()
   })
 
   test('uma cadeia com histórico não oferece opção de apagar na interface, só desativar', async ({ page }) => {

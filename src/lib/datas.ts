@@ -63,3 +63,13 @@ export function formatarMesAnoPT(d: Date): string {
 }
 
 export const NOMES_DIA_PT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+
+/** Em produção devolve new Date(). Em testes E2E, usa window.__TEST_TIME__ se definido,
+ *  evitando que page.clock.setSystemTime() afecte o JWT do Supabase e cause rate-limiting. */
+export function agora(): Date {
+  if (typeof window !== 'undefined') {
+    const t = (window as { __TEST_TIME__?: string }).__TEST_TIME__
+    if (t) return new Date(t)
+  }
+  return new Date()
+}
