@@ -1,0 +1,5 @@
+project_id = "usqzsprhqxpupizhpenz"
+
+[functions.desactivar-saidos]
+# Corre todos os dias às 01:00 UTC — desativa utilizadores com data_saida ultrapassada.
+schedule = "0 1 * * *"

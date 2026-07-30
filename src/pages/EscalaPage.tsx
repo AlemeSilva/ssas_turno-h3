@@ -2,11 +2,28 @@ import { useMemo, useState, type CSSProperties } from 'react'
 import { useUsuarios } from '../data/useUsuarios'
 import { useEscalaMes } from '../data/useEscalaMes'
 import { formatarMesAnoPT, paraISO } from '../lib/datas'
-import type { EscalaSemanal, Ferias, TurnoTipo } from '../types/database'
+import type { EscalaSemanal, Ferias, TurnoTipo, Usuario } from '../types/database'
 import { PainelFerias } from '../components/escala/PainelFerias'
 import { PainelTrocas } from '../components/escala/PainelTrocas'
 import { PainelDelegacao } from '../components/escala/PainelDelegacao'
 import { useAuth } from '../auth/AuthContext'
+import { supabase } from '../lib/supabase'
+
+interface RespostaSugestao {
+  semana_ref: string
+  H3: { usuario_id: string; nome: string; precisa_override: boolean } | null
+  H1: string | null
+  H2: string | null
+  H4: string | null
+}
+
+function proximaQuinta(): string {
+  const hoje = new Date()
+  const diff = (4 - hoje.getDay() + 7) % 7 || 7
+  const quinta = new Date(hoje)
+  quinta.setDate(hoje.getDate() + diff)
+  return paraISO(quinta)
+}
 
 const CLASSE_BADGE: Record<TurnoTipo | 'F', string> = {
   H1: 'badge-neutro',
@@ -60,7 +77,12 @@ export function EscalaPage() {
       <div className="card" style={{ overflow: 'hidden' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h2 style={{ margin: 0 }}>Escala do Mês</h2>
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{formatarMesAnoPT(mesRef)}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{formatarMesAnoPT(mesRef)}</div>
+            {ehGerenteOuDelegado && (
+              <PainelSugestao usuarios={pessoasAtivas} />
+            )}
+          </div>
         </div>
 
         {aCarregar ? (
@@ -167,4 +189,117 @@ function celulaDia(): CSSProperties {
     minWidth: 26,
     height: 30,
   }
+}
+
+function PainelSugestao({ usuarios }: { usuarios: Pick<Usuario, 'id' | 'nome'>[] }) {
+  const [aberto, setAberto] = useState(false)
+  const [semanaRef, setSemanaRef] = useState(proximaQuinta)
+  const [sugestao, setSugestao] = useState<RespostaSugestao | null>(null)
+  const [aCarregar, setACarregar] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
+  const [aplicado, setAplicado] = useState(false)
+
+  function nomePorId(id: string | null): string {
+    if (!id) return '—'
+    return usuarios.find((u) => u.id === id)?.nome ?? id
+  }
+
+  async function calcular() {
+    setACarregar(true)
+    setErro(null)
+    setSugestao(null)
+    setAplicado(false)
+    const { data, error } = await supabase.functions.invoke('sugerir-escala', {
+      body: { semana_ref: semanaRef },
+    })
+    if (error) setErro(error.message)
+    else setSugestao(data as RespostaSugestao)
+    setACarregar(false)
+  }
+
+  async function aplicar() {
+    if (!sugestao) return
+    const linhas: { usuario_id: string; semana_ref: string; turno: string }[] = []
+    if (sugestao.H3) linhas.push({ usuario_id: sugestao.H3.usuario_id, semana_ref: sugestao.semana_ref, turno: 'H3' })
+    if (sugestao.H1) linhas.push({ usuario_id: sugestao.H1, semana_ref: sugestao.semana_ref, turno: 'H1' })
+    if (sugestao.H2) linhas.push({ usuario_id: sugestao.H2, semana_ref: sugestao.semana_ref, turno: 'H2' })
+    if (sugestao.H4) linhas.push({ usuario_id: sugestao.H4, semana_ref: sugestao.semana_ref, turno: 'H4' })
+    const { error } = await supabase.from('escala_semanal').upsert(linhas, { onConflict: 'usuario_id,semana_ref' })
+    if (!error) setAplicado(true)
+  }
+
+  if (!aberto) {
+    return (
+      <button className="btn btn-ghost" style={{ fontSize: '0.75rem' }} onClick={() => setAberto(true)}>
+        Sugerir automaticamente
+      </button>
+    )
+  }
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <div style={{
+        position: 'absolute', top: '100%', right: 0, zIndex: 10,
+        background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
+        borderRadius: '0.5rem', padding: '1rem', minWidth: 280, marginTop: '0.25rem',
+        boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+          <strong style={{ fontSize: '0.8rem' }}>Sugestão automática</strong>
+          <button className="btn btn-ghost" style={{ padding: '0.1rem 0.4rem', fontSize: '0.75rem' }} onClick={() => { setAberto(false); setSugestao(null) }}>✕</button>
+        </div>
+
+        <label style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '0.25rem', marginBottom: '0.75rem' }}>
+          Semana (Quinta-feira de referência)
+          <input type="date" value={semanaRef} onChange={(e) => { setSemanaRef(e.target.value); setSugestao(null) }} />
+        </label>
+
+        <button className="btn btn-primary" style={{ width: '100%', fontSize: '0.8rem' }} onClick={calcular} disabled={aCarregar}>
+          {aCarregar ? 'A calcular…' : 'Calcular sugestão'}
+        </button>
+
+        {erro && <p style={{ color: 'var(--color-error)', fontSize: '0.75rem', marginTop: '0.5rem' }}>{erro}</p>}
+
+        {sugestao && (
+          <div style={{ marginTop: '0.75rem', fontSize: '0.8rem' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <tbody>
+                {(['H1', 'H2', 'H4'] as const).map((t) => (
+                  <tr key={t}>
+                    <td style={{ padding: '0.25rem 0', color: 'var(--text-muted)', width: 32 }}>
+                      <span className="badge badge-neutro" style={{ fontSize: '0.65rem' }}>{t}</span>
+                    </td>
+                    <td style={{ padding: '0.25rem 0' }}>{nomePorId(sugestao[t])}</td>
+                  </tr>
+                ))}
+                <tr>
+                  <td style={{ padding: '0.25rem 0', color: 'var(--text-muted)', width: 32 }}>
+                    <span className="badge badge-lock" style={{ fontSize: '0.65rem' }}>H3</span>
+                  </td>
+                  <td style={{ padding: '0.25rem 0' }}>
+                    {sugestao.H3 ? (
+                      <span>
+                        {sugestao.H3.nome}
+                        {sugestao.H3.precisa_override && (
+                          <span style={{ color: 'var(--color-warning)', marginLeft: '0.4rem', fontSize: '0.7rem' }}>⚠ override</span>
+                        )}
+                      </span>
+                    ) : '—'}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            {aplicado ? (
+              <p style={{ color: 'var(--color-success)', fontSize: '0.75rem', marginTop: '0.5rem' }}>Aplicado à escala.</p>
+            ) : (
+              <button className="btn btn-primary" style={{ width: '100%', marginTop: '0.75rem', fontSize: '0.8rem' }} onClick={aplicar}>
+                Aplicar à escala
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
 }
