@@ -46,7 +46,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 borderRadius: 'var(--radius-sm)',
                 fontSize: '0.83rem',
                 fontWeight: 600,
-                color: isActive ? '#fff' : 'var(--text-secondary)',
+                color: isActive ? 'var(--text-on-accent)' : 'var(--text-secondary)',
                 background: isActive ? 'var(--accent-primary)' : 'transparent',
                 textDecoration: 'none',
               })}
@@ -77,10 +77,25 @@ export function AppShell({ children }: { children: ReactNode }) {
 
 function LockMark() {
   return (
-    <svg width="26" height="26" viewBox="0 0 32 32">
-      <rect width="32" height="32" rx="7" fill="var(--bg-surface-raised)" />
-      <path d="M11 15v-3a5 5 0 0 1 10 0v3" fill="none" stroke="var(--accent-primary)" strokeWidth="2.4" strokeLinecap="round" />
-      <rect x="9" y="15" width="14" height="11" rx="2.5" fill="var(--accent-secondary)" />
+    <svg width="28" height="28" viewBox="0 0 36 36" aria-hidden="true">
+      {/* Quadrado âmbar Montepio */}
+      <rect x="0" y="0" width="17" height="36" rx="5" fill="var(--montepio-orange)" />
+      {/* Quadrado roxo Accenture */}
+      <rect x="19" y="0" width="17" height="36" rx="5" fill="var(--accenture-purple)" />
+      {/* Chevron ">" estilizado — referência ao logótipo Accenture, a branco sobre roxo */}
+      <polyline
+        points="23,11 30,18 23,25"
+        fill="none"
+        stroke="var(--text-on-accent)"
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* Pássaro simplificado — bico apontado à esquerda, branco sobre âmbar */}
+      <path
+        d="M13,16 C10,14 5,15 4,17 C6,17 8,16.5 9,18 C10,19.5 12,20 14,19 C14,17.5 13,16 13,16 Z"
+        fill="var(--text-on-accent)"
+      />
     </svg>
   )
 }

@@ -1,46 +1,68 @@
 /* =====================================================================
    Turno H3 — Design tokens
-   Accenture (roxo de marca) + Banco Montepio (laranja/âmbar de marca)
+   Accenture (roxo de marca) + Banco Montepio (âmbar de marca)
    Dark mode corporativo de alto contraste — operação desktop, noturna.
+
+   Referência de marca: Identidade_Visual.png
+     Accenture purple chevron  →  #A100FF  (RGB 161 0 255)
+     Accenture purple text     →  #44177A
+     Montepio amber square bg  →  #F0A41C  (RGB 240 164 28)
    ===================================================================== */
 
 :root {
-  /* Marca */
-  --accenture-purple: #a100ff;
-  --accenture-purple-dim: #7a00c2;
-  --montepio-orange: #e8a018;
-  --montepio-orange-dim: #b87d13;
+  /* Marca — valores extraídos do ficheiro Identidade_Visual.png */
+  --accenture-purple:      #a100ff;   /* chevron ">" — cor oficial Accenture    */
+  --accenture-purple-dim:  #7a00c2;   /* variante escurecida para hover         */
+  --accenture-purple-text: #44177a;   /* roxo escuro do logótipo "accenture"    */
+  --accenture-purple-r:    161;
+  --accenture-purple-g:    0;
+  --accenture-purple-b:    255;
 
-  /* Base — dark mode de alto contraste (não o cinza-médio da foto,
-     que serve só de referência estética, não de valor de fundo) */
-  --bg-app: #0e0d11;
-  --bg-surface: #17161b;
+  --montepio-orange:       #f0a41c;   /* fundo âmbar do quadrado com pássaro    */
+  --montepio-orange-dim:   #c2841a;   /* variante escurecida para hover         */
+  --montepio-orange-r:     240;
+  --montepio-orange-g:     164;
+  --montepio-orange-b:     28;
+
+  /* Base — dark mode de alto contraste */
+  --bg-app:            #0e0d11;
+  --bg-surface:        #17161b;
   --bg-surface-raised: #1f1e25;
-  --bg-surface-hover: #27262e;
-  --border-subtle: #2e2d35;
-  --border-strong: #45434e;
+  --bg-surface-hover:  #27262e;
+  --border-subtle:     #2e2d35;
+  --border-strong:     #45434e;
 
-  --text-primary: #f3f2f5;
+  --text-primary:   #f3f2f5;
   --text-secondary: #b7b4bf;
-  --text-muted: #817e8a;
+  --text-muted:     #817e8a;
 
   /* Estado operacional */
-  --status-verde: #2fb867;
-  --status-verde-bg: rgba(47, 184, 103, 0.14);
-  --status-amarelo: #e8b923;
-  --status-amarelo-bg: rgba(232, 185, 35, 0.14);
-  --status-vermelho: #e5484d;
-  --status-vermelho-bg: rgba(229, 72, 77, 0.16);
-  --status-neutro: #6d6a78;
-  --status-neutro-bg: rgba(109, 106, 120, 0.14);
+  --status-verde:        #2fb867;
+  --status-verde-bg:     rgba(47, 184, 103, 0.14);
+  --status-amarelo:      #e8b923;
+  --status-amarelo-bg:   rgba(232, 185, 35, 0.14);
+  --status-vermelho:     #e5484d;
+  --status-vermelho-bg:  rgba(229, 72, 77, 0.16);
+  --status-neutro:       #6d6a78;
+  --status-neutro-bg:    rgba(109, 106, 120, 0.14);
 
-  /* Acento primário de interação = roxo Accenture; secundário = âmbar Montepio */
-  --accent-primary: var(--accenture-purple);
+  /* Acento primário = roxo Accenture; secundário = âmbar Montepio */
+  --accent-primary:       var(--accenture-purple);
   --accent-primary-hover: #b52bff;
-  --accent-secondary: var(--montepio-orange);
-  --accent-secondary-hover: #f4ad2e;
+  --accent-secondary:     var(--montepio-orange);
+  --accent-secondary-hover: #f9b52c;
 
-  --focus-ring: 0 0 0 3px rgba(161, 0, 255, 0.35);
+  /* focus-ring usa componentes RGB para evitar hardcode do hex */
+  --focus-ring: 0 0 0 3px rgba(
+    var(--accenture-purple-r),
+    var(--accenture-purple-g),
+    var(--accenture-purple-b),
+    0.35
+  );
+
+  /* Texto sobre fundo de acento */
+  --text-on-accent:   #ffffff;
+  --text-on-secondary: #1a1204;  /* texto escuro sobre âmbar Montepio */
 
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -117,7 +139,7 @@ a {
 
 .btn-secondary {
   background: var(--accent-secondary);
-  color: #1a1204;
+  color: var(--text-on-secondary);
 }
 .btn-secondary:hover {
   background: var(--accent-secondary-hover);
@@ -180,7 +202,12 @@ a {
 }
 
 .badge-lock {
-  background: rgba(161, 0, 255, 0.12);
+  background: rgba(
+    var(--accenture-purple-r),
+    var(--accenture-purple-g),
+    var(--accenture-purple-b),
+    0.12
+  );
   color: var(--accent-primary);
 }
 
