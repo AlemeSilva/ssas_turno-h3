@@ -19,7 +19,10 @@ import { SABADO_CICLO } from './seed/dados'
 test.describe('Alerta sonoro/visual — janelas críticas 20h / 15h', () => {
   test('antes das 20h de Sábado, não há alerta de checagem visível', async ({ page }) => {
     await loginComo(page, 'kilson')
-    await page.clock.install({ time: new Date(`${SABADO_CICLO}T19:00:00`) })
+    // page.clock.install() substitui Date.now() globalmente e quebra o JWT do Supabase
+    // (JWT emitido hoje parece expirado com relógio congelado no Sábado futuro) → logout.
+    // __TEST_TIME__ é lido por agora() sem tocar em Date.now() — mesma estratégia dos outros testes.
+    await page.evaluate((t) => { (window as { __TEST_TIME__?: string }).__TEST_TIME__ = t }, `${SABADO_CICLO}T19:00:00`)
     await page.getByRole('link', { name: 'Checklist Ativo' }).click()
 
     await expect(page.getByText('Janela crítica das 20h')).toHaveCount(0)
@@ -40,8 +43,10 @@ test.describe('Alerta sonoro/visual — janelas críticas 20h / 15h', () => {
     // só o <span style="font-size:0.8rem"> é selecionado (único span com este texto),
     // e o .locator('..') dá o <div> da linha que tem exatamente um botão.
     const linha20h = page.locator('span:has-text("Janela crítica das 20h (Sáb/Dom) em curso.")').locator('..')
-    const botao = linha20h.getByRole('button', { name: 'Registar acionamento ao Gerente' })
-    await expect(botao).toBeVisible()
+    // Locator sem filtro de nome — fica válido após a atualização otimista mudar o texto do botão.
+    // getByRole com name: 'Registar...' tornava-se stale quando o texto mudava para 'Acionamento registado'.
+    const botao = linha20h.getByRole('button')
+    await expect(botao).toHaveText('Registar acionamento ao Gerente')
     await botao.click()
     await expect(botao).toHaveText('Acionamento registado')
     await expect(botao).toBeDisabled()
@@ -49,7 +54,8 @@ test.describe('Alerta sonoro/visual — janelas críticas 20h / 15h', () => {
 
   test('o alerta das 15h nunca aparece num fim de semana NORMAL, só em manutenção', async ({ page }) => {
     await loginComo(page, 'kilson')
-    await page.clock.install({ time: new Date(`${SABADO_CICLO}T15:05:00`) })
+    // Mesma razão do teste "antes das 20h": clock.install() quebra o JWT → __TEST_TIME__ em vez disso.
+    await page.evaluate((t) => { (window as { __TEST_TIME__?: string }).__TEST_TIME__ = t }, `${SABADO_CICLO}T15:05:00`)
     await page.getByRole('link', { name: 'Checklist Ativo' }).click()
 
     await expect(page.getByText('Janela crítica das 15h')).toHaveCount(0)

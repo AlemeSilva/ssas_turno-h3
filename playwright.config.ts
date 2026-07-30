@@ -6,6 +6,7 @@ import { defineConfig, devices } from '@playwright/test'
 export default defineConfig({
   testDir: './tests/camada3-e2e',
   fullyParallel: false, // os cenários partilham o mesmo plano/ciclo semeado — corridas paralelas colidiriam
+  workers: 1,          // garante execução sequencial entre ficheiros (evita rate-limit Auth e eventos Realtime cruzados)
   retries: 0,
   reporter: [['html', { outputFolder: 'tests/camada3-e2e/relatorio' }], ['list']],
   use: {
