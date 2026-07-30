@@ -1,0 +1,73 @@
+name: Camada 3 — Playwright E2E
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'tests/camada3-e2e/**'
+      - 'playwright.config.ts'
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    name: Suite E2E (desktop Chrome 1920×1080)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      VITE_SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY:    ${{ secrets.SUPABASE_ANON_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Instalar Playwright (Chromium)
+        run: npx playwright install --with-deps chromium
+
+      - name: Limpar dados de execuções anteriores (idempotente)
+        run: npx tsx tests/camada3-e2e/seed/limpar.ts
+
+      - name: Semear dados de teste E2E
+        run: npx tsx tests/camada3-e2e/seed/seed.ts
+
+      - name: Build da aplicação
+        run: npm run build
+
+      - name: Iniciar servidor de preview em background
+        run: |
+          npx vite preview --port 4173 &
+          # Aguarda até a app responder (max 30s)
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:4173 > /dev/null 2>&1 && echo "✓ Servidor pronto" && break
+            sleep 1
+          done
+
+      - name: Executar suite Playwright
+        run: npx playwright test
+        env:
+          E2E_BASE_URL: http://localhost:4173
+
+      - name: Limpar dados de teste (sempre)
+        if: always()
+        run: npx tsx tests/camada3-e2e/seed/limpar.ts
+
+      - name: Publicar relatório Playwright
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: tests/camada3-e2e/relatorio/
+          retention-days: 14
