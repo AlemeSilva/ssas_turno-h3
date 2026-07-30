@@ -7,11 +7,15 @@ test.describe('Definições — gestão de cadeias (adicionar/desativar)', () =>
     await page.getByRole('link', { name: 'Definições' }).click()
 
     await page.getByPlaceholder('ex.: SD_NOVA').fill('SD_TESTE_E2E')
+    // Listener antes do click — o handler onSubmit é async e o click() retorna antes
+    // de supabase.insert() completar; o reload sem waitForResponse chegaria à BD antes da escrita.
+    const postConcluido = page.waitForResponse(
+      (r) => r.url().includes('cadeias_catalogo') && r.request().method() === 'POST'
+    )
     await page.getByRole('button', { name: 'Adicionar cadeia' }).click()
-    // Reload para garantir que o catálogo recarrega — subscrição real-time
-    // pode não disparar em CI devido a latência de websocket.
-    await page.reload()
+    await postConcluido
 
+    await page.reload()
     await expect(page.getByText('SD_TESTE_E2E')).toBeVisible()
     const linha = page.getByText('SD_TESTE_E2E').locator('..')
     await expect(linha.getByText('Ativa', { exact: true })).toBeVisible()
@@ -22,9 +26,14 @@ test.describe('Definições — gestão de cadeias (adicionar/desativar)', () =>
     await page.getByRole('link', { name: 'Definições' }).click()
 
     const linha = page.getByText('SD_TESTE_E2E').locator('..')
+    // Listener antes do click — onClick chama alternarAtivo() sem await; o PATCH
+    // corre em background e o click() retorna antes da escrita na BD completar.
+    const patchConcluido = page.waitForResponse(
+      (r) => r.url().includes('cadeias_catalogo') && r.request().method() === 'PATCH'
+    )
     await linha.getByRole('button', { name: 'Desativar' }).click()
+    await patchConcluido
 
-    // Subscrição real-time pode ter latência em CI — reload garante dados frescos da BD.
     await page.reload()
     const linhaRecarga = page.getByText('SD_TESTE_E2E').locator('..')
     await expect(linhaRecarga.getByText('Desativada')).toBeVisible()
