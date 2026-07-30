@@ -1,5 +1,5 @@
 import type { EscalaSemanal, Ferias, TurnoTipo, Usuario } from '../types/database'
-import { adicionarDias, formatarDataPT } from './datas'
+import { adicionarDias, formatarDataPT, paraISO } from './datas'
 
 const HORARIO_TURNO: Record<TurnoTipo, string> = {
   H1: '07h00 às 16h00',
@@ -32,7 +32,7 @@ export function gerarTextoRelatorioSemanal(
     linhas.push(`${turno} – ${HORARIO_TURNO[turno].toUpperCase()}`)
   }
   linhas.push('')
-  linhas.push(`Segue escala e turnos referentes aos dias ${formatarDataPT(semanaRef)} a ${formatarDataPT(adicionarDias(inicio, 6).toISOString().slice(0, 10))}.`)
+  linhas.push(`Segue escala e turnos referentes aos dias ${formatarDataPT(semanaRef)} a ${formatarDataPT(paraISO(adicionarDias(inicio, 6)))}.`)
   linhas.push('')
   linhas.push('Operação SAS')
   for (const turno of ['H1', 'H2', 'H3', 'H4'] as TurnoTipo[]) {
@@ -41,7 +41,7 @@ export function gerarTextoRelatorioSemanal(
   }
   linhas.push('')
   linhas.push('Férias/Licenças')
-  const emFerias = ferias.filter((f) => f.data_inicio <= fim.toISOString().slice(0, 10) && f.data_fim >= semanaRef)
+  const emFerias = ferias.filter((f) => f.data_inicio <= paraISO(fim) && f.data_fim >= semanaRef)
   if (emFerias.length === 0) {
     linhas.push('—')
   } else {

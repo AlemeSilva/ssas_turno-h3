@@ -40,7 +40,5 @@ export function useCadeiasCatalogo() {
     }
   }, [carregar])
 
-  const catalogoAtivo = catalogo.filter((c) => c.ativo !== false)
-
-  return { catalogo, catalogoAtivo, dependenciasGirFl, aCarregar, recarregar: carregar }
+  return { catalogo, dependenciasGirFl, aCarregar, recarregar: carregar }
 }

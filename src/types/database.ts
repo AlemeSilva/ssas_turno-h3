@@ -146,8 +146,3 @@ export interface CadeiaCatalogo {
 // gir_fl_dependencias na base de dados, lido via useCadeiasCatalogo().
 // Isto permite ao Gerente adicionar ou desativar uma cadeia sem
 // depender de uma alteração de código.
-
-// Placeholder mínimo para o generic parameter do supabase-js — substituir
-// por `supabase gen types typescript` assim que o projeto real existir.
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export interface Database {}

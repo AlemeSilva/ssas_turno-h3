@@ -62,8 +62,6 @@ export function formatarMesAnoPT(d: Date): string {
   return texto.charAt(0).toUpperCase() + texto.slice(1)
 }
 
-export const NOMES_DIA_PT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
-
 /** Em produção devolve new Date(). Em testes E2E, usa window.__TEST_TIME__ se definido,
  *  evitando que page.clock.setSystemTime() afecte o JWT do Supabase e cause rate-limiting. */
 export function agora(): Date {

@@ -54,7 +54,7 @@ function valorDoDia(
 }
 
 export function EscalaPage() {
-  const [mesRef] = useState(() => new Date())
+  const mesRef = useMemo(() => new Date(), [])
   const { usuarios, aCarregar: aCarregarUsuarios } = useUsuarios()
   const { escalas, ferias, aCarregar: aCarregarEscala } = useEscalaMes(mesRef)
   const { ehGerenteOuDelegado } = useAuth()
