@@ -34,9 +34,12 @@ test.describe('Alerta sonoro/visual — janelas críticas 20h / 15h', () => {
 
     await expect(page.getByText('Janela crítica das 20h (Sáb/Dom) em curso.')).toBeVisible()
     // O seed cria sempre uma tarefa com hr_limite:'00:01' que também exibe um botão
-    // "Registar acionamento ao Gerente". Usar .first() apanharia esse botão em vez do
-    // da checagem 20h — o locator abaixo ancora no parágrafo correto.
-    const linha20h = page.getByText('Janela crítica das 20h (Sáb/Dom) em curso.').locator('..')
+    // "Registar acionamento ao Gerente". getByText() usa *:has-text() e faz match em
+    // todos os ancestrais, causando strict mode violation se se usar .locator('..').
+    // locator('span:has-text(...)') limita o match a SPAN elementos, garantindo que
+    // só o <span style="font-size:0.8rem"> é selecionado (único span com este texto),
+    // e o .locator('..') dá o <div> da linha que tem exatamente um botão.
+    const linha20h = page.locator('span:has-text("Janela crítica das 20h (Sáb/Dom) em curso.")').locator('..')
     const botao = linha20h.getByRole('button', { name: 'Registar acionamento ao Gerente' })
     await expect(botao).toBeVisible()
     await botao.click()
