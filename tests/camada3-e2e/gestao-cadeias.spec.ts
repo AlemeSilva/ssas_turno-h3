@@ -8,6 +8,9 @@ test.describe('Definições — gestão de cadeias (adicionar/desativar)', () =>
 
     await page.getByPlaceholder('ex.: SD_NOVA').fill('SD_TESTE_E2E')
     await page.getByRole('button', { name: 'Adicionar cadeia' }).click()
+    // Reload para garantir que o catálogo recarrega — subscrição real-time
+    // pode não disparar em CI devido a latência de websocket.
+    await page.reload()
 
     await expect(page.getByText('SD_TESTE_E2E')).toBeVisible()
     const linha = page.getByText('SD_TESTE_E2E').locator('..')

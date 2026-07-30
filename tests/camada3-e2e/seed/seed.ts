@@ -7,7 +7,7 @@
 // Corre-se com: npx tsx tests/camada3-e2e/seed/seed.ts
 
 import { createClient } from '@supabase/supabase-js'
-import { CICLO_TESTE, PASSWORD_TESTE, UTILIZADORES_TESTE } from './dados'
+import { CICLO_TESTE, SABADO_CICLO, PASSWORD_TESTE, UTILIZADORES_TESTE } from './dados'
 
 const url = process.env.SUPABASE_URL
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -50,7 +50,7 @@ async function main() {
 
   const { data: plano, error: erroPlano } = await admin
     .from('planos')
-    .insert({ data_inicio_ciclo: CICLO_TESTE, criado_por: ids.kilson })
+    .insert({ data_inicio_ciclo: CICLO_TESTE, criado_por: ids.kilson, status: 'EM_EXECUCAO' })
     .select()
     .single()
   if (erroPlano) throw new Error(`Falha ao criar plano: ${erroPlano.message}`)
@@ -78,10 +78,10 @@ async function main() {
   // não bastaria semear já como ATRASADO, porque o popup é estado
   // efémero da UI, não algo persistido.
   await admin.from('cadeias_diarias').insert([
-    { id_plano: plano.id, secao: 'BATCH_SAB_DOM', data: '2026-08-08', nome_cadeia: 'SD', status: 'PENDENTE' },
-    { id_plano: plano.id, secao: 'BATCH_SAB_DOM', data: '2026-08-08', nome_cadeia: 'SD_FL', status: 'PENDENTE' },
-    { id_plano: plano.id, secao: 'BATCH_SAB_DOM', data: '2026-08-08', nome_cadeia: 'EP_DDS', status: 'PENDENTE' },
-    { id_plano: plano.id, secao: 'BATCH_SAB_DOM', data: '2026-08-08', nome_cadeia: 'GIR_FL', status: 'PENDENTE' },
+    { id_plano: plano.id, secao: 'BATCH_SAB_DOM', data: SABADO_CICLO, nome_cadeia: 'SD', status: 'PENDENTE' },
+    { id_plano: plano.id, secao: 'BATCH_SAB_DOM', data: SABADO_CICLO, nome_cadeia: 'SD_FL', status: 'PENDENTE' },
+    { id_plano: plano.id, secao: 'BATCH_SAB_DOM', data: SABADO_CICLO, nome_cadeia: 'EP_DDS', status: 'PENDENTE' },
+    { id_plano: plano.id, secao: 'BATCH_SAB_DOM', data: SABADO_CICLO, nome_cadeia: 'GIR_FL', status: 'PENDENTE' },
   ])
 
   console.log('Seed E2E concluído. IDs:', ids, 'plano:', plano.id)
