@@ -40,6 +40,9 @@ export function PainelAlertas({ tarefas, cadeias, dependenciasGirFl: nomesDepend
 
   async function registarAcionamento(tipo: string, chave: string, referenciaTipo: string, referenciaId: number | null, descricao: string) {
     if (!usuario) return
+    // Atualização otimista: o botão passa a "Acionamento registado" imediatamente,
+    // sem esperar pela confirmação da BD (o registo de auditoria é não-crítico).
+    setRegistados((prev) => new Set(prev).add(chave))
     await supabase.from('logs_auditoria').insert({
       referencia_tipo: referenciaTipo,
       referencia_id: referenciaId,
@@ -47,7 +50,6 @@ export function PainelAlertas({ tarefas, cadeias, dependenciasGirFl: nomesDepend
       acao: tipo,
       descricao_detalhada: descricao,
     })
-    setRegistados((prev) => new Set(prev).add(chave))
   }
 
   if (tarefasComHrLimiteEstourado.length === 0 && !girFlEmRisco && !checagem20hAtiva && !checagem15hAtiva) {

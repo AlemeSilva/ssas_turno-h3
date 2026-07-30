@@ -6,7 +6,9 @@ test.describe('Checklist — carimbo imutável', () => {
     await loginComo(page, 'kilson')
     await page.getByRole('link', { name: 'Checklist Ativo' }).click()
 
-    const linhaItem = page.getByText('Item de teste E2E — Preparação').locator('..')
+    // '..' sobe ao <div> interior (row), '../..' sobe ao <div> exterior (wrapper)
+    // que contém também a linha do carimbo "Carimbado por" e o botão "Destravar".
+    const linhaItem = page.getByText('Item de teste E2E — Preparação').locator('../..')
     await linhaItem.getByRole('button', { name: 'Marcar concluído' }).click()
 
     // 1ª etapa: pede confirmação, ainda não gravou
@@ -18,7 +20,7 @@ test.describe('Checklist — carimbo imutável', () => {
 
     // Subscrição real-time pode ter latência em CI — reload garante dados frescos da BD.
     await page.reload()
-    const linhaItemRecarga = page.getByText('Item de teste E2E — Preparação').locator('..')
+    const linhaItemRecarga = page.getByText('Item de teste E2E — Preparação').locator('../..')
     await expect(linhaItemRecarga.getByText('Carimbado por')).toBeVisible()
     await expect(linhaItemRecarga.getByText('Kilson')).toBeVisible()
   })
@@ -27,7 +29,7 @@ test.describe('Checklist — carimbo imutável', () => {
     await loginComo(page, 'kilson')
     await page.getByRole('link', { name: 'Checklist Ativo' }).click()
 
-    const linhaItem = page.getByText('Item de teste E2E — Preparação').locator('..')
+    const linhaItem = page.getByText('Item de teste E2E — Preparação').locator('../..')
     await expect(linhaItem.getByRole('button', { name: 'Marcar concluído' })).toHaveCount(0)
     await expect(linhaItem.getByRole('button', { name: 'Destravar' })).toHaveCount(0) // só o Gerente vê este botão
   })
@@ -36,7 +38,7 @@ test.describe('Checklist — carimbo imutável', () => {
     await loginComo(page, 'gerente')
     await page.getByRole('link', { name: 'Checklist Ativo' }).click()
 
-    const linhaItem = page.getByText('Item de teste E2E — Preparação').locator('..')
+    const linhaItem = page.getByText('Item de teste E2E — Preparação').locator('../..')
     await linhaItem.getByRole('button', { name: 'Destravar' }).click()
 
     const botaoConfirmar = linhaItem.getByRole('button', { name: 'Confirmar destravar' })
