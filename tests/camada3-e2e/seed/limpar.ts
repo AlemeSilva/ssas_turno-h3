@@ -16,19 +16,47 @@ if (!url || !serviceKey) {
 const admin = createClient(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } })
 
 async function main() {
-  for (const u of UTILIZADORES_TESTE) {
-    const { data } = await admin.from('usuarios').select('id').eq('email', u.email).maybeSingle()
-    if (data) {
-      // usuarios.id -> auth.users(id) é ON DELETE RESTRICT (de propósito,
-      // para nunca se perder o dono de um registo de auditoria) — por
-      // isso é preciso apagar a linha de `usuarios` primeiro (via
-      // service role, só para limpeza de teste; a app nunca faz isto),
-      // e só depois o utilizador de Auth.
-      await admin.from('usuarios').delete().eq('id', data.id)
-      await admin.auth.admin.deleteUser(data.id)
+  const emails = UTILIZADORES_TESTE.map((u) => u.email)
+
+  // 1. Obter IDs dos utilizadores de teste (pode não existir na 1.ª corrida)
+  const { data: users } = await admin.from('usuarios').select('id').in('email', emails)
+  const ids = (users ?? []).map((u) => u.id)
+
+  if (ids.length > 0) {
+    // 2. Planos criados pelos utilizadores de teste + dados dependentes com CASCADE
+    const { data: planos } = await admin.from('planos').select('id').in('criado_por', ids)
+    const idPlanos = (planos ?? []).map((p) => p.id)
+    if (idPlanos.length > 0) {
+      // cadeias_diarias / checklist_itens / tarefas_plano têm ON DELETE CASCADE
+      // mas apagamos explicitamente para ser idempotente mesmo sem CASCADE
+      await admin.from('cadeias_diarias').delete().in('id_plano', idPlanos)
+      await admin.from('checklist_itens').delete().in('id_plano', idPlanos)
+      await admin.from('tarefas_plano').delete().in('id_plano', idPlanos)
+      await admin.from('planos').delete().in('id', idPlanos)
+    }
+
+    // 3. Escala semanal
+    await admin.from('escala_semanal').delete().in('usuario_id', ids)
+
+    // 4. Férias (se houver)
+    await admin.from('ferias').delete().in('usuario_id', ids)
+
+    // 5. Logs de auditoria com id_usuario dos testes — FK RESTRICT, bloqueia delete do usuario
+    await admin.from('logs_auditoria').delete().in('id_usuario', ids)
+
+    // 6. Apagar linha de usuarios (FK → auth.users ON DELETE RESTRICT: apagar filho primeiro)
+    await admin.from('usuarios').delete().in('id', ids)
+
+    // 7. Apagar contas de Auth
+    for (const id of ids) {
+      await admin.auth.admin.deleteUser(id)
     }
   }
-  console.log('Limpeza de dados E2E concluída.')
+
+  // 8. Cadeia de catálogo criada pelo teste de gestão (pode existir independentemente)
+  await admin.from('cadeias_catalogo').delete().eq('nome', 'SD_TESTE_E2E')
+
+  console.log(`Limpeza E2E concluída: ${ids.length} utilizadores removidos.`)
 }
 
 main().catch((e) => {
