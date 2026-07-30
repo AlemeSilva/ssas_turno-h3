@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../auth/AuthContext'
 import type { CadeiaDiaria, TarefaPlano } from '../../types/database'
 import { avaliarAlertaReativo, avaliarRiscoGirFl, estaHrLimiteEstourado, isoWeekdayDe } from '../../lib/alertas'
-import { agora } from '../../lib/datas'
+import { agora as getNow } from '../../lib/datas'
 
 interface Props {
   tarefas: TarefaPlano[]
@@ -13,7 +13,7 @@ interface Props {
 }
 
 function agoraHHMM(): string {
-  const d = agora()
+  const d = getNow()
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
@@ -22,7 +22,7 @@ export function PainelAlertas({ tarefas, cadeias, dependenciasGirFl: nomesDepend
   const [registados, setRegistados] = useState<Set<string>>(new Set())
 
   const agora = agoraHHMM()
-  const diaSemanaIso = isoWeekdayDe(agora())
+  const diaSemanaIso = isoWeekdayDe(getNow())
 
   const tarefasComHrLimiteEstourado = tarefas.filter((t) => estaHrLimiteEstourado(t.hr_limite, t.status, agora))
 
