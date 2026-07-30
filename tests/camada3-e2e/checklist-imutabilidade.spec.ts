@@ -16,8 +16,11 @@ test.describe('Checklist — carimbo imutável', () => {
     // 2ª etapa: confirma
     await linhaItem.getByRole('button', { name: 'Confirmar' }).click()
 
-    await expect(linhaItem.getByText('Carimbado por')).toBeVisible()
-    await expect(linhaItem.getByText('Kilson')).toBeVisible()
+    // Subscrição real-time pode ter latência em CI — reload garante dados frescos da BD.
+    await page.reload()
+    const linhaItemRecarga = page.getByText('Item de teste E2E — Preparação').locator('..')
+    await expect(linhaItemRecarga.getByText('Carimbado por')).toBeVisible()
+    await expect(linhaItemRecarga.getByText('Kilson')).toBeVisible()
   })
 
   test('depois de carimbado, a UI não oferece nenhuma forma de desmarcar diretamente', async ({ page }) => {

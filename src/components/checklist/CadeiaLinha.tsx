@@ -48,8 +48,8 @@ export function CadeiaLinha({
 
   async function marcarAtraso() {
     await supabase.from('cadeias_diarias').update({ status: 'ATRASADO' }).eq('id', cadeia.id)
-    recarregar()
     if (categoria !== 'NORMAL') setAMostrarInstrucao(true)
+    recarregar()
   }
 
   return (

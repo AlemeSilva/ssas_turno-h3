@@ -14,7 +14,7 @@ test.describe('Definições — gestão de cadeias (adicionar/desativar)', () =>
 
     await expect(page.getByText('SD_TESTE_E2E')).toBeVisible()
     const linha = page.getByText('SD_TESTE_E2E').locator('..')
-    await expect(linha.getByText('Ativa')).toBeVisible()
+    await expect(linha.getByText('Ativa', { exact: true })).toBeVisible()
   })
 
   test('desativar uma cadeia não a remove da lista, só muda o estado — nunca apaga', async ({ page }) => {

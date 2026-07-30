@@ -54,7 +54,7 @@ async function main() {
   }
 
   // 8. Cadeia de catálogo criada pelo teste de gestão (pode existir independentemente)
-  await admin.from('cadeias_catalogo').delete().eq('nome', 'SD_TESTE_E2E')
+  await admin.from('cadeias_catalogo').delete().eq('nome_cadeia', 'SD_TESTE_E2E')
 
   console.log(`Limpeza E2E concluída: ${ids.length} utilizadores removidos.`)
 }

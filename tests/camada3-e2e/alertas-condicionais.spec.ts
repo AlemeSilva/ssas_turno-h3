@@ -14,26 +14,22 @@ test.describe('Cadeias — alertas condicionais de atraso (categorias */**)', ()
     await expect(page.getByText(/input AML\/MAB/i)).toHaveCount(0)
   })
 
-  test('cadeia * (SD_FL) mostra a instrução de cópia automática / Synapse ao marcar atraso', async ({ page }) => {
+  test('cadeia * (SD_FL) mostra instrução ao marcar atraso e fecha com Ok', async ({ page }) => {
+    // Testa aparecimento E fecho do popup num único teste para evitar que a BD
+    // persista SD_FL como ATRASADO entre testes (não há reset entre testes).
     const linha = page.getByText('SD_FL *', { exact: true }).locator('..')
     await linha.getByRole('button', { name: 'Marcar atraso' }).click()
     await expect(page.getByText(/FTRANS da Cloud/i)).toBeVisible()
     await expect(page.getByText(/pipeline no Synapse/i)).toBeVisible()
+
+    await page.getByRole('button', { name: 'Ok' }).click()
+    await expect(page.getByText(/FTRANS da Cloud/i)).toHaveCount(0)
+    await expect(linha.getByText('ATRASADO')).toBeVisible()
   })
 
   test('cadeia ** (EP_DDS) mostra a instrução de input AML/MAB ao marcar atraso', async ({ page }) => {
     const linha = page.getByText('EP_DDS **', { exact: true }).locator('..')
     await linha.getByRole('button', { name: 'Marcar atraso' }).click()
     await expect(page.getByText(/AML\/MAB/i)).toBeVisible()
-  })
-
-  test('o popup de instrução fecha ao clicar Ok, sem alterar o estado da cadeia', async ({ page }) => {
-    const linha = page.getByText('SD_FL *', { exact: true }).locator('..')
-    await linha.getByRole('button', { name: 'Marcar atraso' }).click()
-    await expect(page.getByText(/FTRANS da Cloud/i)).toBeVisible()
-
-    await page.getByRole('button', { name: 'Ok' }).click()
-    await expect(page.getByText(/FTRANS da Cloud/i)).toHaveCount(0)
-    await expect(linha.getByText('ATRASADO')).toBeVisible()
   })
 })

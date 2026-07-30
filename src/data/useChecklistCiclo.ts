@@ -24,18 +24,31 @@ export function useChecklistCiclo(idPlano: number | undefined) {
     setACarregar(false)
   }, [idPlano])
 
+  // Versão silenciosa: não activa o estado de carregamento, pelo que os
+  // componentes filhos (CadeiaLinha, ItemChecklistLinha) não são desmontados
+  // durante actualizações incrementais (ex.: marcar atraso, concluir item).
+  const recarregar = useCallback(async () => {
+    if (!idPlano) return
+    const [{ data: itensData }, { data: cadeiasData }] = await Promise.all([
+      supabase.from('checklist_itens').select('*').eq('id_plano', idPlano),
+      supabase.from('cadeias_diarias').select('*').eq('id_plano', idPlano),
+    ])
+    if (itensData) setItens(itensData as ChecklistItem[])
+    if (cadeiasData) setCadeias(cadeiasData as CadeiaDiaria[])
+  }, [idPlano])
+
   useEffect(() => {
     carregar()
     if (!idPlano) return
     const canal = supabase
       .channel(`checklist-${idPlano}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'checklist_itens', filter: `id_plano=eq.${idPlano}` }, carregar)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'cadeias_diarias', filter: `id_plano=eq.${idPlano}` }, carregar)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'checklist_itens', filter: `id_plano=eq.${idPlano}` }, recarregar)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cadeias_diarias', filter: `id_plano=eq.${idPlano}` }, recarregar)
       .subscribe()
     return () => {
       supabase.removeChannel(canal)
     }
-  }, [idPlano, carregar])
+  }, [idPlano, carregar, recarregar])
 
-  return { itens, cadeias, aCarregar, recarregar: carregar }
+  return { itens, cadeias, aCarregar, recarregar }
 }
