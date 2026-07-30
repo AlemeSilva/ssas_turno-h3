@@ -25,6 +25,13 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y postgresql-client
 
+      - name: Forçar IPv4 (runners não suportam IPv6)
+        run: |
+          IPV4=$(getent ahosts db.usqzsprhqxpupizhpenz.supabase.co \
+                 | awk '$2=="STREAM" && $1~/\./{print $1; exit}')
+          echo "Resolved IPv4: $IPV4"
+          echo "PGHOSTADDR=$IPV4" >> $GITHUB_ENV
+
       - name: Verificar conectividade
         run: psql "$SUPABASE_DB_URL" -c "SELECT version();"
         env:
