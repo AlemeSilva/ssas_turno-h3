@@ -56,6 +56,17 @@ describe('estaHrLimiteEstourado', () => {
   it('não está estourado antes do limite', () => {
     expect(estaHrLimiteEstourado('14:00', 'PENDENTE', '13:59')).toBe(false)
   })
+  it('limitação H3 conhecida: hr_limite pós-meia-noite comparado com hora do turno dá falso positivo', () => {
+    // A comparação é feita em strings HH:MM sem contexto de data.
+    // No turno H3 (22h→07h), uma tarefa com hr_limite='02:00' avaliada às 22:30
+    // do dia anterior retorna true ("22:30" >= "02:00"), quando o correto seria false.
+    // Os templates de tarefa não têm hr_limite — este cenário só surge em tarefas
+    // excecionais criadas manualmente. Documentado aqui para detetar se/quando surgir.
+    expect(estaHrLimiteEstourado('02:00', 'PENDENTE', '22:30')).toBe(true) // falso positivo: hr_limite ainda não foi atingido
+    // Comparação intra-dia permanece correta (mesmo cenário sem cruzar meia-noite):
+    expect(estaHrLimiteEstourado('02:00', 'PENDENTE', '01:59')).toBe(false)
+    expect(estaHrLimiteEstourado('02:00', 'PENDENTE', '02:00')).toBe(true)
+  })
 })
 
 describe('isoWeekdayDe', () => {

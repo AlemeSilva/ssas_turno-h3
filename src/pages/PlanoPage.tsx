@@ -56,7 +56,7 @@ export function PlanoPage() {
     if (!plano || !novaTarefa.trim()) return
     await supabase.from('tarefas_plano').insert({
       id_plano: plano.id,
-      data_execucao: new Date().toISOString().slice(0, 10),
+      data_execucao: paraISO(new Date()),
       descricao_tarefa: novaTarefa.trim(),
       equipa_responsavel: 'DEOS - Operações',
       origem: 'EXCECIONAL',

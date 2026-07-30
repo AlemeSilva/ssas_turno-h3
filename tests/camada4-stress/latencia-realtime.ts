@@ -8,12 +8,27 @@ import { admin, clienteAnonimo } from './cliente'
 async function main() {
   console.log('--- Latência do Supabase Realtime (escrita → evento recebido) ---')
 
+  const EMAIL_GERENTE = 'e2e.stress.realtime.gerente@turnoh3.teste'
+  const EMAIL_ESPECTADOR = 'e2e.stress.realtime.espectador@turnoh3.teste'
+  const PASSWORD = 'Teste!123456'
+
   const { data: gerente } = await admin.auth.admin.createUser({
-    email: 'e2e.stress.realtime@turnoh3.teste',
-    password: 'Teste!123456',
+    email: EMAIL_GERENTE,
+    password: PASSWORD,
     email_confirm: true,
   })
-  await admin.from('usuarios').insert({ id: gerente!.user!.id, nome: 'Gerente Realtime', email: gerente!.user!.email, perfil: 'GERENTE' })
+  await admin.from('usuarios').insert({ id: gerente!.user!.id, nome: 'Gerente Realtime', email: EMAIL_GERENTE, perfil: 'GERENTE' })
+
+  // O espectador precisa de ser autenticado: planos tem RLS FOR SELECT TO authenticated,
+  // e o Realtime filtra eventos pela mesma política — um cliente anónimo não recebe nada.
+  const { data: espectadorAuth } = await admin.auth.admin.createUser({
+    email: EMAIL_ESPECTADOR,
+    password: PASSWORD,
+    email_confirm: true,
+  })
+  await admin.from('usuarios').insert({ id: espectadorAuth!.user!.id, nome: 'Espectador Realtime', email: EMAIL_ESPECTADOR, perfil: 'OPERADOR' })
+  const espectador = clienteAnonimo()
+  await espectador.auth.signInWithPassword({ email: EMAIL_ESPECTADOR, password: PASSWORD })
 
   const { data: plano } = await admin
     .from('planos')
@@ -21,7 +36,6 @@ async function main() {
     .select()
     .single()
 
-  const espectador = clienteAnonimo()
   const amostras: number[] = []
 
   await new Promise<void>((resolve, reject) => {
@@ -68,6 +82,8 @@ async function main() {
   await admin.from('planos').delete().eq('id', plano!.id)
   await admin.from('usuarios').delete().eq('id', gerente!.user!.id)
   await admin.auth.admin.deleteUser(gerente!.user!.id)
+  await admin.from('usuarios').delete().eq('id', espectadorAuth!.user!.id)
+  await admin.auth.admin.deleteUser(espectadorAuth!.user!.id)
 }
 
 main().catch((e) => {
