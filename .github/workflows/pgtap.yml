@@ -25,12 +25,10 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y postgresql-client
 
-      - name: Forçar IPv4 via /etc/hosts (runners sem IPv6)
+      - name: Desativar IPv6 (runners ubuntu sem conectividade IPv6)
         run: |
-          IPV4=$(getent ahosts db.usqzsprhqxpupizhpenz.supabase.co \
-                 | awk '$2=="STREAM" && $1~/\./{print $1; exit}')
-          echo "IPv4 resolvido: $IPV4"
-          echo "$IPV4 db.usqzsprhqxpupizhpenz.supabase.co" | sudo tee -a /etc/hosts
+          sudo sysctl -w net.ipv6.conf.all.disable_ipv6=1
+          sudo sysctl -w net.ipv6.conf.default.disable_ipv6=1
 
       - name: Verificar conectividade
         run: psql "$SUPABASE_DB_URL" -c "SELECT version();"
