@@ -37,12 +37,14 @@ select is(
 );
 
 -- Delegação: aditiva, sem sobreposição
+-- Datas relativas a current_date para que is_gerente_ou_delegado() (que avalia
+-- current_date between data_inicio and data_fim) retorne true no momento do teste.
 insert into delegacoes_aprovacao (gerente_titular, substituto, data_inicio, data_fim)
-values (:'gerente_id', :'bruno_id', '2026-09-01', '2026-09-10');
+values (:'gerente_id', :'bruno_id', current_date - 5, current_date + 5);
 
 select throws_ok(
     $$ insert into delegacoes_aprovacao (gerente_titular, substituto, data_inicio, data_fim)
-       values (:'gerente_id', :'kilson_id', '2026-09-05', '2026-09-15') $$,
+       values (:'gerente_id', :'kilson_id', current_date - 2, current_date + 2) $$,
     'P0001',
     'Já existe uma delegação de aprovação ativa nesse período.',
     'não é possível criar duas delegações com janelas sobrepostas'

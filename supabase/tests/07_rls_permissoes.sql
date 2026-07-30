@@ -51,8 +51,11 @@ select is(
 -- Reatribuição dinâmica: aprovar uma troca a meio da semana transfere
 -- o direito de edição automaticamente para o novo escalado, sem passo
 -- manual de reatribuição do plano.
-insert into trocas_escala (usuario_proponente, usuario_substituto, semana_ref, status, aprovado_por)
-values (:'kilson_id', :'bruno_id', '2026-08-06', 'PROPOSTA', null) returning id as troca_id \gset
+-- kilson é o proponente — INSERT exige auth.uid() = usuario_proponente (já autenticado como kilson na linha acima)
+insert into trocas_escala (usuario_proponente, usuario_substituto, semana_ref)
+values (:'kilson_id', :'bruno_id', '2026-08-06') returning id as troca_id \gset
+-- só o Gerente pode aprovar — mudar contexto antes do UPDATE
+select tests.autenticar_como(:'gerente_id');
 update trocas_escala set status = 'APROVADA', aprovado_por = :'gerente_id' where id = :'troca_id';
 
 select tests.autenticar_como(:'kilson_id');
