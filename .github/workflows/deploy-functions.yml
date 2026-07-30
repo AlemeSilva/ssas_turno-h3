@@ -1,0 +1,34 @@
+name: Deploy Edge Functions
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/functions/**'
+      - 'supabase/config.toml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy para Supabase Cloud
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Instalar Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Deploy sugerir-escala
+        run: supabase functions deploy sugerir-escala --project-ref usqzsprhqxpupizhpenz
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy desactivar-saidos (cron 01h00 UTC via config.toml)
+        run: supabase functions deploy desactivar-saidos --project-ref usqzsprhqxpupizhpenz
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
