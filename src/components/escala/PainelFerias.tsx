@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../auth/AuthContext'
 import { useDebounce } from '../../lib/hooks/useDebounce'
@@ -13,13 +13,23 @@ export function PainelFerias({ usuarios }: { usuarios: Usuario[] }) {
   const [erro, setErro] = useState<string | null>(null)
   const [aEnviar, setAEnviar] = useState(false)
 
+  // Conta invocações de carregar() para descartar respostas antigas que
+  // resolvam depois de uma mais recente — a subscrição realtime pode
+  // disparar carregar() várias vezes em rápida sucessão (ex.: várias
+  // aprovações seguidas), e pedidos concorrentes não têm garantia de
+  // resolver pela mesma ordem em que foram feitos.
+  const idCarregamentoRef = useRef(0)
+
   async function carregar() {
+    const meuId = ++idCarregamentoRef.current
     const { data } = await supabase
       .from('ferias')
       .select('*')
       .in('status', ehGerenteOuDelegado ? ['PENDENTE', 'APROVADA'] : ['PENDENTE'])
       .order('data_inicio')
-    setPedidos((data as Ferias[]) ?? [])
+    if (idCarregamentoRef.current === meuId) {
+      setPedidos((data as Ferias[]) ?? [])
+    }
   }
 
   useEffect(() => {

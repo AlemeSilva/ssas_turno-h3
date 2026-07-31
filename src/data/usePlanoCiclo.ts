@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { CadeiaCatalogo, Plano, TarefaPlano } from '../types/database'
 import { gerarTarefasTemplate } from '../lib/templateTarefas'
@@ -10,13 +10,20 @@ export function usePlanoCiclo(dataInicioCiclo: string) {
   const [tarefas, setTarefas] = useState<TarefaPlano[]>([])
   const [aCarregar, setACarregar] = useState(true)
 
+  // Ver comentário equivalente em PainelFerias.tsx — descarta respostas
+  // de carregar() que resolvam fora de ordem.
+  const idCarregamentoRef = useRef(0)
+
   const carregar = useCallback(async () => {
+    const meuId = ++idCarregamentoRef.current
     setACarregar(true)
     const { data: planoData } = await supabase
       .from('planos')
       .select('*')
       .eq('data_inicio_ciclo', dataInicioCiclo)
       .maybeSingle()
+
+    if (idCarregamentoRef.current !== meuId) return
 
     if (planoData) {
       const { data: tarefasData } = await supabase
@@ -25,6 +32,7 @@ export function usePlanoCiclo(dataInicioCiclo: string) {
         .eq('id_plano', (planoData as Plano).id)
         .order('data_execucao')
         .order('hora_arranque')
+      if (idCarregamentoRef.current !== meuId) return
       setTarefas((tarefasData as TarefaPlano[]) ?? [])
     } else {
       setTarefas([])
@@ -38,6 +46,12 @@ export function usePlanoCiclo(dataInicioCiclo: string) {
     const canal = supabase
       .channel(`plano-${dataInicioCiclo}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'planos', filter: `data_inicio_ciclo=eq.${dataInicioCiclo}` }, carregar)
+      // tarefas_plano não referencia data_inicio_ciclo diretamente, só
+      // id_plano — sem um plano carregado ainda não há id_plano para
+      // filtrar, por isso este handler recarrega tudo (carregar() volta
+      // a resolver o id_plano correto); com um plano já carregado, isto
+      // continua a recarregar em qualquer alteração a QUALQUER ciclo,
+      // não só o deste hook — não corrige dados, só refetches perdidos.
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tarefas_plano' }, carregar)
       .subscribe()
     return () => {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { CadeiaDiaria, ChecklistItem } from '../types/database'
 
@@ -7,7 +7,14 @@ export function useChecklistCiclo(idPlano: number | undefined) {
   const [cadeias, setCadeias] = useState<CadeiaDiaria[]>([])
   const [aCarregar, setACarregar] = useState(true)
 
+  // Partilhado entre carregar() e recarregar() — ambas escrevem o mesmo
+  // estado, pelo que a mais recente a ser pedida (não a mais recente a
+  // resolver) é que deve vencer. Ver comentário equivalente em
+  // PainelFerias.tsx.
+  const idCarregamentoRef = useRef(0)
+
   const carregar = useCallback(async () => {
+    const meuId = ++idCarregamentoRef.current
     if (!idPlano) {
       setItens([])
       setCadeias([])
@@ -19,9 +26,11 @@ export function useChecklistCiclo(idPlano: number | undefined) {
       supabase.from('checklist_itens').select('*').eq('id_plano', idPlano),
       supabase.from('cadeias_diarias').select('*').eq('id_plano', idPlano),
     ])
-    setItens((itensData as ChecklistItem[]) ?? [])
-    setCadeias((cadeiasData as CadeiaDiaria[]) ?? [])
-    setACarregar(false)
+    if (idCarregamentoRef.current === meuId) {
+      setItens((itensData as ChecklistItem[]) ?? [])
+      setCadeias((cadeiasData as CadeiaDiaria[]) ?? [])
+      setACarregar(false)
+    }
   }, [idPlano])
 
   // Versão silenciosa: não activa o estado de carregamento, pelo que os
@@ -29,12 +38,15 @@ export function useChecklistCiclo(idPlano: number | undefined) {
   // durante actualizações incrementais (ex.: marcar atraso, concluir item).
   const recarregar = useCallback(async () => {
     if (!idPlano) return
+    const meuId = ++idCarregamentoRef.current
     const [{ data: itensData }, { data: cadeiasData }] = await Promise.all([
       supabase.from('checklist_itens').select('*').eq('id_plano', idPlano),
       supabase.from('cadeias_diarias').select('*').eq('id_plano', idPlano),
     ])
-    if (itensData) setItens(itensData as ChecklistItem[])
-    if (cadeiasData) setCadeias(cadeiasData as CadeiaDiaria[])
+    if (idCarregamentoRef.current === meuId) {
+      if (itensData) setItens(itensData as ChecklistItem[])
+      if (cadeiasData) setCadeias(cadeiasData as CadeiaDiaria[])
+    }
   }, [idPlano])
 
   useEffect(() => {

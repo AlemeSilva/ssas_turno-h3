@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../auth/AuthContext'
 import { useDebounce } from '../../lib/hooks/useDebounce'
@@ -17,9 +17,16 @@ export function PainelTrocas({ usuarios }: { usuarios: Usuario[] }) {
   const elegiveisH3 = usuariosH3Ativos(usuarios)
   const souOperadorH3 = usuario?.perfil === 'OPERADOR_H3'
 
+  // Ver comentário equivalente em PainelFerias.tsx — descarta respostas
+  // de carregar() que resolvam fora de ordem.
+  const idCarregamentoRef = useRef(0)
+
   async function carregar() {
+    const meuId = ++idCarregamentoRef.current
     const { data } = await supabase.from('trocas_escala').select('*').eq('status', 'PROPOSTA').order('semana_ref')
-    setTrocas((data as TrocaEscala[]) ?? [])
+    if (idCarregamentoRef.current === meuId) {
+      setTrocas((data as TrocaEscala[]) ?? [])
+    }
   }
 
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { CadeiaCatalogo } from '../types/database'
 
@@ -17,15 +17,22 @@ export function useCadeiasCatalogo() {
   const [dependenciasGirFl, setDependenciasGirFl] = useState<string[]>([])
   const [aCarregar, setACarregar] = useState(true)
 
+  // Ver comentário equivalente em PainelFerias.tsx — descarta respostas
+  // de carregar() que resolvam fora de ordem.
+  const idCarregamentoRef = useRef(0)
+
   const carregar = useCallback(async () => {
+    const meuId = ++idCarregamentoRef.current
     setACarregar(true)
     const [{ data: catalogoData }, { data: depsData }] = await Promise.all([
       supabase.from('cadeias_catalogo').select('*').order('ordem'),
       supabase.from('gir_fl_dependencias').select('nome_cadeia'),
     ])
-    setCatalogo((catalogoData as CadeiaCatalogo[]) ?? [])
-    setDependenciasGirFl(((depsData as DependenciaGirFl[]) ?? []).map((d) => d.nome_cadeia))
-    setACarregar(false)
+    if (idCarregamentoRef.current === meuId) {
+      setCatalogo((catalogoData as CadeiaCatalogo[]) ?? [])
+      setDependenciasGirFl(((depsData as DependenciaGirFl[]) ?? []).map((d) => d.nome_cadeia))
+      setACarregar(false)
+    }
   }, [])
 
   useEffect(() => {
