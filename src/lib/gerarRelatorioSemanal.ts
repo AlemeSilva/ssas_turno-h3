@@ -47,15 +47,21 @@ export function gerarTextoRelatorioSemanal(
   const sergioTinhaH1 = escalas.some((e) => e.usuario_id === ID_SERGIO && e.turno === 'H1')
 
   // Mapa id -> turno efetivo (não listas por turno independentes).
-  // Quem está de férias/licença esta semana não aparece a "trabalhar"
-  // nenhum turno — inclui isso o próprio titular original de cada
-  // turno, não só o Sérgio. Sobre essa base, o Pedro cobre o H1 do
-  // Sérgio por defeito quando este está ausente, exceto se o próprio
+  // "Operação SAS" é só a equipa operacional — o Gerente tem turno H4
+  // fixo em escala_semanal (para ter uma linha na grelha do mês), mas
+  // nunca aparece neste relatório, tal como no modelo real usado hoje.
+  // Quem está de férias/licença esta semana também não aparece a
+  // "trabalhar" nenhum turno — inclui isso o próprio titular original
+  // de cada turno, não só o Sérgio. Sobre essa base, o Pedro cobre o H1
+  // do Sérgio por defeito quando este está ausente, exceto se o próprio
   // Pedro também estiver ausente (nesse caso H1 fica vazio, "—", a
   // sinalizar decisão manual do Gerente).
+  const idsGerentes = new Set(usuarios.filter((u) => u.perfil === 'GERENTE').map((u) => u.id))
   const turnoEfetivo = new Map<string, TurnoTipo>()
   for (const e of escalas) {
-    if (!idsEmFerias.has(e.usuario_id)) turnoEfetivo.set(e.usuario_id, e.turno)
+    if (!idsEmFerias.has(e.usuario_id) && !idsGerentes.has(e.usuario_id)) {
+      turnoEfetivo.set(e.usuario_id, e.turno)
+    }
   }
   if (sergioTinhaH1 && idsEmFerias.has(ID_SERGIO) && !idsEmFerias.has(ID_PEDRO_BACKUP_H1)) {
     turnoEfetivo.set(ID_PEDRO_BACKUP_H1, 'H1')
