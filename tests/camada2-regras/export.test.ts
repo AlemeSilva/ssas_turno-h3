@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { gerarTextoPlano } from '../../src/lib/exportarPlano'
-import { gerarTextoRelatorioSemanal } from '../../src/lib/gerarRelatorioSemanal'
+import { gerarTextoRelatorioSemanal, ID_PEDRO_BACKUP_H1, ID_SERGIO } from '../../src/lib/gerarRelatorioSemanal'
 import type { EscalaSemanal, Ferias, Plano, TarefaPlano, Usuario } from '../../src/types/database'
 
 const PLANO_BASE: Plano = {
@@ -95,5 +95,60 @@ describe('gerarTextoRelatorioSemanal — mesmo formato do email real usado pelo 
     const texto = gerarTextoRelatorioSemanal('2026-07-30', escalas, [], usuarios)
     const apos = texto.split('Férias/Licenças')[1]
     expect(apos.trim()).toBe('—')
+  })
+})
+
+describe('gerarTextoRelatorioSemanal — substituição do Sérgio pelo Pedro no H1', () => {
+  const usuarios: Usuario[] = [
+    { id: ID_SERGIO, nome: 'Sérgio Real', email: 's@x.pt', perfil: 'OPERADOR', empresa: 'Accenture', ativo: true, data_saida: null, limite_h3_mensal: null, criado_em: '' },
+    { id: ID_PEDRO_BACKUP_H1, nome: 'Pedro Real', email: 'p@x.pt', perfil: 'OPERADOR', empresa: 'Accenture', ativo: true, data_saida: null, limite_h3_mensal: null, criado_em: '' },
+    { id: 'kilson', nome: 'Kilson Júnior', email: 'k@x.pt', perfil: 'OPERADOR_H3', empresa: 'Accenture', ativo: true, data_saida: null, limite_h3_mensal: null, criado_em: '' },
+  ]
+
+  const escalas: EscalaSemanal[] = [
+    { id: 1, semana_ref: '2026-07-30', usuario_id: ID_SERGIO, turno: 'H1', criado_por: null, atualizado_em: '' },
+    { id: 2, semana_ref: '2026-07-30', usuario_id: ID_PEDRO_BACKUP_H1, turno: 'H4', criado_por: null, atualizado_em: '' },
+    { id: 3, semana_ref: '2026-07-30', usuario_id: 'kilson', turno: 'H3', criado_por: null, atualizado_em: '' },
+  ]
+
+  const feriasDoSergio: Ferias = {
+    id: 1, usuario_id: ID_SERGIO, data_inicio: '2026-07-28', data_fim: '2026-08-02',
+    status: 'APROVADA', aprovado_por: null, data_aprovacao: null, criado_em: '',
+  }
+
+  it('quando o Sérgio está de férias, o Pedro cobre o H1 e some do H4 (não aparece duas vezes)', () => {
+    const texto = gerarTextoRelatorioSemanal('2026-07-30', escalas, [feriasDoSergio], usuarios)
+    expect(texto).toContain('H1 - 07h00 às 16h00 – Pedro Real')
+    expect(texto).toContain('H4 - 09h00 às 18h00 – —')
+    expect(texto.match(/Pedro Real/g)?.length).toBe(1)
+  })
+
+  it('quando o Sérgio NÃO está de férias, não há substituição', () => {
+    const texto = gerarTextoRelatorioSemanal('2026-07-30', escalas, [], usuarios)
+    expect(texto).toContain('H1 - 07h00 às 16h00 – Sérgio Real')
+    expect(texto).toContain('H4 - 09h00 às 18h00 – Pedro Real')
+  })
+
+  it('quando o Sérgio E o Pedro estão ambos de férias, o H1 fica vazio em vez de duplicar o Pedro', () => {
+    const feriasDoPedroTambem: Ferias = {
+      id: 2, usuario_id: ID_PEDRO_BACKUP_H1, data_inicio: '2026-07-29', data_fim: '2026-08-01',
+      status: 'APROVADA', aprovado_por: null, data_aprovacao: null, criado_em: '',
+    }
+    const texto = gerarTextoRelatorioSemanal('2026-07-30', escalas, [feriasDoSergio, feriasDoPedroTambem], usuarios)
+    expect(texto).toContain('H1 - 07h00 às 16h00 – —')
+    // Pedro aparece exatamente uma vez (em Férias/Licenças), nunca no H1
+    expect(texto.match(/Pedro Real/g)?.length).toBe(1)
+    const secaoFerias = texto.split('Férias/Licenças')[1]
+    expect(secaoFerias).toContain('Sérgio Real')
+    expect(secaoFerias).toContain('Pedro Real')
+  })
+
+  it('não duplica uma pessoa em Férias/Licenças que tenha 2 pedidos aprovados sobrepostos à semana', () => {
+    const segundoPedidoDoSergio: Ferias = {
+      id: 3, usuario_id: ID_SERGIO, data_inicio: '2026-08-03', data_fim: '2026-08-05',
+      status: 'APROVADA', aprovado_por: null, data_aprovacao: null, criado_em: '',
+    }
+    const texto = gerarTextoRelatorioSemanal('2026-07-30', escalas, [feriasDoSergio, segundoPedidoDoSergio], usuarios)
+    expect(texto.match(/Sérgio Real/g)?.length).toBe(1)
   })
 })
