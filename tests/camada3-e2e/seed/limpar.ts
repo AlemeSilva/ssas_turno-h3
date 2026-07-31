@@ -32,6 +32,11 @@ async function main() {
       await admin.from('cadeias_diarias').delete().in('id_plano', idPlanos)
       await admin.from('checklist_itens').delete().in('id_plano', idPlanos)
       await admin.from('tarefas_plano').delete().in('id_plano', idPlanos)
+      // logs_auditoria referencia planos por (referencia_tipo, referencia_id) sem
+      // FK/CASCADE — triggers como trg_tarefas_reabre_aprovacao gravam aqui com
+      // id_usuario NULL, por isso o filtro do passo 5 (por id_usuario) não apanha
+      // estas linhas; ficam órfãs depois do plano ser apagado.
+      await admin.from('logs_auditoria').delete().eq('referencia_tipo', 'PLANO').in('referencia_id', idPlanos)
       await admin.from('planos').delete().in('id', idPlanos)
     }
 
