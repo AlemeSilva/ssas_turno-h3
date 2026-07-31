@@ -1,12 +1,11 @@
 name: Camada 3 — Playwright E2E
 
+# App em produção desde 2026-07-31 — este workflow semeia e apaga dados
+# reais na base de dados de produção (SUPABASE_URL/SERVICE_ROLE_KEY
+# apontam para o projeto live). Disparo automático em push DESATIVADO
+# por segurança; corre manualmente via workflow_dispatch quando
+# necessário, idealmente contra um projeto Supabase de staging.
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'src/**'
-      - 'tests/camada3-e2e/**'
-      - 'playwright.config.ts'
   workflow_dispatch:
 
 jobs:
