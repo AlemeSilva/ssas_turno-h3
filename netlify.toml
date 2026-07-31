@@ -10,12 +10,7 @@
   publish = "dist"
   # Node version
   node_version = "22"
-
-[build.environment]
-  # Variáveis de build (públicas)
-  # Valores reais devem vir de Netlify UI ou .env durante deploy
-  VITE_SUPABASE_URL = ""
-  VITE_SUPABASE_ANON_KEY = ""
+  # Environment variables vêm de Netlify UI (netlify env:set)
 
 # =====================================================================
 # Context: Production
@@ -31,10 +26,7 @@
 # Context: Preview deployments (branch deploys)
 # =====================================================================
 
-[context.deploy-preview.build.environment]
-  # Mesmo as previews precisam de Supabase válido (devem apontar para staging)
-  VITE_SUPABASE_URL = ""
-  VITE_SUPABASE_ANON_KEY = ""
+# Previews herdam variáveis de Netlify UI
 
 # =====================================================================
 # Headers: Security & Performance
@@ -74,12 +66,7 @@
   # Usar branch 'main' como production
   command = "npm run build"
   publish = "dist"
-
-[context.production.build.environment]
-  # Production Supabase project
-  # Valores configurados em Netlify UI (Secrets)
-  VITE_SUPABASE_URL = ""
-  VITE_SUPABASE_ANON_KEY = ""
+  # Variáveis de ambiente vêm de Netlify UI
 
 # =====================================================================
 # Plugins
