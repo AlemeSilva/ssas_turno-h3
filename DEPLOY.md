@@ -98,17 +98,18 @@ git pull origin main
 
 ---
 
-## 📱 Roll-Out Strategy — 3 Fases
+## 📱 Roll-Out Strategy — 2 Fases
 
-### Fase 1: Internal Testing (1-2 semanas)
+### Fase 1: Internal Testing (15 dias)
 
-**Escopo:** Equipa SAS H3 (8 operadores + 1 gerente)
+**Escopo:** Equipa SAS H3 (9 utilizadores: 3 H3, 3 comuns, 1 gerente)
 
 **Ações:**
 1. Configurar contas de teste em Supabase (Gerente provisiona 9 utilizadores)
 2. Partilhar URL production com equipa
-3. Executar UAT (User Acceptance Testing)
+3. Executar UAT (User Acceptance Testing) — 15 dias
 4. Recolher feedback
+5. Corrigir qualquer bug encontrado
 
 **Validar:**
 - [ ] Login funciona para todas as contas
@@ -117,69 +118,29 @@ git pull origin main
 - [ ] Alertas funcionam (20h, 15h, hr_limite)
 - [ ] Relatório exporta corretamente
 - [ ] Sem lags/timeouts em operações normais
+- [ ] Nenhum erro crítico em logs
 
 **Suporte:** Squad SAS disponível em Slack para debugar
+**Duração:** 2026-08-01 → 2026-08-15
 
-### Fase 2: Accenture Staging (1 semana)
+### Fase 3: Production Rollout (Full)
 
-**Escopo:** IT corporativa valida integração com infraestrutura
+**Escopo:** Todos os utilizadores H3 (8+)
 
 **Ações:**
-1. Deploy para staging Supabase project (não contamina dados reais)
-2. IT corporativa testa:
-   - Acesso via VPN
-   - HTTPS/TLS válido
-   - Sem erros de CORS
-   - Performance sob rede corporativa
-3. Validar headers de segurança
-4. Smoke test com dados reais (não operações críticas)
-
-**Validar:**
-- [ ] Acessível apenas via VPN corporativa
-- [ ] HTTPS válido (certificado Let's Encrypt)
-- [ ] Performance <2s load time
-- [ ] Sem avisos de segurança do browser
-- [ ] Logs de auditoria funcionam
-
-### Fase 3: Production Rollout (Gradual)
-
-**Escopo:** Todos os utilizadores H3
-
-**Approach:** Canary (gradual)
-
-#### 3.1 — Canary (25%)
-
-- 2 operadores (1 H3, 1 não-H3) + gerente
-- Duração: 3-5 dias
-- Monitorar: Supabase logs, Netlify analytics
-
-**Validar:**
-- [ ] Zero erros críticos em logs
-- [ ] Performance normal (<100ms response time)
-- [ ] Dados salvos corretamente
-- [ ] Realtime sync funciona
-- [ ] Nenhum falso-positivo em alertas
-
-#### 3.2 — Staged (50%)
-
-- 4 operadores + 2 gerentes
-- Duração: 1 semana
-- Aumentar carga de dados
-
-**Validar:**
-- [ ] Escalabilidade OK (múltiplos utilizadores simultâneos)
-- [ ] Concorrência tratada (sem data races)
-- [ ] Sugestão automática de H3 funciona (edge function)
-
-#### 3.3 — Full Rollout (100%)
-
-- Todos os utilizadores H3
-- Duração: 1-2 semanas
-- Monitorar continuamente
+1. Onboard todos os utilizadores
+2. Comunicar go-live via email + Slack
+3. Disponibilizar suporte 24/7 (primeiros 3 dias)
+4. Monitorar logs e performance continuamente
 
 **Validar:**
 - [ ] Toda a equipa H3 consegue fazer login
-- [ ] Sem increase de support tickets
+- [ ] Sem erros críticos em logs
+- [ ] Performance normal (<100ms response time)
+- [ ] Dados salvos corretamente
+- [ ] Realtime sync funciona
+
+**Duração:** 2026-08-16 → ongoing
 
 ---
 

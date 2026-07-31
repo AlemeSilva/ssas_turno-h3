@@ -7,13 +7,10 @@ Estratégia faseada de propagação da aplicação para toda a equipa H3.
 ## 📊 Timeline Estimada
 
 ```
-Fase 1: Internal Testing      2026-08-01 → 2026-08-15  (2 semanas)
-Fase 2: Staging Validation    2026-08-15 → 2026-08-22  (1 semana)
-Fase 3: Production Canary     2026-08-22 → 2026-08-29  (1 semana)
-Fase 3: Staged (50%)          2026-08-29 → 2026-09-05  (1 semana)
-Fase 3: Full Rollout (100%)   2026-09-05 → ongoing     (1-2 semanas)
+Fase 1: Internal Testing      2026-08-01 → 2026-08-15  (15 dias)
+Fase 3: Production (100%)     2026-08-16 → ongoing     (go-live)
 
-**Data-alvo de Go-Live:** 2026-09-05
+**Data-alvo de Go-Live:** 2026-08-16
 ```
 
 ---
@@ -73,94 +70,28 @@ Se encontrado bug crítico:
 
 ---
 
-## 🔧 Fase 2 — Staging Validation (Accenture IT)
+## 🚀 Fase 3 — Production Rollout (Full)
 
-### Objetivos
-
-1. Validar que a aplicação cumpre standards corporativos
-2. Verificar compliance de segurança (headers, HTTPS, etc)
-3. Validar acesso via VPN
-4. Load testing com dados reais
-
-### Participants
-
-- **IT Security:** Validar headers + HTTPS
-- **IT Network:** Validar VPN access
-- **SRE Team:** Load testing + monitoring
-
-### Atividades
-
-| Atividade | Tool | Validação |
-|-----------|------|-----------|
-| Verificar HTTPS | Browser dev tools | Valid certificate, no mixed content |
-| Validar Headers | securityheaders.com | A+ score expected |
-| VPN Access Test | Corporate network | Accessible only via VPN |
-| Performance Test | curl + monitoring | <2s load time, <100ms DB queries |
-| CORS Validation | Browser Console | No CORS errors |
-| Load Test (100 users) | k6 ou JMeter | Performance degradation <10% |
-
-### Security Checklist
-
-- [ ] HSTS header presente (`Strict-Transport-Security`)
-- [ ] X-Frame-Options: SAMEORIGIN
-- [ ] Content-Security-Policy válido (prevent XSS)
-- [ ] No API keys in static assets
-- [ ] RLS policies ativas em todas as tabelas
-- [ ] Authentication required para qualquer data access
-- [ ] HTTPS obrigatório (no HTTP fallback)
-- [ ] Cookies SameSite (handled by Supabase)
-
-### Saída Esperada
-
-- ✅ IT Security sign-off
-- ✅ IT Network sign-off
-- ✅ SRE monitoring alerts configuradas
-- ✅ Runbook de suporte (escalation paths)
-
----
-
-## 🚀 Fase 3 — Production Rollout (Canary → Staged → Full)
-
-### 3.1 Canary Deployment (25% — 3-5 dias)
-
-**Users:** 2 operadores H3 + 1 gerente
-
-**Atividades:**
-1. Validar que 3 utilizadores conseguem fazer login
-2. Executar 5 operações normais por dia
-3. Monitorar logs a cada 4 horas
-4. Qualquer erro → rollback imediato
-5. Caso OK → passar para próxima fase
-
-**Saída:** ✅ Canary period completed without critical issues
-
-### 3.2 Staged Deployment (50% — 1 semana)
-
-**Users:** 4 operadores H3 + 2 gerentes
-
-**Atividades:**
-1. Onboard 4 novos utilizadores
-2. Executar 2-3 operações críticas:
-   - Escala semanal (leitura + modificação)
-   - Trocas de H3 (proposta + aprovação)
-   - Férias (pedido + aprovação)
-3. Monitorar performance com 6 utilizadores simultâneos
-4. Recolher feedback de escalabilidade
-
-**Saída:** ✅ Staged period completed, performance metrics acceptable
-
-### 3.3 Full Rollout (100% — 1-2 semanas)
+**Timing:** Após aprovação da Fase 1 (2026-08-16)
 
 **Users:** Todos os operadores H3 (8+)
 
 **Atividades:**
-1. Onboard utilizadores restantes
-2. Desativar qualquer sistema paralelo (se havia)
-3. Comunicar go-live via email + Slack
-4. Disponibilizar suporte 24/7 (primeiros 3 dias)
-5. Monitorar continuamente
+1. Onboard todos os utilizadores restantes
+2. Comunicar go-live via email + Slack
+3. Disponibilizar suporte 24/7 (primeiros 3 dias)
+4. Monitorar logs e performance continuamente
+5. Recolher feedback dos utilizadores
 
-**Saída:** ✅ Full rollout completed successfully
+**Validações:**
+- [ ] Todos conseguem fazer login
+- [ ] Escala semanal visualiza e altera corretamente
+- [ ] Checklist funciona conforme esperado
+- [ ] Alertas disparam normalmente
+- [ ] Relatório exporta sem erros
+- [ ] Nenhum erro crítico em logs
+
+**Saída:** ✅ Production rollout completed successfully
 
 ---
 
@@ -279,20 +210,14 @@ Obrigado!
 - System availability: >99.5%
 - Critical bugs found: <5
 - Data loss incidents: 0
-
-### Fase 2 Metrics
-
-- IT security approval: ✅
-- IT network approval: ✅
-- SRE runbook completeness: ✅
-- Load test p95 latency: <200ms
+- Feedback consolidado: documento com melhorias sugeridas
 
 ### Fase 3 Metrics
 
-- Canary success rate: 100%
-- Staged user growth: smooth (0 drop-offs)
-- Full rollout adoption: >95% within 2 weeks
-- Churn of parallel systems: 100% (after 1 week grace period)
+- Full rollout adoption: >95% within 1 week
+- System availability: >99.5%
+- Support tickets: <3 critical issues
+- Performance: <2s load time, <100ms DB queries
 
 ---
 
@@ -308,18 +233,18 @@ Obrigado!
 
 ---
 
-## 📋 Final Pre-Launch Checklist (T-1 day)
+## 📋 Final Pre-Launch Checklist (T-1 day — 2026-08-15)
 
 - [ ] Fase 1 UAT sign-off (Gerente)
-- [ ] Fase 2 IT sign-off (IT Security + Network)
+- [ ] Todos os testes passam (Camadas 1-4)
+- [ ] npm audit sem vulnerabilidades críticas
 - [ ] Supabase production data backup (automated daily)
 - [ ] Rollback procedure tested (can rollback in <2 min)
 - [ ] Support team trained (FAQ, runbook reviewed)
 - [ ] Monitoring alerts configured (page on error, warning on latency)
 - [ ] Netlify auto-deploy enabled for main branch
-- [ ] DNS pointing to Netlify production (if using custom domain)
 - [ ] Communication sent (email + Slack)
-- [ ] Launch playlist queued 🎵
+- [ ] Go-live support on-call 24/7
 
 ---
 
