@@ -1,7 +1,7 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import { useUsuarios } from '../data/useUsuarios'
 import { useEscalaMes } from '../data/useEscalaMes'
-import { formatarMesAnoPT, paraISO } from '../lib/datas'
+import { isoWeekday, paraISO } from '../lib/datas'
 import type { EscalaSemanal, Ferias, TurnoTipo, Usuario } from '../types/database'
 import { PainelFerias } from '../components/escala/PainelFerias'
 import { PainelTrocas } from '../components/escala/PainelTrocas'
@@ -33,6 +33,11 @@ const CLASSE_BADGE: Record<TurnoTipo | 'F', string> = {
   F: 'badge-amarelo',
 }
 
+function ehFimDeSemana(diaISO: string): boolean {
+  const dia = isoWeekday(new Date(diaISO + 'T00:00:00'))
+  return dia === 6 || dia === 7
+}
+
 function valorDoDia(
   diaISO: string,
   usuarioId: string,
@@ -50,11 +55,20 @@ function valorDoDia(
     fimJanela.setDate(fimJanela.getDate() + 6)
     return e.semana_ref <= diaISO && diaISO <= paraISO(fimJanela)
   })
-  return linha?.turno ?? null
+  const turno = linha?.turno ?? null
+  // Ao fim de semana só o H3 está escalado — os restantes turnos (H1/H2/H4)
+  // não trabalham, a célula fica vazia para sinalizar visualmente o dia.
+  if (turno !== null && turno !== 'H3' && ehFimDeSemana(diaISO)) return null
+  return turno
 }
 
+const NOMES_MES = [
+  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+]
+
 export function EscalaPage() {
-  const mesRef = useMemo(() => new Date(), [])
+  const [mesRef, setMesRef] = useState<Date>(() => new Date())
   const { usuarios, aCarregar: aCarregarUsuarios } = useUsuarios()
   const { escalas, ferias, aCarregar: aCarregarEscala } = useEscalaMes(mesRef)
   const { ehGerenteOuDelegado } = useAuth()
@@ -65,9 +79,20 @@ export function EscalaPage() {
     const totalDias = new Date(ano, mes + 1, 0).getDate()
     return Array.from({ length: totalDias }, (_, i) => {
       const d = new Date(ano, mes, i + 1)
-      return { numero: i + 1, iso: paraISO(d) }
+      const iso = paraISO(d)
+      return { numero: i + 1, iso, fimDeSemana: ehFimDeSemana(iso) }
     })
   }, [mesRef])
+
+  const anoSelecionavel = new Date().getFullYear()
+  const anosDisponiveis = Array.from({ length: 4 }, (_, i) => anoSelecionavel - 1 + i)
+
+  function mudarMes(novoMes: number) {
+    setMesRef(new Date(mesRef.getFullYear(), novoMes, 1))
+  }
+  function mudarAno(novoAno: number) {
+    setMesRef(new Date(novoAno, mesRef.getMonth(), 1))
+  }
 
   const pessoasAtivas = usuarios.filter((u) => u.ativo)
   const aCarregar = aCarregarUsuarios || aCarregarEscala
@@ -78,7 +103,28 @@ export function EscalaPage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h2 style={{ margin: 0 }}>Escala do Mês</h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{formatarMesAnoPT(mesRef)}</div>
+            <div style={{ display: 'flex', gap: '0.4rem' }}>
+              <select
+                aria-label="Mês"
+                value={mesRef.getMonth()}
+                onChange={(e) => mudarMes(Number(e.target.value))}
+                style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
+              >
+                {NOMES_MES.map((nome, i) => (
+                  <option key={nome} value={i}>{nome}</option>
+                ))}
+              </select>
+              <select
+                aria-label="Ano"
+                value={mesRef.getFullYear()}
+                onChange={(e) => mudarAno(Number(e.target.value))}
+                style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
+              >
+                {anosDisponiveis.map((ano) => (
+                  <option key={ano} value={ano}>{ano}</option>
+                ))}
+              </select>
+            </div>
             {ehGerenteOuDelegado && (
               <PainelSugestao usuarios={pessoasAtivas} />
             )}
@@ -94,7 +140,7 @@ export function EscalaPage() {
                 <tr>
                   <th style={celulaCabecalho('sticky')}>Nome</th>
                   {dias.map((d) => (
-                    <th key={d.iso} style={celulaCabecalho()}>
+                    <th key={d.iso} style={celulaCabecalho(undefined, d.fimDeSemana)}>
                       {d.numero}
                     </th>
                   ))}
@@ -114,7 +160,7 @@ export function EscalaPage() {
                     {dias.map((d) => {
                       const valor = valorDoDia(d.iso, p.id, escalas, ferias)
                       return (
-                        <td key={d.iso} style={celulaDia()}>
+                        <td key={d.iso} style={celulaDia(d.fimDeSemana)}>
                           {valor && (
                             <span className={`badge ${CLASSE_BADGE[valor]}`} style={{ fontSize: '0.6rem', padding: '0.1rem 0.3rem' }}>
                               {valor}
@@ -155,11 +201,11 @@ function Legenda({ cor, texto }: { cor: string; texto: string }) {
   )
 }
 
-function celulaCabecalho(sticky?: 'sticky'): CSSProperties {
+function celulaCabecalho(sticky?: 'sticky', fimDeSemana?: boolean): CSSProperties {
   return {
     position: sticky ? 'sticky' : undefined,
     left: sticky ? 0 : undefined,
-    background: 'var(--bg-surface)',
+    background: fimDeSemana ? 'var(--bg-surface-hover)' : 'var(--bg-surface)',
     padding: '0.4rem 0.5rem',
     borderBottom: '1px solid var(--border-subtle)',
     color: 'var(--text-muted)',
@@ -181,10 +227,11 @@ function celulaNome(): CSSProperties {
   }
 }
 
-function celulaDia(): CSSProperties {
+function celulaDia(fimDeSemana?: boolean): CSSProperties {
   return {
     borderBottom: '1px solid var(--border-subtle)',
     borderLeft: '1px solid var(--border-subtle)',
+    background: fimDeSemana ? 'var(--bg-surface-hover)' : undefined,
     textAlign: 'center',
     minWidth: 26,
     height: 30,
