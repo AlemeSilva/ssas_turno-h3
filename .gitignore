@@ -33,3 +33,6 @@ blob-report/
 
 # Supabase CLI local
 supabase/.temp/
+
+# Local Netlify folder
+.netlify
