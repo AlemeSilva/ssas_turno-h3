@@ -4,6 +4,7 @@ import { AlertBar } from './AlertBar'
 import { useAuth } from '../auth/AuthContext'
 
 const ABAS = [
+  { to: '/inicio', label: 'Início' },
   { to: '/plano', label: 'Plano de Fim de Semana' },
   { to: '/checklist', label: 'Checklist Ativo' },
   { to: '/escala', label: 'Escala do Mês' },

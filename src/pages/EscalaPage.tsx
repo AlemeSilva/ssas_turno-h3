@@ -1,7 +1,7 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import { useUsuarios } from '../data/useUsuarios'
 import { useEscalaMes } from '../data/useEscalaMes'
-import { adicionarDias, formatarDataPT, isoWeekday, paraISO } from '../lib/datas'
+import { adicionarDias, ehFimDeSemana, formatarDataPT, paraISO } from '../lib/datas'
 import type { EscalaSemanal, Ferias, TurnoTipo, Usuario } from '../types/database'
 import { PainelFerias } from '../components/escala/PainelFerias'
 import { PainelTrocas } from '../components/escala/PainelTrocas'
@@ -31,11 +31,6 @@ const CLASSE_BADGE: Record<TurnoTipo | 'F', string> = {
   H3: 'badge-lock',
   H4: 'badge-neutro',
   F: 'badge-amarelo',
-}
-
-function ehFimDeSemana(diaISO: string): boolean {
-  const dia = isoWeekday(new Date(diaISO + 'T00:00:00'))
-  return dia === 6 || dia === 7
 }
 
 function linhaDoDia(

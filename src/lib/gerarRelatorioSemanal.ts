@@ -1,7 +1,7 @@
 import type { EscalaSemanal, Ferias, TurnoTipo, Usuario } from '../types/database'
 import { adicionarDias, agora, formatarDataPT, paraISO } from './datas'
 
-const HORARIO_TURNO: Record<TurnoTipo, string> = {
+export const HORARIO_TURNO: Record<TurnoTipo, string> = {
   H1: '07h00 às 16h00',
   H2: '14h00 às 23h00',
   H3: '22h00 às 07h00',

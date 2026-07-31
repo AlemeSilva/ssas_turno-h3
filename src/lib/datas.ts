@@ -49,6 +49,23 @@ export function adicionarDias(d: Date, n: number): Date {
   return r
 }
 
+/**
+ * Conta dias úteis (Segunda a Sexta, ambos inclusive) entre duas datas
+ * ISO — espelha exatamente a função SQL dias_uteis() usada pelo
+ * trigger do limite anual de 22 dias, para o resumo de férias no
+ * frontend mostrar sempre o mesmo número que a base de dados aplica.
+ */
+export function diasUteis(inicioISO: string, fimISO: string): number {
+  let d = new Date(inicioISO + 'T00:00:00')
+  const fim = new Date(fimISO + 'T00:00:00')
+  let contagem = 0
+  while (d <= fim) {
+    if (isoWeekday(d) < 6) contagem++
+    d = adicionarDias(d, 1)
+  }
+  return contagem
+}
+
 export function formatarDataPT(iso: string): string {
   return new Date(iso + 'T00:00:00').toLocaleDateString('pt-PT', {
     day: '2-digit',
@@ -70,4 +87,21 @@ export function agora(): Date {
     if (t) return new Date(t)
   }
   return new Date()
+}
+
+/**
+ * Sexta-feira administrativa (início do período semanal real, tal
+ * como usado nos emails/relatório) — hoje, se hoje já for sexta,
+ * senão a próxima. Deliberadamente diferente de semanaRefDe() (âncora
+ * de quinta, ciclo do Plano de Fim de Semana).
+ */
+export function proximaSextaISO(referencia: Date = agora()): string {
+  const diasAteSexta = (5 - referencia.getDay() + 7) % 7
+  return paraISO(adicionarDias(referencia, diasAteSexta))
+}
+
+/** Sábado ou Domingo — ao fim de semana só o H3 está escalado. */
+export function ehFimDeSemana(diaISO: string): boolean {
+  const dia = isoWeekday(new Date(diaISO + 'T00:00:00'))
+  return dia === 6 || dia === 7
 }

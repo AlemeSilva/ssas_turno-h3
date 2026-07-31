@@ -1,20 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useUsuarios } from '../data/useUsuarios'
 import { supabase } from '../lib/supabase'
-import { adicionarDias, agora, paraISO, formatarDataPT } from '../lib/datas'
+import { adicionarDias, paraISO, formatarDataPT, proximaSextaISO } from '../lib/datas'
 import { gerarTextoRelatorioSemanal } from '../lib/gerarRelatorioSemanal'
 import type { EscalaSemanal, Ferias } from '../types/database'
-
-// Sexta-feira administrativa (início do período do relatório) — hoje
-// se hoje já for sexta, senão a próxima. Deliberadamente diferente de
-// semanaRefDe() (âncora de quinta, usada pelo ciclo do Plano de Fim de
-// Semana): o relatório de escala segue a convenção real dos emails
-// enviados ao Gerente, sexta a quinta seguinte.
-function proximaSextaISO(): string {
-  const hoje = agora()
-  const diasAteSexta = (5 - hoje.getDay() + 7) % 7
-  return paraISO(adicionarDias(hoje, diasAteSexta))
-}
 
 export function RelatoriosPage() {
   const semanaRef = useMemo(() => proximaSextaISO(), [])

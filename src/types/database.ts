@@ -7,6 +7,7 @@ export type TurnoTipo = 'H1' | 'H2' | 'H3' | 'H4'
 export type TipoFimSemana = 'NORMAL' | 'MANUTENCAO'
 export type StatusPlano = 'RASCUNHO' | 'PENDENTE_APROVACAO' | 'APROVADO' | 'EM_EXECUCAO' | 'CONCLUIDO'
 export type StatusFerias = 'PENDENTE' | 'APROVADA' | 'REJEITADA'
+export type TipoAusencia = 'FERIAS' | 'LICENCA'
 export type StatusTroca = 'PROPOSTA' | 'APROVADA' | 'REJEITADA'
 export type CategoriaCadeia = 'NORMAL' | 'ASTERISCO' | 'DUPLO_ASTERISCO'
 export type StatusCadeia = 'PENDENTE' | 'EM_ANDAMENTO' | 'CONCLUIDO_AUTOMATICO' | 'CONCLUIDO_MANUAL' | 'ATRASADO'
@@ -44,6 +45,11 @@ export interface Ferias {
   aprovado_por: string | null
   data_aprovacao: string | null
   criado_em: string
+  tipo: TipoAusencia
+  eh_operador_h3: boolean
+  substituicao_confirmada: boolean
+  confirmado_por: string | null
+  confirmado_em: string | null
 }
 
 export interface TrocaEscala {
