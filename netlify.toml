@@ -1,0 +1,105 @@
+# =====================================================================
+# Turno H3 — Netlify Configuration
+# Aplicação: React + Vite, Supabase backend
+# =====================================================================
+
+[build]
+  # Build command: TypeScript compilation + Vite bundle
+  command = "npm run build"
+  # Output directory: Vite's build output
+  publish = "dist"
+  # Node version
+  node_version = "22"
+
+[build.environment]
+  # Variáveis de build (públicas)
+  # Valores reais devem vir de Netlify UI ou .env durante deploy
+  VITE_SUPABASE_URL = ""
+  VITE_SUPABASE_ANON_KEY = ""
+
+# =====================================================================
+# Context: Production
+# =====================================================================
+
+[[redirects]]
+  # SPA: redireciona 404s para index.html (React Router lidar com roteamento)
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# =====================================================================
+# Context: Preview deployments (branch deploys)
+# =====================================================================
+
+[[context.deploy-preview.build.environment]]
+  # Mesmo as previews precisam de Supabase válido (devem apontar para staging)
+  VITE_SUPABASE_URL = ""
+  VITE_SUPABASE_ANON_KEY = ""
+
+# =====================================================================
+# Headers: Security & Performance
+# =====================================================================
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # HSTS: force HTTPS
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
+    # Prevent MIME sniffing
+    X-Content-Type-Options = "nosniff"
+    # Click-jacking protection
+    X-Frame-Options = "SAMEORIGIN"
+    # XSS protection (legacy, modernos browsers ignoram)
+    X-XSS-Protection = "1; mode=block"
+    # Referrer policy
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    # Disable FLoC
+    Permissions-Policy = "interest-cohort=()"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# =====================================================================
+# Environment-specific: Production
+# =====================================================================
+
+[[context.production]]
+  # Usar branch 'main' como production
+  command = "npm run build"
+  publish = "dist"
+
+[[context.production.build.environment]]
+  # Production Supabase project
+  # Valores configurados em Netlify UI (Secrets)
+  VITE_SUPABASE_URL = ""
+  VITE_SUPABASE_ANON_KEY = ""
+
+# =====================================================================
+# Plugins
+# =====================================================================
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+  # Descomente se/quando migrar para Next.js
+  # Atualmente com Vite, não necessário
+
+# =====================================================================
+# Observações de Deploy
+# =====================================================================
+# 1. Configurar environment variables em Netlify UI:
+#    - VITE_SUPABASE_URL (production)
+#    - VITE_SUPABASE_ANON_KEY (production)
+#
+# 2. Branch deploy: qualquer push para uma branch que não seja main
+#    vai gerar um preview deploy automático
+#
+# 3. Production deploy: push para main dispara deploy automático
+#
+# 4. Rollback: disponível no Netlify UI (Deploys → selecionar versão anterior)
