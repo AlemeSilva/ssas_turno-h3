@@ -1,7 +1,7 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import { useUsuarios } from '../data/useUsuarios'
 import { useEscalaMes } from '../data/useEscalaMes'
-import { isoWeekday, paraISO } from '../lib/datas'
+import { adicionarDias, formatarDataPT, isoWeekday, paraISO } from '../lib/datas'
 import type { EscalaSemanal, Ferias, TurnoTipo, Usuario } from '../types/database'
 import { PainelFerias } from '../components/escala/PainelFerias'
 import { PainelTrocas } from '../components/escala/PainelTrocas'
@@ -38,6 +38,19 @@ function ehFimDeSemana(diaISO: string): boolean {
   return dia === 6 || dia === 7
 }
 
+function linhaDoDia(
+  diaISO: string,
+  usuarioId: string,
+  escalas: EscalaSemanal[]
+): EscalaSemanal | undefined {
+  return escalas.find((e) => {
+    if (e.usuario_id !== usuarioId) return false
+    const fimJanela = new Date(e.semana_ref)
+    fimJanela.setDate(fimJanela.getDate() + 6)
+    return e.semana_ref <= diaISO && diaISO <= paraISO(fimJanela)
+  })
+}
+
 function valorDoDia(
   diaISO: string,
   usuarioId: string,
@@ -49,13 +62,7 @@ function valorDoDia(
   )
   if (temFerias) return 'F'
 
-  const linha = escalas.find((e) => {
-    if (e.usuario_id !== usuarioId) return false
-    const fimJanela = new Date(e.semana_ref)
-    fimJanela.setDate(fimJanela.getDate() + 6)
-    return e.semana_ref <= diaISO && diaISO <= paraISO(fimJanela)
-  })
-  const turno = linha?.turno ?? null
+  const turno = linhaDoDia(diaISO, usuarioId, escalas)?.turno ?? null
   // Ao fim de semana só o H3 está escalado — os restantes turnos (H1/H2/H4)
   // não trabalham, a célula fica vazia para sinalizar visualmente o dia.
   if (turno !== null && turno !== 'H3' && ehFimDeSemana(diaISO)) return null
@@ -96,6 +103,12 @@ export function EscalaPage() {
 
   const pessoasAtivas = usuarios.filter((u) => u.ativo)
   const aCarregar = aCarregarUsuarios || aCarregarEscala
+
+  const [celulaEmEdicao, setCelulaEmEdicao] = useState<{ usuarioId: string; diaISO: string } | null>(null)
+  const pessoaEmEdicao = celulaEmEdicao ? pessoasAtivas.find((p) => p.id === celulaEmEdicao.usuarioId) : undefined
+  const linhaEmEdicao = celulaEmEdicao
+    ? linhaDoDia(celulaEmEdicao.diaISO, celulaEmEdicao.usuarioId, escalas)
+    : undefined
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '1.25rem', alignItems: 'start' }}>
@@ -159,8 +172,15 @@ export function EscalaPage() {
                     </td>
                     {dias.map((d) => {
                       const valor = valorDoDia(d.iso, p.id, escalas, ferias)
+                      const linha = linhaDoDia(d.iso, p.id, escalas)
+                      const editavel = ehGerenteOuDelegado && linha !== undefined
                       return (
-                        <td key={d.iso} style={celulaDia(d.fimDeSemana)}>
+                        <td
+                          key={d.iso}
+                          style={celulaDia(d.fimDeSemana, editavel)}
+                          onClick={editavel ? () => setCelulaEmEdicao({ usuarioId: p.id, diaISO: d.iso }) : undefined}
+                          title={editavel ? 'Editar turno desta semana' : undefined}
+                        >
                           {valor && (
                             <span className={`badge ${CLASSE_BADGE[valor]}`} style={{ fontSize: '0.6rem', padding: '0.1rem 0.3rem' }}>
                               {valor}
@@ -180,6 +200,9 @@ export function EscalaPage() {
           <Legenda cor="badge-lock" texto="H3 (restrito a Caique/Bruno/Kilson)" />
           <Legenda cor="badge-neutro" texto="H1 / H2 / H4" />
           <Legenda cor="badge-amarelo" texto="Férias (F)" />
+          {ehGerenteOuDelegado && (
+            <span style={{ color: 'var(--text-muted)' }}>Clica numa célula para editar a semana</span>
+          )}
         </div>
       </div>
 
@@ -188,6 +211,14 @@ export function EscalaPage() {
         <PainelTrocas usuarios={pessoasAtivas} />
         {ehGerenteOuDelegado && <PainelDelegacao usuarios={pessoasAtivas} />}
       </div>
+
+      {pessoaEmEdicao && linhaEmEdicao && (
+        <ModalEdicaoTurno
+          pessoa={pessoaEmEdicao}
+          linha={linhaEmEdicao}
+          onFechar={() => setCelulaEmEdicao(null)}
+        />
+      )}
     </div>
   )
 }
@@ -227,7 +258,7 @@ function celulaNome(): CSSProperties {
   }
 }
 
-function celulaDia(fimDeSemana?: boolean): CSSProperties {
+function celulaDia(fimDeSemana?: boolean, editavel?: boolean): CSSProperties {
   return {
     borderBottom: '1px solid var(--border-subtle)',
     borderLeft: '1px solid var(--border-subtle)',
@@ -235,7 +266,121 @@ function celulaDia(fimDeSemana?: boolean): CSSProperties {
     textAlign: 'center',
     minWidth: 26,
     height: 30,
+    cursor: editavel ? 'pointer' : undefined,
   }
+}
+
+const OPCOES_TURNO: { valor: TurnoTipo; rotulo: string }[] = [
+  { valor: 'H1', rotulo: 'H1 — 07h00 às 16h00' },
+  { valor: 'H2', rotulo: 'H2 — 14h00 às 23h00' },
+  { valor: 'H3', rotulo: 'H3 — 22h00 às 07h00' },
+  { valor: 'H4', rotulo: 'H4 — 09h00 às 18h00' },
+]
+
+function ModalEdicaoTurno({
+  pessoa,
+  linha,
+  onFechar,
+}: {
+  pessoa: Pick<Usuario, 'nome'>
+  linha: EscalaSemanal
+  onFechar: () => void
+}) {
+  // Capturados uma vez no mount (nunca re-sincronizados com `linha`,
+  // que é recomputada a cada render a partir de `escalas` e pode mudar
+  // sob os pés deste modal — a subscrição realtime é live desde a
+  // migration 0007). turnoOriginal serve de base para deteção de
+  // conflito no gravar(); usar linha.turno (live) aqui em vez disso
+  // permitiria gravar um valor obsoleto por cima de uma alteração
+  // concorrente sem qualquer aviso.
+  const [turno, setTurno] = useState<TurnoTipo>(linha.turno)
+  const [turnoOriginal] = useState<TurnoTipo>(linha.turno)
+  const [aGravar, setAGravar] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
+
+  // linha.semana_ref é exatamente a janela [semana_ref, semana_ref+6]
+  // que linhaDoDia() usou para encontrar esta linha — mostrar essa
+  // mesma janela, sem nenhum offset adicional, garante que o dia
+  // clicado está sempre dentro do intervalo apresentado.
+  const inicioSemanaISO = linha.semana_ref
+  const fimSemanaISO = paraISO(adicionarDias(new Date(linha.semana_ref + 'T00:00:00'), 6))
+
+  async function gravar() {
+    if (turno === turnoOriginal) {
+      onFechar()
+      return
+    }
+    setAGravar(true)
+    setErro(null)
+    try {
+      const { data, error } = await supabase
+        .from('escala_semanal')
+        .update({ turno })
+        .eq('id', linha.id)
+        .eq('turno', turnoOriginal)
+        .select()
+      if (error) {
+        setErro(error.message)
+      } else if (!data || data.length === 0) {
+        setErro('Este turno foi alterado por outra sessão entretanto. Fecha e reabre a célula para ver o valor atual.')
+      } else {
+        onFechar()
+      }
+    } finally {
+      setAGravar(false)
+    }
+  }
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0, 0, 0, 0.55)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 100,
+      }}
+      onClick={onFechar}
+    >
+      <div
+        className="card"
+        style={{ minWidth: 320, maxWidth: 380, boxShadow: '0 12px 40px rgba(0, 0, 0, 0.5)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 style={{ marginTop: 0 }}>Editar turno</h3>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
+          {pessoa.nome} — semana de {formatarDataPT(inicioSemanaISO)} a {formatarDataPT(fimSemanaISO)}.
+          A alteração aplica-se à semana inteira, não só ao dia selecionado.
+        </p>
+
+        <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '0.25rem', marginBottom: '1rem' }}>
+          Turno
+          <select value={turno} onChange={(e) => setTurno(e.target.value as TurnoTipo)} style={{ width: '100%' }}>
+            {OPCOES_TURNO.map((o) => (
+              <option key={o.valor} value={o.valor}>{o.rotulo}</option>
+            ))}
+          </select>
+        </label>
+
+        {erro && (
+          <p style={{ color: 'var(--status-vermelho)', fontSize: '0.78rem', marginBottom: '0.75rem' }}>{erro}</p>
+        )}
+
+        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+          <button className="btn btn-ghost" onClick={onFechar} disabled={aGravar}>
+            Cancelar
+          </button>
+          <button className="btn btn-primary" onClick={gravar} disabled={aGravar}>
+            {aGravar ? 'A gravar…' : 'Gravar'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function PainelSugestao({ usuarios }: { usuarios: Pick<Usuario, 'id' | 'nome'>[] }) {
