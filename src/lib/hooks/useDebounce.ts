@@ -5,7 +5,7 @@ import { useRef, useCallback } from 'react'
  * acidentais em clicks rápidos. Delay mínimo de 500ms.
  */
 export function useDebounce<T extends (...args: any[]) => any>(callback: T, delayMs: number = 500) {
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isProcessingRef = useRef(false)
 
   return useCallback(

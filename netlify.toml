@@ -31,7 +31,7 @@
 # Context: Preview deployments (branch deploys)
 # =====================================================================
 
-[[context.deploy-preview.build.environment]]
+[context.deploy-preview.build.environment]
   # Mesmo as previews precisam de Supabase válido (devem apontar para staging)
   VITE_SUPABASE_URL = ""
   VITE_SUPABASE_ANON_KEY = ""
@@ -70,12 +70,12 @@
 # Environment-specific: Production
 # =====================================================================
 
-[[context.production]]
+[context.production]
   # Usar branch 'main' como production
   command = "npm run build"
   publish = "dist"
 
-[[context.production.build.environment]]
+[context.production.build.environment]
   # Production Supabase project
   # Valores configurados em Netlify UI (Secrets)
   VITE_SUPABASE_URL = ""
@@ -85,10 +85,7 @@
 # Plugins
 # =====================================================================
 
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
-  # Descomente se/quando migrar para Next.js
-  # Atualmente com Vite, não necessário
+# Nenhum plugin necessário — app é React + Vite puro
 
 # =====================================================================
 # Observações de Deploy
