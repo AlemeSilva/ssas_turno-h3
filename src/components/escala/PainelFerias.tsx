@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../auth/AuthContext'
+import { useDebounce } from '../../lib/hooks/useDebounce'
 import type { Ferias, Usuario } from '../../types/database'
 import { formatarDataPT } from '../../lib/datas'
 
@@ -50,13 +51,17 @@ export function PainelFerias({ usuarios }: { usuarios: Usuario[] }) {
     }
   }
 
-  async function decidir(id: number, status: 'APROVADA' | 'REJEITADA') {
-    if (!usuario) return
-    await supabase
-      .from('ferias')
-      .update({ status, aprovado_por: usuario.id, data_aprovacao: new Date().toISOString() })
-      .eq('id', id)
-  }
+  // Debounce para prevenir múltiplas submissões acidentais em clicks rápidos de Aprovar/Rejeitar
+  const decidirDebounced = useDebounce(
+    async (id: number, status: 'APROVADA' | 'REJEITADA') => {
+      if (!usuario) return
+      await supabase
+        .from('ferias')
+        .update({ status, aprovado_por: usuario.id, data_aprovacao: new Date().toISOString() })
+        .eq('id', id)
+    },
+    500
+  )
 
   function nomeDe(id: string) {
     return usuarios.find((u) => u.id === id)?.nome ?? id
@@ -90,10 +95,10 @@ export function PainelFerias({ usuarios }: { usuarios: Usuario[] }) {
             </span>
             {f.status === 'PENDENTE' && ehGerenteOuDelegado ? (
               <span style={{ display: 'flex', gap: '0.3rem' }}>
-                <button className="btn btn-primary" style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }} onClick={() => decidir(f.id, 'APROVADA')}>
+                <button className="btn btn-primary" style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }} onClick={() => decidirDebounced(f.id, 'APROVADA')}>
                   Aprovar
                 </button>
-                <button className="btn btn-danger" style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }} onClick={() => decidir(f.id, 'REJEITADA')}>
+                <button className="btn btn-danger" style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }} onClick={() => decidirDebounced(f.id, 'REJEITADA')}>
                   Rejeitar
                 </button>
               </span>
