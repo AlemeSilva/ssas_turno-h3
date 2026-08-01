@@ -2,13 +2,15 @@ import { useState } from 'react'
 import { useAuth } from '@/auth/AuthContext'
 import { useUsuarios } from '@/data/useUsuarios'
 import { useResumoUsuario, LIMITE_FERIAS_ANUAL } from '@/data/useResumoUsuario'
-import { useResumoGerente, type FeriadoSemPlantao } from '@/data/useResumoGerente'
+import { useResumoGerente, type FeriadoSemPlantao, type PeriodoFeriasEquipe } from '@/data/useResumoGerente'
 import { HORARIO_TURNO } from '@/lib/gerarRelatorioSemanal'
-import { adicionarDias, agora, ehFimDeSemana, formatarDataPT, paraISO, proximaSextaISO } from '@/lib/datas'
+import { adicionarDias, agora, diasUteis, ehFimDeSemana, formatarDataPT, paraISO, proximaSextaISO } from '@/lib/datas'
 import type { Ferias, TurnoTipo, Usuario } from '@/types/database'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 /** Turno a mostrar para um dia específico, respeitando a convenção de
  * fim de semana (só o H3 trabalha aos sábados/domingos). */
@@ -34,17 +36,31 @@ function listaEquipePorDias(mapa: Map<string, number>, usuarios: Usuario[]): Lin
     .sort((a, b) => b.dias - a.dias || a.nome.localeCompare(b.nome))
 }
 
-function ListaEquipe({ titulo, dados, destacarNaoZero }: { titulo: string; dados: LinhaEquipe[]; destacarNaoZero?: boolean }) {
+function ListaEquipe({
+  titulo,
+  dados,
+  destacarNaoZero,
+  onClicarPessoa,
+}: {
+  titulo: string
+  dados: LinhaEquipe[]
+  destacarNaoZero?: boolean
+  onClicarPessoa: (id: string, nome: string) => void
+}) {
   return (
     <div className="flex h-full flex-col gap-2.5">
       <div className="text-xs font-bold tracking-wide text-zinc-400 uppercase">{titulo}</div>
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-0.5">
         {dados.length === 0 ? (
           <p className="text-sm text-zinc-400">Sem equipa ativa.</p>
         ) : (
           dados.map((d) => (
-            <div key={d.id} className="flex items-center justify-between text-sm">
-              <span className="text-zinc-700">{d.nome}</span>
+            <button
+              key={d.id}
+              className="flex items-center justify-between rounded-md px-1 py-0.5 text-left text-sm hover:bg-zinc-50"
+              onClick={() => onClicarPessoa(d.id, d.nome)}
+            >
+              <span className="text-zinc-700 underline decoration-zinc-200 decoration-dotted underline-offset-2">{d.nome}</span>
               <span
                 className={cn(
                   'font-semibold tabular-nums',
@@ -53,7 +69,7 @@ function ListaEquipe({ titulo, dados, destacarNaoZero }: { titulo: string; dados
               >
                 {d.dias}
               </span>
-            </div>
+            </button>
           ))
         )}
       </div>
@@ -72,6 +88,11 @@ export function InicioPage() {
   const [aConfirmarPlantao, setAConfirmarPlantao] = useState<string | null>(null)
   const [escolhendoPlantaoPara, setEscolhendoPlantaoPara] = useState<string | null>(null)
   const [erroPlantao, setErroPlantao] = useState<string | null>(null)
+  const [detalhePessoa, setDetalhePessoa] = useState<{
+    nome: string
+    status: 'APROVADA' | 'PENDENTE'
+    periodos: PeriodoFeriasEquipe[]
+  } | null>(null)
 
   const hoje = agora()
   const hojeISO = paraISO(hoje)
@@ -91,6 +112,13 @@ export function InicioPage() {
   // de semana comum — não há plantão a confirmar, por isso a lista só
   // mostra feriados em dias úteis.
   const feriadosFuturos = gerente.feriadosSemPlantao.filter((f) => f.data >= hojeISO && !ehFimDeSemana(f.data))
+
+  function abrirDetalhePessoa(id: string, nome: string, status: 'APROVADA' | 'PENDENTE') {
+    const periodos = gerente.feriasEquipeAno
+      .filter((f) => f.usuario_id === id && f.status === status)
+      .sort((a, b) => a.data_inicio.localeCompare(b.data_inicio))
+    setDetalhePessoa({ nome, status, periodos })
+  }
 
   async function escolherSubstituto(feriasId: number, substitutoId: string) {
     if (!usuario) return
@@ -121,16 +149,21 @@ export function InicioPage() {
           <span className="text-zinc-700">
             {f.nome} · {formatarDataPT(f.data)}
           </span>
-          <Button
-            size="xs"
-            variant="secondary"
-            onClick={() => {
-              setEscolhendoPlantaoPara(aEscolher ? null : f.data)
-              setErroPlantao(null)
-            }}
-          >
-            Confirmar plantonista
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="xs"
+                variant="secondary"
+                onClick={() => {
+                  setEscolhendoPlantaoPara(aEscolher ? null : f.data)
+                  setErroPlantao(null)
+                }}
+              >
+                Confirmar plantonista
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Abre a lista da equipa para escolheres quem fica de plantão neste feriado</TooltipContent>
+          </Tooltip>
         </div>
         {aEscolher && (
           <div className="flex flex-wrap gap-1.5 pl-1">
@@ -167,16 +200,21 @@ export function InicioPage() {
               Substituto: {nomeDe(f.substituto_id)}
             </span>
           ) : (
-            <Button
-              size="xs"
-              variant="secondary"
-              onClick={() => {
-                setEscolhendoPara(aEscolher ? null : f.id)
-                setErroSubstituto(null)
-              }}
-            >
-              Confirmar substituto
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="xs"
+                  variant="secondary"
+                  onClick={() => {
+                    setEscolhendoPara(aEscolher ? null : f.id)
+                    setErroSubstituto(null)
+                  }}
+                >
+                  Confirmar substituto
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Abre a lista da equipa para escolheres quem cobre esta ausência — aparece já na Escala do Mês</TooltipContent>
+            </Tooltip>
           )}
         </div>
         {aEscolher && (
@@ -211,7 +249,11 @@ export function InicioPage() {
         <Card>
           <CardContent className="pt-6">
             {ehGerenteOuDelegado ? (
-              <ListaEquipe titulo="Férias aprovadas (equipa)" dados={listaEquipePorDias(gerente.feriasAprovadasPorPessoa, usuarios)} />
+              <ListaEquipe
+                titulo="Férias aprovadas (equipa)"
+                dados={listaEquipePorDias(gerente.feriasAprovadasPorPessoa, usuarios)}
+                onClicarPessoa={(id, nome) => abrirDetalhePessoa(id, nome, 'APROVADA')}
+              />
             ) : (
               <div className="flex flex-col gap-2.5">
                 <div className="text-xs font-bold tracking-wide text-zinc-400 uppercase">Férias</div>
@@ -240,6 +282,7 @@ export function InicioPage() {
                 titulo="Férias por aprovar (equipa)"
                 dados={listaEquipePorDias(gerente.feriasPendentesPorPessoa, usuarios)}
                 destacarNaoZero
+                onClicarPessoa={(id, nome) => abrirDetalhePessoa(id, nome, 'PENDENTE')}
               />
             ) : (
               <div className="flex flex-col gap-2.5">
@@ -323,6 +366,45 @@ export function InicioPage() {
             </Card>
           </div>
         </div>
+      )}
+
+      {detalhePessoa && (
+        <Dialog open onOpenChange={(aberto) => !aberto && setDetalhePessoa(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{detalhePessoa.nome}</DialogTitle>
+              <DialogDescription>
+                Férias {detalhePessoa.status === 'APROVADA' ? 'aprovadas' : 'por aprovar'} em {hoje.getFullYear()}
+              </DialogDescription>
+            </DialogHeader>
+            {detalhePessoa.periodos.length === 0 ? (
+              <p className="text-sm text-zinc-400">Sem períodos.</p>
+            ) : (
+              <div className="flex flex-col gap-1.5">
+                {detalhePessoa.periodos.map((p) => (
+                  <div key={p.id} className="flex items-center justify-between border-b border-zinc-100 pb-1.5 text-sm last:border-b-0">
+                    <span className="text-zinc-700">
+                      {formatarDataPT(p.data_inicio)}
+                      {p.data_inicio !== p.data_fim && <> a {formatarDataPT(p.data_fim)}</>}
+                    </span>
+                    <span className="text-zinc-500 tabular-nums">{diasUteis(p.data_inicio, p.data_fim)}d</span>
+                  </div>
+                ))}
+                {(() => {
+                  const total = detalhePessoa.periodos.reduce((soma, p) => soma + diasUteis(p.data_inicio, p.data_fim), 0)
+                  return (
+                    <div className="flex items-center justify-between pt-1 text-sm font-semibold">
+                      <span className="text-zinc-900">Total</span>
+                      <span className={cn('tabular-nums', total > LIMITE_FERIAS_ANUAL ? 'text-red-600' : 'text-zinc-900')}>
+                        {total} dias
+                      </span>
+                    </div>
+                  )
+                })()}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   )

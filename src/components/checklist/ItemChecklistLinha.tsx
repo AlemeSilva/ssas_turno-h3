@@ -5,6 +5,7 @@ import { useAuth } from '@/auth/AuthContext'
 import type { ChecklistItem, Usuario } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 export function ItemChecklistLinha({
   item,
@@ -51,9 +52,14 @@ export function ItemChecklistLinha({
           </span>
         ) : aConfirmar ? (
           <span className="flex shrink-0 gap-1.5">
-            <Button size="xs" onClick={confirmarConclusao}>
-              Confirmar
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button size="xs" onClick={confirmarConclusao}>
+                  Confirmar
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Regista este item como concluído, com o teu nome e a hora atual — fica trancado depois</TooltipContent>
+            </Tooltip>
             <Button size="xs" variant="ghost" onClick={() => setAConfirmar(false)}>
               Cancelar
             </Button>
@@ -70,9 +76,14 @@ export function ItemChecklistLinha({
           Carimbado por {nomeDe(item.concluido_por)} em{' '}
           {item.data_hora_conclusao && new Date(item.data_hora_conclusao).toLocaleString('pt-PT')}
           {ehGerenteOuDelegado && !aMostrarDestravar && (
-            <Button size="xs" variant="ghost" className="h-5 px-1.5 text-[0.68rem]" onClick={() => setAMostrarDestravar(true)}>
-              Destravar
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button size="xs" variant="ghost" className="h-5 px-1.5 text-[0.68rem]" onClick={() => setAMostrarDestravar(true)}>
+                  Destravar
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Reabre este item já concluído, para corrigir um carimbo por engano — pede uma justificativa</TooltipContent>
+            </Tooltip>
           )}
         </div>
       )}
@@ -85,9 +96,14 @@ export function ItemChecklistLinha({
             onChange={(e) => setMotivo(e.target.value)}
             className="flex-1 text-xs"
           />
-          <Button variant="destructive" size="sm" disabled={!motivo.trim()} onClick={destravar}>
-            Confirmar destravar
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="destructive" size="sm" disabled={!motivo.trim()} onClick={destravar}>
+                Confirmar destravar
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Regista a justificativa e volta a marcar o item como por concluir</TooltipContent>
+          </Tooltip>
         </div>
       )}
     </div>

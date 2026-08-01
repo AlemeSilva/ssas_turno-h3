@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 const ESTILO_STATUS_TAREFA: Record<StatusTarefa, string> = {
   PENDENTE: 'border-zinc-200 bg-zinc-100 text-zinc-500',
@@ -131,14 +132,40 @@ export function PlanoPage() {
             </div>
           </div>
           <div className="flex gap-2">
-            <Button variant="ghost" onClick={() => exportar('DRAFT')}>
-              Exportar Draft
-            </Button>
-            <Button variant="ghost" onClick={() => exportar('DEFINITIVO')} disabled={plano.status === 'RASCUNHO'}>
-              Exportar Definitivo
-            </Button>
-            {plano.status === 'RASCUNHO' && <Button variant="secondary" onClick={submeterParaAprovacao}>Submeter para aprovação</Button>}
-            {plano.status === 'PENDENTE_APROVACAO' && ehGerenteOuDelegado && <Button onClick={aprovar}>Aprovar</Button>}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" onClick={() => exportar('DRAFT')}>
+                  Exportar Draft
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Prévia de texto, mesmo antes de o plano estar aprovado — para rever antes de avançar</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" onClick={() => exportar('DEFINITIVO')} disabled={plano.status === 'RASCUNHO'}>
+                  Exportar Definitivo
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Texto final pronto a partilhar — só disponível depois do plano sair do rascunho</TooltipContent>
+            </Tooltip>
+            {plano.status === 'RASCUNHO' && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="secondary" onClick={submeterParaAprovacao}>
+                    Submeter para aprovação
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Passa o plano de Rascunho para Pendente de aprovação, visível ao Gerente</TooltipContent>
+              </Tooltip>
+            )}
+            {plano.status === 'PENDENTE_APROVACAO' && ehGerenteOuDelegado && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button onClick={aprovar}>Aprovar</Button>
+                </TooltipTrigger>
+                <TooltipContent>Aprova o plano — fica pronto para exportação definitiva e execução</TooltipContent>
+              </Tooltip>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -186,9 +213,14 @@ export function PlanoPage() {
               onChange={(e) => setNovaTarefa(e.target.value)}
               className="flex-1"
             />
-            <Button type="submit" variant="secondary">
-              Adicionar tarefa excecional
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button type="submit" variant="secondary">
+                  Adicionar tarefa excecional
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Junta uma tarefa avulsa a hoje, fora das tarefas fixas que já vêm no modelo do plano</TooltipContent>
+            </Tooltip>
           </form>
         </CardContent>
       </Card>

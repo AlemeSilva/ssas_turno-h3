@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 export function PainelDelegacao({ usuarios }: { usuarios: Usuario[] }) {
   const { usuario } = useAuth()
@@ -103,9 +104,14 @@ export function PainelDelegacao({ usuarios }: { usuarios: Usuario[] }) {
             <Input type="date" required value={dataFim} onChange={(e) => setDataFim(e.target.value)} />
           </label>
           {erro && <p className="text-xs text-red-600">{erro}</p>}
-          <Button type="submit" variant="secondary" disabled={aEnviar}>
-            {aEnviar ? 'A criar…' : 'Criar delegação'}
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button type="submit" variant="secondary" disabled={aEnviar}>
+                {aEnviar ? 'A criar…' : 'Criar delegação'}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Dá à pessoa escolhida poder de aprovação de Gerente durante este período</TooltipContent>
+          </Tooltip>
         </form>
 
         <div className="flex flex-col gap-1.5">

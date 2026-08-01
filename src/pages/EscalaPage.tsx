@@ -23,6 +23,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface RespostaSugestao {
   semana_ref: string
@@ -165,13 +166,23 @@ export function EscalaPage() {
       <Card className="overflow-hidden">
         <CardHeader className="flex items-center justify-between gap-3 border-b border-zinc-100 pb-4">
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" aria-label="Mês anterior" onClick={() => mudarMes(-1)}>
-              <ChevronLeft className="size-4" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label="Mês anterior" onClick={() => mudarMes(-1)}>
+                  <ChevronLeft className="size-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Mês anterior</TooltipContent>
+            </Tooltip>
             <CardTitle className="min-w-40 text-center">{formatarMesAnoPT(mesRef)}</CardTitle>
-            <Button variant="ghost" size="icon" aria-label="Mês seguinte" onClick={() => mudarMes(1)}>
-              <ChevronRight className="size-4" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label="Mês seguinte" onClick={() => mudarMes(1)}>
+                  <ChevronRight className="size-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Mês seguinte</TooltipContent>
+            </Tooltip>
             <Button variant="ghost" size="sm" className="ml-1 text-zinc-500" onClick={() => setMesRef(new Date())}>
               Hoje
             </Button>
@@ -539,9 +550,14 @@ function PainelSugestao({ usuarios }: { usuarios: Pick<Usuario, 'id' | 'nome'>[]
 
   if (!aberto) {
     return (
-      <Button variant="outline" size="sm" onClick={() => setAberto(true)}>
-        Sugerir automaticamente
-      </Button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button variant="outline" size="sm" onClick={() => setAberto(true)}>
+            Sugerir automaticamente
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Calcula uma proposta de escala para uma semana, respeitando a rotação H2/H3 — não grava nada até clicares em Aplicar</TooltipContent>
+      </Tooltip>
     )
   }
 
@@ -575,9 +591,14 @@ function PainelSugestao({ usuarios }: { usuarios: Pick<Usuario, 'id' | 'nome'>[]
           />
         </label>
 
-        <Button className="w-full" size="sm" onClick={calcular} disabled={aCarregar}>
-          {aCarregar ? 'A calcular…' : 'Calcular sugestão'}
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button className="w-full" size="sm" onClick={calcular} disabled={aCarregar}>
+              {aCarregar ? 'A calcular…' : 'Calcular sugestão'}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Só calcula uma proposta para a semana escolhida — ainda não altera a escala real</TooltipContent>
+        </Tooltip>
 
         {erro && <p className="mt-2 text-xs text-red-600">{erro}</p>}
 
@@ -631,9 +652,14 @@ function PainelSugestao({ usuarios }: { usuarios: Pick<Usuario, 'id' | 'nome'>[]
             {aplicado ? (
               <p className="mt-2 text-xs text-emerald-600">Aplicado à escala.</p>
             ) : (
-              <Button className="mt-3 w-full" size="sm" onClick={aplicar}>
-                Aplicar à escala
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button className="mt-3 w-full" size="sm" onClick={aplicar}>
+                    Aplicar à escala
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Grava esta proposta em Escala do Mês, substituindo o que já lá estiver nessa semana</TooltipContent>
+              </Tooltip>
             )}
           </div>
         )}

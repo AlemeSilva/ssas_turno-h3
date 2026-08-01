@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 export function PainelTrocas({ usuarios }: { usuarios: Usuario[] }) {
   const { usuario, ehGerenteOuDelegado } = useAuth()
@@ -130,12 +131,22 @@ export function PainelTrocas({ usuarios }: { usuarios: Usuario[] }) {
               </span>
               {ehGerenteOuDelegado ? (
                 <span className="flex shrink-0 gap-1.5">
-                  <Button size="xs" onClick={() => decidirDebounced(t.id, 'APROVADA')}>
-                    Aprovar
-                  </Button>
-                  <Button size="xs" variant="destructive" onClick={() => decidirDebounced(t.id, 'REJEITADA')}>
-                    Rejeitar
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button size="xs" onClick={() => decidirDebounced(t.id, 'APROVADA')}>
+                        Aprovar
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Confirma a troca — o substituto passa a cobrir esta semana no lugar do proponente</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button size="xs" variant="destructive" onClick={() => decidirDebounced(t.id, 'REJEITADA')}>
+                        Rejeitar
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Recusa a troca — a escala original mantém-se sem alterações</TooltipContent>
+                  </Tooltip>
                 </span>
               ) : (
                 <span className="shrink-0 rounded-md border border-amber-100 bg-amber-50 px-1.5 py-0.5 text-[0.65rem] font-medium text-amber-700">

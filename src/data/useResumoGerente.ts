@@ -9,12 +9,15 @@ export interface FeriadoSemPlantao {
   tipo: string
 }
 
+export type PeriodoFeriasEquipe = Pick<Ferias, 'id' | 'usuario_id' | 'status' | 'data_inicio' | 'data_fim'>
+
 interface ResumoGerente {
   feriadosSemPlantao: FeriadoSemPlantao[]
   ausenciasHoje: Ferias[]
   ausenciasProximaSemana: Ferias[]
   feriasAprovadasPorPessoa: Map<string, number>
   feriasPendentesPorPessoa: Map<string, number>
+  feriasEquipeAno: PeriodoFeriasEquipe[]
   aCarregar: boolean
   confirmarSubstituto: (feriasId: number, substitutoId: string, confirmadoPor: string) => Promise<{ error: string | null }>
   confirmarPlantonista: (dataFeriado: string, usuarioId: string) => Promise<{ error: string | null }>
@@ -36,6 +39,7 @@ export function useResumoGerente(ativo: boolean): ResumoGerente {
   const [ausenciasProximaSemana, setAusenciasProximaSemana] = useState<Ferias[]>([])
   const [feriasAprovadasPorPessoa, setFeriasAprovadasPorPessoa] = useState<Map<string, number>>(new Map())
   const [feriasPendentesPorPessoa, setFeriasPendentesPorPessoa] = useState<Map<string, number>>(new Map())
+  const [feriasEquipeAno, setFeriasEquipeAno] = useState<PeriodoFeriasEquipe[]>([])
   const [aCarregar, setACarregar] = useState(true)
 
   const idCarregamentoRef = useRef(0)
@@ -68,7 +72,7 @@ export function useResumoGerente(ativo: boolean): ResumoGerente {
           .gte('data_fim', hojeISO),
         supabase
           .from('ferias')
-          .select('usuario_id, status, data_inicio, data_fim')
+          .select('id, usuario_id, status, data_inicio, data_fim')
           .eq('tipo', 'FERIAS')
           .in('status', ['APROVADA', 'PENDENTE'])
           .gte('data_inicio', inicioAno)
@@ -89,14 +93,18 @@ export function useResumoGerente(ativo: boolean): ResumoGerente {
       // por aprovar em separado — para o cockpit do Gerente na Início.
       // Mesma contagem (dias_uteis, ano corrente) que useResumoUsuario
       // usa para o resumo pessoal, só que agregada por toda a equipa.
+      // feriasEquipeAno fica com os períodos individuais (não só o
+      // total), para o popup de detalhe por pessoa.
+      const feriasEquipe = (dadosFeriasEquipe as PeriodoFeriasEquipe[]) ?? []
       const aprovadas = new Map<string, number>()
       const pendentes = new Map<string, number>()
-      for (const f of (dadosFeriasEquipe as Pick<Ferias, 'usuario_id' | 'status' | 'data_inicio' | 'data_fim'>[]) ?? []) {
+      for (const f of feriasEquipe) {
         const mapa = f.status === 'APROVADA' ? aprovadas : pendentes
         mapa.set(f.usuario_id, (mapa.get(f.usuario_id) ?? 0) + diasUteis(f.data_inicio, f.data_fim))
       }
       setFeriasAprovadasPorPessoa(aprovadas)
       setFeriasPendentesPorPessoa(pendentes)
+      setFeriasEquipeAno(feriasEquipe)
 
       setACarregar(false)
     }
@@ -150,6 +158,7 @@ export function useResumoGerente(ativo: boolean): ResumoGerente {
     ausenciasProximaSemana,
     feriasAprovadasPorPessoa,
     feriasPendentesPorPessoa,
+    feriasEquipeAno,
     aCarregar,
     confirmarSubstituto,
     confirmarPlantonista,

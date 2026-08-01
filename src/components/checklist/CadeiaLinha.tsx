@@ -5,6 +5,7 @@ import type { CadeiaCatalogo, CadeiaDiaria, StatusCadeia } from '@/types/databas
 import { categoriaDaCadeia, INSTRUCAO_ASTERISCO, INSTRUCAO_DUPLO_ASTERISCO } from '@/lib/cadeiasInfo'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 const PROXIMO_ESTADO: Record<StatusCadeia, StatusCadeia> = {
   PENDENTE: 'EM_ANDAMENTO',
@@ -63,19 +64,29 @@ export function CadeiaLinha({
           {categoria === 'DUPLO_ASTERISCO' && ' **'}
         </span>
         <span className="flex items-center gap-1.5">
-          <button
-            className={cn(
-              'inline-flex cursor-pointer items-center rounded-md border px-1.5 py-0.5 text-[0.65rem] font-medium',
-              ESTILO_ESTADO[cadeia.status]
-            )}
-            onClick={avancarEstado}
-          >
-            {cadeia.status}
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                className={cn(
+                  'inline-flex cursor-pointer items-center rounded-md border px-1.5 py-0.5 text-[0.65rem] font-medium',
+                  ESTILO_ESTADO[cadeia.status]
+                )}
+                onClick={avancarEstado}
+              >
+                {cadeia.status}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Clica para avançar para {PROXIMO_ESTADO[cadeia.status].replace(/_/g, ' ')}</TooltipContent>
+          </Tooltip>
           {cadeia.status !== 'ATRASADO' && (
-            <Button size="xs" variant="ghost" onClick={marcarAtraso}>
-              Marcar atraso
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button size="xs" variant="ghost" onClick={marcarAtraso}>
+                  Marcar atraso
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Marca esta cadeia como atrasada de imediato, sem passar pelos estados intermédios</TooltipContent>
+            </Tooltip>
           )}
         </span>
       </div>

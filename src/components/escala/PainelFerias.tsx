@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 const ESTILO_STATUS: Record<string, string> = {
   APROVADA: 'bg-emerald-50 text-emerald-700 border-emerald-100',
@@ -117,12 +118,22 @@ export function PainelFerias({ usuarios }: { usuarios: Usuario[] }) {
               </span>
               {f.status === 'PENDENTE' && ehGerenteOuDelegado ? (
                 <span className="flex shrink-0 gap-1.5">
-                  <Button size="xs" onClick={() => decidirDebounced(f.id, 'APROVADA')}>
-                    Aprovar
-                  </Button>
-                  <Button size="xs" variant="destructive" onClick={() => decidirDebounced(f.id, 'REJEITADA')}>
-                    Rejeitar
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button size="xs" onClick={() => decidirDebounced(f.id, 'APROVADA')}>
+                        Aprovar
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Aprova o pedido — conta para o limite anual de 22 dias úteis</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button size="xs" variant="destructive" onClick={() => decidirDebounced(f.id, 'REJEITADA')}>
+                        Rejeitar
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Recusa o pedido — não conta para o limite anual</TooltipContent>
+                  </Tooltip>
                 </span>
               ) : (
                 <span

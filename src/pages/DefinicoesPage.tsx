@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 const ROTULO_CATEGORIA: Record<CategoriaCadeia, string> = {
   NORMAL: 'Normal',
@@ -137,13 +138,22 @@ export function DefinicoesPage() {
                     <Td>{ROTULO_CATEGORIA[c.categoria]}</Td>
                     <Td>
                       {!eOProprioGirFl && (
-                        <Button
-                          size="xs"
-                          variant={incluidaGirFl ? 'secondary' : 'ghost'}
-                          onClick={() => alternarDependenciaGirFl(c.nome_cadeia, incluidaGirFl)}
-                        >
-                          {incluidaGirFl ? 'Incluída' : 'Não incluída'}
-                        </Button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="xs"
+                              variant={incluidaGirFl ? 'secondary' : 'ghost'}
+                              onClick={() => alternarDependenciaGirFl(c.nome_cadeia, incluidaGirFl)}
+                            >
+                              {incluidaGirFl ? 'Incluída' : 'Não incluída'}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {incluidaGirFl
+                              ? 'Esta cadeia atrasa o alerta de risco da GIR_FL às 22h — clica para retirar'
+                              : 'Clica para esta cadeia passar a atrasar o alerta de risco da GIR_FL às 22h'}
+                          </TooltipContent>
+                        </Tooltip>
                       )}
                     </Td>
                     <Td>
