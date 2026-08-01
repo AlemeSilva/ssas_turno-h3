@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
-import { calcularProximoAlerta } from '../lib/alertas'
-import { semanaRefDe, paraISO, agora as getNow } from '../lib/datas'
+import { supabase } from '@/lib/supabase'
+import { calcularProximoAlerta } from '@/lib/alertas'
+import { semanaRefDe, paraISO, agora as getNow } from '@/lib/datas'
+import { cn } from '@/lib/utils'
 
 export function AlertBar() {
   const [agora, setAgora] = useState(getNow())
@@ -34,32 +35,31 @@ export function AlertBar() {
   const proximo = calcularProximoAlerta(agora, ehManutencao)
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '0.65rem 1.25rem',
-        background: 'var(--bg-surface-raised)',
-        borderBottom: '1px solid var(--border-subtle)',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-        <span className={proximo ? 'badge badge-amarelo' : 'badge badge-neutro'}>
+    <div className="flex items-center justify-between border-b border-zinc-100 bg-zinc-50 px-5 py-2.5">
+      <div className="flex items-center gap-2.5">
+        <span
+          className={cn(
+            'inline-flex items-center rounded-md border px-1.5 py-0.5 text-[0.65rem] font-medium',
+            proximo ? 'border-amber-100 bg-amber-50 text-amber-700' : 'border-zinc-200 bg-zinc-100 text-zinc-500'
+          )}
+        >
           {proximo ? 'Próximo alerta' : 'Sem alertas agendados'}
         </span>
         {proximo && (
-          <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+          <span className="text-sm text-zinc-600">
             {proximo.rotulo} às {proximo.horario} · em {proximo.minutosRestantes} min
           </span>
         )}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-        <span className={online ? 'badge badge-verde' : 'badge badge-vermelho'}>
-          {online ? 'Rede OK' : 'Sem rede'}
-        </span>
-      </div>
+      <span
+        className={cn(
+          'inline-flex items-center rounded-md border px-1.5 py-0.5 text-[0.65rem] font-medium',
+          online ? 'border-emerald-100 bg-emerald-50 text-emerald-700' : 'border-red-100 bg-red-50 text-red-700'
+        )}
+      >
+        {online ? 'Rede OK' : 'Sem rede'}
+      </span>
     </div>
   )
 }

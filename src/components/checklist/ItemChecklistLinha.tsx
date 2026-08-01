@@ -1,7 +1,10 @@
 import { useState } from 'react'
-import { supabase } from '../../lib/supabase'
-import { useAuth } from '../../auth/AuthContext'
-import type { ChecklistItem, Usuario } from '../../types/database'
+import { Lock } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/auth/AuthContext'
+import type { ChecklistItem, Usuario } from '@/types/database'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 export function ItemChecklistLinha({
   item,
@@ -37,63 +40,56 @@ export function ItemChecklistLinha({
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', padding: '0.5rem 0', borderBottom: '1px solid var(--border-subtle)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
-        <span style={{ fontSize: '0.83rem' }}>{item.item_descricao}</span>
+    <div className="flex flex-col gap-1 border-b border-zinc-100 py-2 last:border-b-0">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-sm text-zinc-700">{item.item_descricao}</span>
 
         {item.concluido ? (
-          <span className="badge badge-lock">
-            <LockIcon /> {item.concluido_por ? 'Concluído' : ''}
+          <span className="inline-flex items-center gap-1 rounded-md border border-indigo-100 bg-indigo-50 px-1.5 py-0.5 text-[0.65rem] font-medium text-indigo-700">
+            <Lock className="size-2.5" />
+            Concluído
           </span>
         ) : aConfirmar ? (
-          <span style={{ display: 'flex', gap: '0.3rem' }}>
-            <button className="btn btn-primary" style={{ padding: '0.2rem 0.6rem', fontSize: '0.72rem' }} onClick={confirmarConclusao}>
+          <span className="flex shrink-0 gap-1.5">
+            <Button size="xs" onClick={confirmarConclusao}>
               Confirmar
-            </button>
-            <button className="btn btn-ghost" style={{ padding: '0.2rem 0.6rem', fontSize: '0.72rem' }} onClick={() => setAConfirmar(false)}>
+            </Button>
+            <Button size="xs" variant="ghost" onClick={() => setAConfirmar(false)}>
               Cancelar
-            </button>
+            </Button>
           </span>
         ) : (
-          <button className="btn btn-secondary" style={{ padding: '0.2rem 0.6rem', fontSize: '0.72rem' }} onClick={() => setAConfirmar(true)}>
+          <Button size="xs" variant="secondary" onClick={() => setAConfirmar(true)}>
             Marcar concluído
-          </button>
+          </Button>
         )}
       </div>
 
       {item.concluido && (
-        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-          Carimbado por {nomeDe(item.concluido_por)} em {item.data_hora_conclusao && new Date(item.data_hora_conclusao).toLocaleString('pt-PT')}
+        <div className="flex items-center gap-2 text-xs text-zinc-400">
+          Carimbado por {nomeDe(item.concluido_por)} em{' '}
+          {item.data_hora_conclusao && new Date(item.data_hora_conclusao).toLocaleString('pt-PT')}
           {ehGerenteOuDelegado && !aMostrarDestravar && (
-            <button className="btn btn-ghost" style={{ marginLeft: '0.6rem', padding: '0.1rem 0.4rem', fontSize: '0.68rem' }} onClick={() => setAMostrarDestravar(true)}>
+            <Button size="xs" variant="ghost" className="h-5 px-1.5 text-[0.68rem]" onClick={() => setAMostrarDestravar(true)}>
               Destravar
-            </button>
+            </Button>
           )}
         </div>
       )}
 
       {aMostrarDestravar && (
-        <div style={{ display: 'flex', gap: '0.4rem' }}>
-          <input
+        <div className="flex gap-1.5">
+          <Input
             placeholder="Justificativa do destravar (obrigatória)"
             value={motivo}
             onChange={(e) => setMotivo(e.target.value)}
-            style={{ flex: 1, fontSize: '0.72rem' }}
+            className="flex-1 text-xs"
           />
-          <button className="btn btn-danger" style={{ fontSize: '0.72rem' }} disabled={!motivo.trim()} onClick={destravar}>
+          <Button variant="destructive" size="sm" disabled={!motivo.trim()} onClick={destravar}>
             Confirmar destravar
-          </button>
+          </Button>
         </div>
       )}
     </div>
-  )
-}
-
-function LockIcon() {
-  return (
-    <svg width="10" height="10" viewBox="0 0 32 32" style={{ marginRight: 2 }}>
-      <path d="M11 15v-3a5 5 0 0 1 10 0v3" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-      <rect x="9" y="15" width="14" height="11" rx="2.5" fill="currentColor" />
-    </svg>
   )
 }

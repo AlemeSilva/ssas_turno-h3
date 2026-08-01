@@ -1,13 +1,30 @@
-import { useState, type CSSProperties, type FormEvent } from 'react'
-import { supabase } from '../lib/supabase'
-import { useCadeiasCatalogo } from '../data/useCadeiasCatalogo'
-import { useAuth } from '../auth/AuthContext'
-import type { CategoriaCadeia } from '../types/database'
+import { useState, type FormEvent } from 'react'
+import { supabase } from '@/lib/supabase'
+import { useCadeiasCatalogo } from '@/data/useCadeiasCatalogo'
+import { useAuth } from '@/auth/AuthContext'
+import type { CategoriaCadeia } from '@/types/database'
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 const ROTULO_CATEGORIA: Record<CategoriaCadeia, string> = {
   NORMAL: 'Normal',
   ASTERISCO: '* (cópia automática para Cloud)',
   DUPLO_ASTERISCO: '** (input AML/MAB)',
+}
+
+function Th({ children }: { children?: React.ReactNode }) {
+  return <th className="border-b border-zinc-100 px-2 py-1.5 text-left text-xs font-medium text-zinc-400">{children}</th>
+}
+
+function Td({ children, colSpan }: { children?: React.ReactNode; colSpan?: number }) {
+  return (
+    <td className="border-b border-zinc-100 px-2 py-1.5" colSpan={colSpan}>
+      {children}
+    </td>
+  )
 }
 
 export function DefinicoesPage() {
@@ -19,9 +36,9 @@ export function DefinicoesPage() {
 
   if (!ehGerenteOuDelegado) {
     return (
-      <div className="card">
-        <p style={{ color: 'var(--text-secondary)' }}>Esta área é reservada ao Gerente.</p>
-      </div>
+      <Card>
+        <CardContent className="pt-6 text-sm text-zinc-500">Esta área é reservada ao Gerente.</CardContent>
+      </Card>
     )
   }
 
@@ -53,89 +70,104 @@ export function DefinicoesPage() {
     }
   }
 
-  if (aCarregar) return <div className="card">A carregar…</div>
+  if (aCarregar) {
+    return (
+      <Card>
+        <CardContent className="pt-6 text-sm text-zinc-500">A carregar…</CardContent>
+      </Card>
+    )
+  }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-      <div className="card">
-        <h2 style={{ marginTop: 0 }}>Gestão de Cadeias</h2>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-          Adicionar ou desativar uma cadeia da matriz de acompanhamento diário — situação pouco
-          frequente, mas suportada sem alterações de código. Uma cadeia com histórico registado
-          nunca é apagada, só desativada: deixa de entrar em novos planos, mas os registos
-          antigos mantêm-se intactos para auditoria.
-        </p>
+    <div className="flex flex-col gap-5">
+      <Card>
+        <CardContent className="flex flex-col gap-4 pt-6">
+          <div>
+            <CardTitle>Gestão de Cadeias</CardTitle>
+            <p className="mt-2 text-sm text-zinc-500">
+              Adicionar ou desativar uma cadeia da matriz de acompanhamento diário — situação pouco frequente, mas
+              suportada sem alterações de código. Uma cadeia com histórico registado nunca é apagada, só desativada:
+              deixa de entrar em novos planos, mas os registos antigos mantêm-se intactos para auditoria.
+            </p>
+          </div>
 
-        <form onSubmit={adicionar} style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-end', marginBottom: '1.25rem' }}>
-          <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-            Nome da cadeia
-            <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="ex.: SD_NOVA" />
-          </label>
-          <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-            Categoria
-            <select value={categoria} onChange={(e) => setCategoria(e.target.value as CategoriaCadeia)}>
-              <option value="NORMAL">Normal</option>
-              <option value="ASTERISCO">* (cópia automática para Cloud)</option>
-              <option value="DUPLO_ASTERISCO">** (input AML/MAB)</option>
-            </select>
-          </label>
-          <button className="btn btn-secondary" type="submit">
-            Adicionar cadeia
-          </button>
-        </form>
-        {erro && <div className="badge badge-vermelho" style={{ display: 'block', marginBottom: '1rem' }}>{erro}</div>}
+          <form onSubmit={adicionar} className="flex items-end gap-2.5">
+            <label className="flex flex-col gap-1 text-xs text-zinc-500">
+              Nome da cadeia
+              <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="ex.: SD_NOVA" />
+            </label>
+            <label className="flex flex-col gap-1 text-xs text-zinc-500">
+              Categoria
+              <Select value={categoria} onValueChange={(v) => setCategoria(v as CategoriaCadeia)}>
+                <SelectTrigger className="w-64">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(ROTULO_CATEGORIA) as CategoriaCadeia[]).map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {ROTULO_CATEGORIA[c]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </label>
+            <Button type="submit" variant="secondary">
+              Adicionar cadeia
+            </Button>
+          </form>
+          {erro && <p className="text-sm text-red-600">{erro}</p>}
 
-        <table style={{ width: '100%', fontSize: '0.8rem', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              <th style={th()}>Cadeia</th>
-              <th style={th()}>Categoria</th>
-              <th style={th()}>Dependência GIR_FL (22h)</th>
-              <th style={th()}>Estado</th>
-              <th style={th()} />
-            </tr>
-          </thead>
-          <tbody>
-            {catalogo.map((c) => {
-              const incluidaGirFl = dependenciasGirFl.includes(c.nome_cadeia)
-              const eOProprioGirFl = c.nome_cadeia === 'GIR_FL'
-              return (
-                <tr key={c.nome_cadeia}>
-                  <td style={td()}>{c.nome_cadeia}</td>
-                  <td style={td()}>{ROTULO_CATEGORIA[c.categoria]}</td>
-                  <td style={td()}>
-                    {!eOProprioGirFl && (
-                      <button
-                        className={incluidaGirFl ? 'btn btn-secondary' : 'btn btn-ghost'}
-                        style={{ padding: '0.15rem 0.5rem', fontSize: '0.7rem' }}
-                        onClick={() => alternarDependenciaGirFl(c.nome_cadeia, incluidaGirFl)}
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr>
+                <Th>Cadeia</Th>
+                <Th>Categoria</Th>
+                <Th>Dependência GIR_FL (22h)</Th>
+                <Th>Estado</Th>
+                <Th />
+              </tr>
+            </thead>
+            <tbody>
+              {catalogo.map((c) => {
+                const incluidaGirFl = dependenciasGirFl.includes(c.nome_cadeia)
+                const eOProprioGirFl = c.nome_cadeia === 'GIR_FL'
+                return (
+                  <tr key={c.nome_cadeia}>
+                    <Td>{c.nome_cadeia}</Td>
+                    <Td>{ROTULO_CATEGORIA[c.categoria]}</Td>
+                    <Td>
+                      {!eOProprioGirFl && (
+                        <Button
+                          size="xs"
+                          variant={incluidaGirFl ? 'secondary' : 'ghost'}
+                          onClick={() => alternarDependenciaGirFl(c.nome_cadeia, incluidaGirFl)}
+                        >
+                          {incluidaGirFl ? 'Incluída' : 'Não incluída'}
+                        </Button>
+                      )}
+                    </Td>
+                    <Td>
+                      <span
+                        className={cn(
+                          'inline-flex items-center rounded-md border px-1.5 py-0.5 text-[0.65rem] font-medium',
+                          c.ativo ? 'border-emerald-100 bg-emerald-50 text-emerald-700' : 'border-zinc-200 bg-zinc-100 text-zinc-500'
+                        )}
                       >
-                        {incluidaGirFl ? 'Incluída' : 'Não incluída'}
-                      </button>
-                    )}
-                  </td>
-                  <td style={td()}>
-                    <span className={c.ativo ? 'badge badge-verde' : 'badge badge-neutro'}>{c.ativo ? 'Ativa' : 'Desativada'}</span>
-                  </td>
-                  <td style={td()}>
-                    <button className="btn btn-ghost" style={{ padding: '0.15rem 0.5rem', fontSize: '0.7rem' }} onClick={() => alternarAtivo(c.nome_cadeia, c.ativo)}>
-                      {c.ativo ? 'Desativar' : 'Reativar'}
-                    </button>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+                        {c.ativo ? 'Ativa' : 'Desativada'}
+                      </span>
+                    </Td>
+                    <Td>
+                      <Button size="xs" variant="ghost" onClick={() => alternarAtivo(c.nome_cadeia, c.ativo)}>
+                        {c.ativo ? 'Desativar' : 'Reativar'}
+                      </Button>
+                    </Td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </CardContent>
+      </Card>
     </div>
   )
-}
-
-function th(): CSSProperties {
-  return { textAlign: 'left', padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)' }
-}
-
-function td(): CSSProperties {
-  return { padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border-subtle)' }
 }

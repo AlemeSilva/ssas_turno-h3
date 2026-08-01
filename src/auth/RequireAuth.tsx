@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { useAuth } from './AuthContext'
 import { Login } from './Login'
+import { Button } from '@/components/ui/button'
 
 // Note: o corte de acesso "oficial" (a partir do dia seguinte à
 // data_saida) é imposto no servidor por uma função agendada que
@@ -21,9 +22,9 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   if (usuario && !usuario.ativo) {
     return (
       <CentroDeEcra texto="Esta conta foi desativada. Contacte o Gerente.">
-        <button className="btn btn-ghost" onClick={() => signOut()} style={{ marginTop: '1rem' }}>
+        <Button variant="ghost" className="mt-2" onClick={() => signOut()}>
           Sair
-        </button>
+        </Button>
       </CentroDeEcra>
     )
   }
@@ -33,18 +34,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
 
 function CentroDeEcra({ texto, children }: { texto: string; children?: ReactNode }) {
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '0.5rem',
-        color: 'var(--text-secondary)',
-        background: 'var(--bg-app)',
-      }}
-    >
+    <div className="flex min-h-screen flex-col items-center justify-center gap-2 bg-white text-zinc-500">
       <div>{texto}</div>
       {children}
     </div>

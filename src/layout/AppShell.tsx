@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
 import { AlertBar } from './AlertBar'
-import { useAuth } from '../auth/AuthContext'
+import { useAuth } from '@/auth/AuthContext'
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 
 const ABAS = [
   { to: '/inicio', label: 'Início' },
@@ -17,61 +19,50 @@ export function AppShell({ children }: { children: ReactNode }) {
   const abas = ehGerenteOuDelegado ? [...ABAS, { to: '/definicoes', label: 'Definições' }] : ABAS
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+    <div className="flex min-h-screen flex-col bg-white">
       <AlertBar />
 
-      <header
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0.85rem 1.25rem',
-          borderBottom: '1px solid var(--border-subtle)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
+      <header className="flex items-center justify-between border-b border-zinc-100 px-5 py-3.5">
+        <div className="flex items-center gap-2.5">
           <LockMark />
           <div>
-            <div style={{ fontWeight: 700 }}>Turno H3</div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Accenture · Banco Montepio</div>
+            <div className="font-bold text-zinc-900">Turno H3</div>
+            <div className="text-xs text-zinc-500">Accenture · Banco Montepio</div>
           </div>
         </div>
 
-        <nav style={{ display: 'flex', gap: '0.3rem' }}>
+        <nav className="flex gap-1">
           {abas.map((aba) => (
             <NavLink
               key={aba.to}
               to={aba.to}
-              style={({ isActive }) => ({
-                padding: '0.5rem 0.9rem',
-                borderRadius: 'var(--radius-sm)',
-                fontSize: '0.83rem',
-                fontWeight: 600,
-                color: isActive ? 'var(--text-on-accent)' : 'var(--text-secondary)',
-                background: isActive ? 'var(--accent-primary)' : 'transparent',
-                textDecoration: 'none',
-              })}
+              className={({ isActive }) =>
+                cn(
+                  'rounded-md px-3.5 py-2 text-sm font-semibold no-underline',
+                  isActive ? 'bg-indigo-600 text-white' : 'text-zinc-500 hover:bg-zinc-100'
+                )
+              }
             >
               {aba.label}
             </NavLink>
           ))}
         </nav>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '0.83rem', fontWeight: 600 }}>{usuario?.nome ?? '—'}</div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+        <div className="flex items-center gap-3">
+          <div className="text-right">
+            <div className="text-sm font-semibold text-zinc-900">{usuario?.nome ?? '—'}</div>
+            <div className="text-xs text-zinc-500">
               {usuario?.perfil}
               {ehGerenteOuDelegado && usuario?.perfil !== 'GERENTE' ? ' · substituto do Gerente' : ''}
             </div>
           </div>
-          <button className="btn btn-ghost" onClick={() => signOut()}>
+          <Button variant="ghost" size="sm" onClick={() => signOut()}>
             Sair
-          </button>
+          </Button>
         </div>
       </header>
 
-      <main style={{ flex: 1, padding: '1.5rem', overflow: 'auto' }}>{children}</main>
+      <main className="flex-1 overflow-auto p-6">{children}</main>
     </div>
   )
 }
@@ -84,18 +75,11 @@ function LockMark() {
       {/* Quadrado roxo Accenture */}
       <rect x="19" y="0" width="17" height="36" rx="5" fill="var(--accenture-purple)" />
       {/* Chevron ">" estilizado — referência ao logótipo Accenture, a branco sobre roxo */}
-      <polyline
-        points="23,11 30,18 23,25"
-        fill="none"
-        stroke="var(--text-on-accent)"
-        strokeWidth="3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <polyline points="23,11 30,18 23,25" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
       {/* Pássaro simplificado — bico apontado à esquerda, branco sobre âmbar */}
       <path
         d="M13,16 C10,14 5,15 4,17 C6,17 8,16.5 9,18 C10,19.5 12,20 14,19 C14,17.5 13,16 13,16 Z"
-        fill="var(--text-on-accent)"
+        fill="white"
       />
     </svg>
   )

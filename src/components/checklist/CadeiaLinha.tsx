@@ -1,8 +1,10 @@
 import { useState } from 'react'
-import { supabase } from '../../lib/supabase'
-import { useAuth } from '../../auth/AuthContext'
-import type { CadeiaCatalogo, CadeiaDiaria, StatusCadeia } from '../../types/database'
-import { categoriaDaCadeia, INSTRUCAO_ASTERISCO, INSTRUCAO_DUPLO_ASTERISCO } from '../../lib/cadeiasInfo'
+import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/auth/AuthContext'
+import type { CadeiaCatalogo, CadeiaDiaria, StatusCadeia } from '@/types/database'
+import { categoriaDaCadeia, INSTRUCAO_ASTERISCO, INSTRUCAO_DUPLO_ASTERISCO } from '@/lib/cadeiasInfo'
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 
 const PROXIMO_ESTADO: Record<StatusCadeia, StatusCadeia> = {
   PENDENTE: 'EM_ANDAMENTO',
@@ -12,12 +14,12 @@ const PROXIMO_ESTADO: Record<StatusCadeia, StatusCadeia> = {
   ATRASADO: 'CONCLUIDO_MANUAL',
 }
 
-const CLASSE_ESTADO: Record<StatusCadeia, string> = {
-  PENDENTE: 'badge-neutro',
-  EM_ANDAMENTO: 'badge-amarelo',
-  CONCLUIDO_AUTOMATICO: 'badge-verde',
-  CONCLUIDO_MANUAL: 'badge-verde',
-  ATRASADO: 'badge-vermelho',
+const ESTILO_ESTADO: Record<StatusCadeia, string> = {
+  PENDENTE: 'border-zinc-200 bg-zinc-100 text-zinc-500',
+  EM_ANDAMENTO: 'border-amber-100 bg-amber-50 text-amber-700',
+  CONCLUIDO_AUTOMATICO: 'border-emerald-100 bg-emerald-50 text-emerald-700',
+  CONCLUIDO_MANUAL: 'border-emerald-100 bg-emerald-50 text-emerald-700',
+  ATRASADO: 'border-red-100 bg-red-50 text-red-700',
 }
 
 export function CadeiaLinha({
@@ -53,31 +55,37 @@ export function CadeiaLinha({
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem' }}>
-        <span>
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center justify-between text-xs">
+        <span className="text-zinc-700">
           {cadeia.nome_cadeia}
           {categoria === 'ASTERISCO' && ' *'}
           {categoria === 'DUPLO_ASTERISCO' && ' **'}
         </span>
-        <span style={{ display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
-          <span className={`badge ${CLASSE_ESTADO[cadeia.status]}`} style={{ cursor: 'pointer' }} onClick={avancarEstado}>
+        <span className="flex items-center gap-1.5">
+          <button
+            className={cn(
+              'inline-flex cursor-pointer items-center rounded-md border px-1.5 py-0.5 text-[0.65rem] font-medium',
+              ESTILO_ESTADO[cadeia.status]
+            )}
+            onClick={avancarEstado}
+          >
             {cadeia.status}
-          </span>
+          </button>
           {cadeia.status !== 'ATRASADO' && (
-            <button className="btn btn-ghost" style={{ padding: '0.1rem 0.4rem', fontSize: '0.65rem' }} onClick={marcarAtraso}>
+            <Button size="xs" variant="ghost" onClick={marcarAtraso}>
               Marcar atraso
-            </button>
+            </Button>
           )}
         </span>
       </div>
 
       {aMostrarInstrucao && (
-        <div className="badge badge-amarelo" style={{ display: 'block', fontWeight: 400, textTransform: 'none', fontSize: '0.72rem', padding: '0.4rem 0.6rem' }}>
+        <div className="rounded-md border border-amber-100 bg-amber-50 px-2.5 py-1.5 text-xs text-amber-700">
           {categoria === 'ASTERISCO' ? INSTRUCAO_ASTERISCO : INSTRUCAO_DUPLO_ASTERISCO}
-          <button className="btn btn-ghost" style={{ marginLeft: '0.6rem', padding: '0.1rem 0.4rem' }} onClick={() => setAMostrarInstrucao(false)}>
+          <Button size="xs" variant="ghost" className="ml-2" onClick={() => setAMostrarInstrucao(false)}>
             Ok
-          </button>
+          </Button>
         </div>
       )}
     </div>

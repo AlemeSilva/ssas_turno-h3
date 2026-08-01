@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useUsuarios } from '../data/useUsuarios'
-import { supabase } from '../lib/supabase'
-import { adicionarDias, paraISO, formatarDataPT, proximaSextaISO } from '../lib/datas'
-import { gerarTextoRelatorioSemanal } from '../lib/gerarRelatorioSemanal'
-import type { EscalaSemanal, Ferias } from '../types/database'
+import { useUsuarios } from '@/data/useUsuarios'
+import { supabase } from '@/lib/supabase'
+import { adicionarDias, paraISO, formatarDataPT, proximaSextaISO } from '@/lib/datas'
+import { gerarTextoRelatorioSemanal } from '@/lib/gerarRelatorioSemanal'
+import type { EscalaSemanal, Ferias } from '@/types/database'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Textarea } from '@/components/ui/textarea'
 
 export function RelatoriosPage() {
   const semanaRef = useMemo(() => proximaSextaISO(), [])
@@ -71,32 +74,32 @@ export function RelatoriosPage() {
   }
 
   return (
-    <div className="card">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2 style={{ marginTop: 0 }}>Relatório Semanal de Escala</h2>
-        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-          Semana de {formatarDataPT(semanaRef)}
-        </div>
-      </div>
-      <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-        Texto pronto a copiar/colar para envio manual por email — publicação semanal às
-        quintas-feiras. As alterações que ocorrerem ficam sempre a cargo do Gerente.
-      </p>
-      {aCarregar ? (
-        <p style={{ color: 'var(--text-muted)' }}>A carregar…</p>
-      ) : erroCarregar ? (
-        <p style={{ color: 'var(--status-vermelho)', fontSize: '0.85rem' }}>
-          Não foi possível carregar os dados da escala/férias: {erroCarregar}. Não copies um
-          relatório gerado sem estes dados — tenta recarregar a página.
+    <Card>
+      <CardHeader className="flex-row items-center justify-between space-y-0">
+        <CardTitle>Relatório Semanal de Escala</CardTitle>
+        <div className="text-sm text-zinc-500">Semana de {formatarDataPT(semanaRef)}</div>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        <p className="text-sm text-zinc-500">
+          Texto pronto a copiar/colar para envio manual por email — publicação semanal às quintas-feiras. As
+          alterações que ocorrerem ficam sempre a cargo do Gerente.
         </p>
-      ) : (
-        <>
-          <textarea readOnly value={texto} style={{ width: '100%', height: 320, fontFamily: 'var(--font-mono)' }} />
-          <button className="btn btn-primary" onClick={copiar} style={{ marginTop: '0.75rem' }}>
-            {copiado ? 'Copiado!' : 'Copiar texto'}
-          </button>
-        </>
-      )}
-    </div>
+        {aCarregar ? (
+          <p className="text-sm text-zinc-400">A carregar…</p>
+        ) : erroCarregar ? (
+          <p className="text-sm text-red-600">
+            Não foi possível carregar os dados da escala/férias: {erroCarregar}. Não copies um relatório gerado sem
+            estes dados — tenta recarregar a página.
+          </p>
+        ) : (
+          <>
+            <Textarea readOnly value={texto} className="h-80 font-mono text-xs" />
+            <Button onClick={copiar} className="self-start">
+              {copiado ? 'Copiado!' : 'Copiar texto'}
+            </Button>
+          </>
+        )}
+      </CardContent>
+    </Card>
   )
 }

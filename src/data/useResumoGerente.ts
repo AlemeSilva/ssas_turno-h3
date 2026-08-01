@@ -111,6 +111,9 @@ export function useResumoGerente(ativo: boolean): ResumoGerente {
       voluntario: true,
       confirmado_em: new Date().toISOString(),
     })
+    if (error?.code === '23505') {
+      return { error: 'Este feriado já foi confirmado por outra pessoa entretanto.' }
+    }
     return { error: error?.message ?? null }
   }
 

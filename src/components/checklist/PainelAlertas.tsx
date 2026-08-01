@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import { supabase } from '../../lib/supabase'
-import { useAuth } from '../../auth/AuthContext'
-import { useDebounce } from '../../lib/hooks/useDebounce'
-import type { CadeiaDiaria, TarefaPlano } from '../../types/database'
-import { avaliarAlertaReativo, avaliarRiscoGirFl, estaHrLimiteEstourado, isoWeekdayDe } from '../../lib/alertas'
-import { agora as getNow } from '../../lib/datas'
+import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/auth/AuthContext'
+import { useDebounce } from '@/lib/hooks/useDebounce'
+import type { CadeiaDiaria, TarefaPlano } from '@/types/database'
+import { avaliarAlertaReativo, avaliarRiscoGirFl, estaHrLimiteEstourado, isoWeekdayDe } from '@/lib/alertas'
+import { agora as getNow } from '@/lib/datas'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 interface Props {
   tarefas: TarefaPlano[]
@@ -16,6 +18,34 @@ interface Props {
 function agoraHHMM(): string {
   const d = getNow()
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+function LinhaAlerta({
+  rotuloBadge,
+  badgeClassName,
+  descricao,
+  registado,
+  onRegistar,
+}: {
+  rotuloBadge: string
+  badgeClassName: string
+  descricao: string
+  registado: boolean
+  onRegistar: () => void
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-sm text-zinc-700">
+        <span className={`mr-1.5 inline-flex items-center rounded-md border px-1.5 py-0.5 text-[0.65rem] font-medium ${badgeClassName}`}>
+          {rotuloBadge}
+        </span>
+        {descricao}
+      </span>
+      <Button variant="destructive" size="sm" disabled={registado} onClick={onRegistar}>
+        {registado ? 'Acionamento registado' : 'Registar acionamento ao Gerente'}
+      </Button>
+    </div>
+  )
 }
 
 export function PainelAlertas({ tarefas, cadeias, dependenciasGirFl: nomesDependenciasGirFl, ehManutencao }: Props) {
@@ -56,77 +86,80 @@ export function PainelAlertas({ tarefas, cadeias, dependenciasGirFl: nomesDepend
   const checagem15hAtiva =
     diaSemanaIso === 6 && ehManutencao && avaliarAlertaReativo('15:00', agora, 30) !== 'FUTURO'
 
-
   if (tarefasComHrLimiteEstourado.length === 0 && !girFlEmRisco && !checagem20hAtiva && !checagem15hAtiva) {
     return null
   }
 
   return (
-    <div className="card" style={{ borderColor: 'var(--status-vermelho)' }}>
-      <h3 style={{ marginTop: 0, color: 'var(--status-vermelho)' }}>Alertas ativos</h3>
+    <Card className="border-red-200">
+      <CardHeader>
+        <CardTitle className="text-red-600">Alertas ativos</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-2.5">
+        {tarefasComHrLimiteEstourado.map((t) => {
+          const chave = `hrlimite-${t.id}`
+          return (
+            <LinhaAlerta
+              key={chave}
+              rotuloBadge="HR. LIMITE"
+              badgeClassName="border-red-100 bg-red-50 text-red-700"
+              descricao={`${t.descricao_tarefa} — limite ${t.hr_limite}`}
+              registado={registados.has(chave)}
+              onRegistar={() =>
+                registarAcionamentoDebounced(
+                  'ESCALONAMENTO_HR_LIMITE',
+                  chave,
+                  'TAREFA_PLANO',
+                  t.id,
+                  `HR.LIMITE estourado: ${t.descricao_tarefa}`
+                )
+              }
+            />
+          )
+        })}
 
-      {tarefasComHrLimiteEstourado.map((t) => {
-        const chave = `hrlimite-${t.id}`
-        return (
-          <div key={chave} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-            <span style={{ fontSize: '0.8rem' }}>
-              <span className="badge badge-vermelho">HR. LIMITE</span> {t.descricao_tarefa} — limite {t.hr_limite}
-            </span>
-            <button
-              className="btn btn-danger"
-              disabled={registados.has(chave)}
-              onClick={() => registarAcionamentoDebounced('ESCALONAMENTO_HR_LIMITE', chave, 'TAREFA_PLANO', t.id, `HR.LIMITE estourado: ${t.descricao_tarefa}`)}
-            >
-              {registados.has(chave) ? 'Acionamento registado' : 'Registar acionamento ao Gerente'}
-            </button>
-          </div>
-        )
-      })}
+        {girFlEmRisco && (
+          <LinhaAlerta
+            rotuloBadge="GIR_FL"
+            badgeClassName="border-red-100 bg-red-50 text-red-700"
+            descricao="Risco de colisão às 22h — blocos remanescentes de Sábado ainda não concluídos."
+            registado={registados.has('girfl')}
+            onRegistar={() =>
+              registarAcionamentoDebounced('ESCALONAMENTO_GIR_FL', 'girfl', 'CADEIA', null, 'Risco de colisão GIR_FL às 22h')
+            }
+          />
+        )}
 
-      {girFlEmRisco && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-          <span style={{ fontSize: '0.8rem' }}>
-            <span className="badge badge-vermelho">GIR_FL</span> Risco de colisão às 22h — blocos remanescentes de Sábado ainda não concluídos.
-          </span>
-          <button
-            className="btn btn-danger"
-            disabled={registados.has('girfl')}
-            onClick={() => registarAcionamentoDebounced('ESCALONAMENTO_GIR_FL', 'girfl', 'CADEIA', null, 'Risco de colisão GIR_FL às 22h')}
-          >
-            {registados.has('girfl') ? 'Acionamento registado' : 'Registar acionamento ao Gerente'}
-          </button>
-        </div>
-      )}
+        {checagem20hAtiva && (
+          <LinhaAlerta
+            rotuloBadge="Checagem"
+            badgeClassName="border-amber-100 bg-amber-50 text-amber-700"
+            descricao="Janela crítica das 20h (Sáb/Dom) em curso."
+            registado={registados.has('checagem20h')}
+            onRegistar={() =>
+              registarAcionamentoDebounced('ESCALONAMENTO_CHECAGEM_20H', 'checagem20h', 'PLANO', null, 'Checagem das 20h acionada')
+            }
+          />
+        )}
 
-      {checagem20hAtiva && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-          <span style={{ fontSize: '0.8rem' }}>
-            <span className="badge badge-amarelo">Checagem</span> Janela crítica das 20h (Sáb/Dom) em curso.
-          </span>
-          <button
-            className="btn btn-ghost"
-            disabled={registados.has('checagem20h')}
-            onClick={() => registarAcionamentoDebounced('ESCALONAMENTO_CHECAGEM_20H', 'checagem20h', 'PLANO', null, 'Checagem das 20h acionada')}
-          >
-            {registados.has('checagem20h') ? 'Acionamento registado' : 'Registar acionamento ao Gerente'}
-          </button>
-        </div>
-      )}
-
-      {checagem15hAtiva && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: '0.8rem' }}>
-            <span className="badge badge-amarelo">Checagem</span> Janela crítica das 15h (Sábado de manutenção) em curso.
-          </span>
-          <button
-            className="btn btn-ghost"
-            disabled={registados.has('checagem15h')}
-            onClick={() => registarAcionamentoDebounced('ESCALONAMENTO_CHECAGEM_15H', 'checagem15h', 'PLANO', null, 'Checagem das 15h de manutenção acionada')}
-          >
-            {registados.has('checagem15h') ? 'Acionamento registado' : 'Registar acionamento ao Gerente'}
-          </button>
-        </div>
-      )}
-    </div>
+        {checagem15hAtiva && (
+          <LinhaAlerta
+            rotuloBadge="Checagem"
+            badgeClassName="border-amber-100 bg-amber-50 text-amber-700"
+            descricao="Janela crítica das 15h (Sábado de manutenção) em curso."
+            registado={registados.has('checagem15h')}
+            onRegistar={() =>
+              registarAcionamentoDebounced(
+                'ESCALONAMENTO_CHECAGEM_15H',
+                'checagem15h',
+                'PLANO',
+                null,
+                'Checagem das 15h de manutenção acionada'
+              )
+            }
+          />
+        )}
+      </CardContent>
+    </Card>
   )
 }

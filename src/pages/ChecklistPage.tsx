@@ -1,13 +1,14 @@
 import { useMemo } from 'react'
-import { usePlanoCiclo } from '../data/usePlanoCiclo'
-import { useChecklistCiclo } from '../data/useChecklistCiclo'
-import { useCadeiasCatalogo } from '../data/useCadeiasCatalogo'
-import { useUsuarios } from '../data/useUsuarios'
-import { semanaRefDe, paraISO, formatarDataPT } from '../lib/datas'
-import { ItemChecklistLinha } from '../components/checklist/ItemChecklistLinha'
-import { CadeiaLinha } from '../components/checklist/CadeiaLinha'
-import { PainelAlertas } from '../components/checklist/PainelAlertas'
-import { SECOES_CHECKLIST } from '../lib/templateTarefas'
+import { usePlanoCiclo } from '@/data/usePlanoCiclo'
+import { useChecklistCiclo } from '@/data/useChecklistCiclo'
+import { useCadeiasCatalogo } from '@/data/useCadeiasCatalogo'
+import { useUsuarios } from '@/data/useUsuarios'
+import { semanaRefDe, paraISO, formatarDataPT } from '@/lib/datas'
+import { ItemChecklistLinha } from '@/components/checklist/ItemChecklistLinha'
+import { CadeiaLinha } from '@/components/checklist/CadeiaLinha'
+import { PainelAlertas } from '@/components/checklist/PainelAlertas'
+import { SECOES_CHECKLIST } from '@/lib/templateTarefas'
+import { Card, CardContent, CardTitle } from '@/components/ui/card'
 
 export function ChecklistPage() {
   const dataInicioCiclo = useMemo(() => paraISO(semanaRefDe(new Date())), [])
@@ -16,17 +17,25 @@ export function ChecklistPage() {
   const { catalogo, dependenciasGirFl } = useCadeiasCatalogo()
   const { usuarios } = useUsuarios()
 
-  if (aCarregarPlano || aCarregarChecklist) return <div className="card">A carregar…</div>
+  if (aCarregarPlano || aCarregarChecklist) {
+    return (
+      <Card>
+        <CardContent className="pt-6 text-sm text-zinc-500">A carregar…</CardContent>
+      </Card>
+    )
+  }
 
   if (!plano) {
     return (
-      <div className="card">
-        <h2 style={{ marginTop: 0 }}>Checklist Ativo</h2>
-        <p style={{ color: 'var(--text-secondary)' }}>
-          Ainda não existe plano criado para o ciclo com início em {formatarDataPT(dataInicioCiclo)}. Cria o plano
-          primeiro no separador "Plano de Fim de Semana".
-        </p>
-      </div>
+      <Card>
+        <CardContent className="flex flex-col gap-2 pt-6">
+          <CardTitle>Checklist Ativo</CardTitle>
+          <p className="text-sm text-zinc-500">
+            Ainda não existe plano criado para o ciclo com início em {formatarDataPT(dataInicioCiclo)}. Cria o plano
+            primeiro no separador "Plano de Fim de Semana".
+          </p>
+        </CardContent>
+      </Card>
     )
   }
 
@@ -35,7 +44,7 @@ export function ChecklistPage() {
   const mostrarResumoFimDeCiclo = new Date().getDay() === 1 && (itensPendentes > 0 || cadeiasPendentes > 0) // Segunda-feira
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+    <div className="flex flex-col gap-5">
       <PainelAlertas
         tarefas={tarefas}
         cadeias={cadeias}
@@ -44,40 +53,42 @@ export function ChecklistPage() {
       />
 
       {mostrarResumoFimDeCiclo && (
-        <div className="card" style={{ borderColor: 'var(--status-amarelo)' }}>
-          <h3 style={{ marginTop: 0, color: 'var(--status-amarelo)' }}>Resumo de pendências do ciclo</h3>
-          <p style={{ fontSize: '0.85rem', margin: 0 }}>
-            {itensPendentes} item(ns) de checklist e {cadeiasPendentes} cadeia(s) ficaram por marcar neste ciclo.
-          </p>
-        </div>
+        <Card className="border-amber-200">
+          <CardContent className="flex flex-col gap-1 pt-6">
+            <CardTitle className="text-amber-600">Resumo de pendências do ciclo</CardTitle>
+            <p className="text-sm text-zinc-700">
+              {itensPendentes} item(ns) de checklist e {cadeiasPendentes} cadeia(s) ficaram por marcar neste ciclo.
+            </p>
+          </CardContent>
+        </Card>
       )}
 
       {SECOES_CHECKLIST.map((secao) => {
         const itensSecao = itens.filter((i) => i.secao === secao.id)
         const cadeiasSecao = cadeias.filter((c) => c.secao === secao.id)
         return (
-          <div key={secao.id} className="card">
-            <h3 style={{ marginTop: 0 }}>{secao.titulo}</h3>
+          <Card key={secao.id}>
+            <CardContent className="flex flex-col pt-6">
+              <CardTitle className="mb-2">{secao.titulo}</CardTitle>
 
-            {itensSecao.map((item) => (
-              <ItemChecklistLinha key={item.id} item={item} usuarios={usuarios} recarregar={recarregar} />
-            ))}
+              {itensSecao.map((item) => (
+                <ItemChecklistLinha key={item.id} item={item} usuarios={usuarios} recarregar={recarregar} />
+              ))}
 
-            {cadeiasSecao.length > 0 && (
-              <>
-                <h4 style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '1rem', marginBottom: '0.5rem' }}>
-                  Acompanhamento das cadeias
-                </h4>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem 1.5rem' }}>
-                  {cadeiasSecao
-                    .sort((a, b) => a.nome_cadeia.localeCompare(b.nome_cadeia))
-                    .map((c) => (
-                      <CadeiaLinha key={c.id} cadeia={c} catalogo={catalogo} recarregar={recarregar} />
-                    ))}
-                </div>
-              </>
-            )}
-          </div>
+              {cadeiasSecao.length > 0 && (
+                <>
+                  <h4 className="mt-4 mb-2 text-xs text-zinc-400">Acompanhamento das cadeias</h4>
+                  <div className="grid grid-cols-3 gap-x-6 gap-y-2">
+                    {cadeiasSecao
+                      .sort((a, b) => a.nome_cadeia.localeCompare(b.nome_cadeia))
+                      .map((c) => (
+                        <CadeiaLinha key={c.id} cadeia={c} catalogo={catalogo} recarregar={recarregar} />
+                      ))}
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
         )
       })}
     </div>

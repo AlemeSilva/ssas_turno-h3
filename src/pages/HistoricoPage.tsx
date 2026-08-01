@@ -1,10 +1,21 @@
-import { useState, type CSSProperties, type FormEvent, type ReactNode } from 'react'
-import { supabase } from '../lib/supabase'
-import { useUsuarios } from '../data/useUsuarios'
-import type { CadeiaDiaria, EscalaSemanal, LogAuditoria, Plano, StatusPlano } from '../types/database'
-import { formatarDataPT } from '../lib/datas'
+import { useState, type FormEvent, type ReactNode } from 'react'
+import { supabase } from '@/lib/supabase'
+import { useUsuarios } from '@/data/useUsuarios'
+import type { CadeiaDiaria, EscalaSemanal, LogAuditoria, Plano, StatusPlano } from '@/types/database'
+import { formatarDataPT } from '@/lib/datas'
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 type Separador = 'ESCALA' | 'PLANO' | 'CADEIAS' | 'AUDITORIA'
+
+// O Select do Radix não aceita value="" (é o valor interno usado para
+// "nada selecionado") — precisamos de um sentinel explícito para a
+// opção "Todos/Todas" poder ser escolhida de volta depois de já teres
+// filtrado por algo, tal como o <option value=""> nativo permitia.
+const TODOS = '__todos__'
 
 const TABS: { id: Separador; label: string }[] = [
   { id: 'ESCALA', label: 'Escala' },
@@ -18,26 +29,24 @@ export function HistoricoPage() {
   const { usuarios } = useUsuarios()
 
   return (
-    <div className="card">
-      <h2 style={{ marginTop: 0 }}>Histórico / Consulta</h2>
+    <Card>
+      <CardContent className="flex flex-col gap-4 pt-6">
+        <CardTitle>Histórico / Consulta</CardTitle>
 
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            className={separador === t.id ? 'btn btn-primary' : 'btn btn-ghost'}
-            onClick={() => setSeparador(t.id)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+        <div className="flex gap-1.5">
+          {TABS.map((t) => (
+            <Button key={t.id} variant={separador === t.id ? 'default' : 'outline'} size="sm" onClick={() => setSeparador(t.id)}>
+              {t.label}
+            </Button>
+          ))}
+        </div>
 
-      {separador === 'ESCALA' && <FiltroEscala usuarios={usuarios} />}
-      {separador === 'PLANO' && <FiltroPlano />}
-      {separador === 'CADEIAS' && <FiltroCadeias />}
-      {separador === 'AUDITORIA' && <FiltroAuditoria usuarios={usuarios} />}
-    </div>
+        {separador === 'ESCALA' && <FiltroEscala usuarios={usuarios} />}
+        {separador === 'PLANO' && <FiltroPlano />}
+        {separador === 'CADEIAS' && <FiltroCadeias />}
+        {separador === 'AUDITORIA' && <FiltroAuditoria usuarios={usuarios} />}
+      </CardContent>
+    </Card>
   )
 }
 
@@ -65,60 +74,67 @@ function FiltroEscala({ usuarios }: { usuarios: { id: string; nome: string }[] }
 
   return (
     <div>
-      <form onSubmit={pesquisar} style={{ display: 'flex', gap: '0.6rem', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+      <form onSubmit={pesquisar} className="mb-4 flex flex-wrap items-end gap-2.5">
         <Campo label="Pessoa">
-          <select value={usuarioId} onChange={(e) => setUsuarioId(e.target.value)}>
-            <option value="">Todas</option>
-            {usuarios.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.nome}
-              </option>
-            ))}
-          </select>
+          <Select value={usuarioId || TODOS} onValueChange={(v) => setUsuarioId(v === TODOS ? '' : v)}>
+            <SelectTrigger className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={TODOS}>Todas</SelectItem>
+              {usuarios.map((u) => (
+                <SelectItem key={u.id} value={u.id}>
+                  {u.nome}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </Campo>
         <Campo label="Turno">
-          <select value={turno} onChange={(e) => setTurno(e.target.value)}>
-            <option value="">Todos</option>
-            <option value="H1">H1</option>
-            <option value="H2">H2</option>
-            <option value="H3">H3</option>
-            <option value="H4">H4</option>
-          </select>
+          <Select value={turno || TODOS} onValueChange={(v) => setTurno(v === TODOS ? '' : v)}>
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={TODOS}>Todos</SelectItem>
+              {['H1', 'H2', 'H3', 'H4'].map((t) => (
+                <SelectItem key={t} value={t}>
+                  {t}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </Campo>
         <Campo label="De">
-          <input type="date" value={de} onChange={(e) => setDe(e.target.value)} />
+          <Input type="date" value={de} onChange={(e) => setDe(e.target.value)} />
         </Campo>
         <Campo label="Até">
-          <input type="date" value={ate} onChange={(e) => setAte(e.target.value)} />
+          <Input type="date" value={ate} onChange={(e) => setAte(e.target.value)} />
         </Campo>
-        <button className="btn btn-primary" type="submit">
-          Pesquisar
-        </button>
+        <Button type="submit">Pesquisar</Button>
       </form>
 
-      <table style={{ width: '100%', fontSize: '0.8rem', borderCollapse: 'collapse' }}>
+      <table className="w-full border-collapse text-sm">
         <thead>
           <tr>
-            <th style={th()}>Semana</th>
-            <th style={th()}>Pessoa</th>
-            <th style={th()}>Turno</th>
+            <Th>Semana</Th>
+            <Th>Pessoa</Th>
+            <Th>Turno</Th>
           </tr>
         </thead>
         <tbody>
           {resultados.map((r) => (
             <tr key={r.id}>
-              <td style={td()}>{formatarDataPT(r.semana_ref)}</td>
-              <td style={td()}>{nomeDe(r.usuario_id)}</td>
-              <td style={td()}>
-                <span className="badge badge-neutro">{r.turno}</span>
-              </td>
+              <Td>{formatarDataPT(r.semana_ref)}</Td>
+              <Td>{nomeDe(r.usuario_id)}</Td>
+              <Td>
+                <ChipNeutro>{r.turno}</ChipNeutro>
+              </Td>
             </tr>
           ))}
           {resultados.length === 0 && (
             <tr>
-              <td style={td()} colSpan={3}>
-                Sem resultados — ajusta os filtros e pesquisa.
-              </td>
+              <Td colSpan={3}>Sem resultados — ajusta os filtros e pesquisa.</Td>
             </tr>
           )}
         </tbody>
@@ -148,48 +164,49 @@ function FiltroAuditoria({ usuarios }: { usuarios: { id: string; nome: string }[
 
   return (
     <div>
-      <form onSubmit={pesquisar} style={{ display: 'flex', gap: '0.6rem', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+      <form onSubmit={pesquisar} className="mb-4 flex flex-wrap items-end gap-2.5">
         <Campo label="Pessoa">
-          <select value={usuarioId} onChange={(e) => setUsuarioId(e.target.value)}>
-            <option value="">Todas</option>
-            {usuarios.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.nome}
-              </option>
-            ))}
-          </select>
+          <Select value={usuarioId || TODOS} onValueChange={(v) => setUsuarioId(v === TODOS ? '' : v)}>
+            <SelectTrigger className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={TODOS}>Todas</SelectItem>
+              {usuarios.map((u) => (
+                <SelectItem key={u.id} value={u.id}>
+                  {u.nome}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </Campo>
         <Campo label="Tipo de ação (texto)">
-          <input value={acao} onChange={(e) => setAcao(e.target.value)} placeholder="ex.: ESCALONAMENTO" />
+          <Input value={acao} onChange={(e) => setAcao(e.target.value)} placeholder="ex.: ESCALONAMENTO" />
         </Campo>
-        <button className="btn btn-primary" type="submit">
-          Pesquisar
-        </button>
+        <Button type="submit">Pesquisar</Button>
       </form>
 
-      <table style={{ width: '100%', fontSize: '0.8rem', borderCollapse: 'collapse' }}>
+      <table className="w-full border-collapse text-sm">
         <thead>
           <tr>
-            <th style={th()}>Data/hora</th>
-            <th style={th()}>Ação</th>
-            <th style={th()}>Utilizador</th>
-            <th style={th()}>Descrição</th>
+            <Th>Data/hora</Th>
+            <Th>Ação</Th>
+            <Th>Utilizador</Th>
+            <Th>Descrição</Th>
           </tr>
         </thead>
         <tbody>
           {resultados.map((r) => (
             <tr key={r.id}>
-              <td style={td()}>{new Date(r.data_hora).toLocaleString('pt-PT')}</td>
-              <td style={td()}>{r.acao}</td>
-              <td style={td()}>{nomeDe(r.id_usuario)}</td>
-              <td style={td()}>{r.descricao_detalhada}</td>
+              <Td>{new Date(r.data_hora).toLocaleString('pt-PT')}</Td>
+              <Td>{r.acao}</Td>
+              <Td>{nomeDe(r.id_usuario)}</Td>
+              <Td>{r.descricao_detalhada}</Td>
             </tr>
           ))}
           {resultados.length === 0 && (
             <tr>
-              <td style={td()} colSpan={4}>
-                Sem resultados — ajusta os filtros e pesquisa.
-              </td>
+              <Td colSpan={4}>Sem resultados — ajusta os filtros e pesquisa.</Td>
             </tr>
           )}
         </tbody>
@@ -224,48 +241,66 @@ function FiltroPlano() {
 
   return (
     <div>
-      <form onSubmit={pesquisar} style={{ display: 'flex', gap: '0.6rem', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+      <form onSubmit={pesquisar} className="mb-4 flex flex-wrap items-end gap-2.5">
         <Campo label="Início do ciclo — De">
-          <input type="date" value={de} onChange={(e) => setDe(e.target.value)} />
+          <Input type="date" value={de} onChange={(e) => setDe(e.target.value)} />
         </Campo>
         <Campo label="Até">
-          <input type="date" value={ate} onChange={(e) => setAte(e.target.value)} />
+          <Input type="date" value={ate} onChange={(e) => setAte(e.target.value)} />
         </Campo>
         <Campo label="Estado">
-          <select value={status} onChange={(e) => setStatus(e.target.value as StatusPlano | '')}>
-            <option value="">Todos</option>
-            {(Object.keys(STATUS_PLANO_LABELS) as StatusPlano[]).map((s) => (
-              <option key={s} value={s}>{STATUS_PLANO_LABELS[s]}</option>
-            ))}
-          </select>
+          <Select value={status || TODOS} onValueChange={(v) => setStatus(v === TODOS ? '' : (v as StatusPlano))}>
+            <SelectTrigger className="w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={TODOS}>Todos</SelectItem>
+              {(Object.keys(STATUS_PLANO_LABELS) as StatusPlano[]).map((s) => (
+                <SelectItem key={s} value={s}>
+                  {STATUS_PLANO_LABELS[s]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </Campo>
-        <button className="btn btn-primary" type="submit">Pesquisar</button>
+        <Button type="submit">Pesquisar</Button>
       </form>
 
-      <table style={{ width: '100%', fontSize: '0.8rem', borderCollapse: 'collapse' }}>
+      <table className="w-full border-collapse text-sm">
         <thead>
           <tr>
-            <th style={th()}>Ciclo</th>
-            <th style={th()}>Tipo F. Semana</th>
-            <th style={th()}>Estado</th>
-            <th style={th()}>Criado em</th>
+            <Th>Ciclo</Th>
+            <Th>Tipo F. Semana</Th>
+            <Th>Estado</Th>
+            <Th>Criado em</Th>
           </tr>
         </thead>
         <tbody>
           {resultados.map((r) => (
             <tr key={r.id}>
-              <td style={td()}>{formatarDataPT(r.data_inicio_ciclo)}</td>
-              <td style={td()}>{r.tipo_fim_semana}</td>
-              <td style={td()}>
-                <span className={`badge ${r.status === 'APROVADO' || r.status === 'CONCLUIDO' ? 'badge-verde' : r.status === 'EM_EXECUCAO' ? 'badge-lock' : 'badge-amarelo'}`}>
+              <Td>{formatarDataPT(r.data_inicio_ciclo)}</Td>
+              <Td>{r.tipo_fim_semana}</Td>
+              <Td>
+                <span
+                  className={cn(
+                    'inline-flex items-center rounded-md border px-1.5 py-0.5 text-[0.65rem] font-medium',
+                    r.status === 'APROVADO' || r.status === 'CONCLUIDO'
+                      ? 'border-emerald-100 bg-emerald-50 text-emerald-700'
+                      : r.status === 'EM_EXECUCAO'
+                        ? 'border-indigo-100 bg-indigo-50 text-indigo-700'
+                        : 'border-amber-100 bg-amber-50 text-amber-700'
+                  )}
+                >
                   {STATUS_PLANO_LABELS[r.status]}
                 </span>
-              </td>
-              <td style={td()}>{formatarDataPT(r.data_criacao)}</td>
+              </Td>
+              <Td>{formatarDataPT(r.data_criacao)}</Td>
             </tr>
           ))}
           {resultados.length === 0 && (
-            <tr><td style={td()} colSpan={4}>Sem resultados — ajusta os filtros e pesquisa.</td></tr>
+            <tr>
+              <Td colSpan={4}>Sem resultados — ajusta os filtros e pesquisa.</Td>
+            </tr>
           )}
         </tbody>
       </table>
@@ -291,43 +326,56 @@ function FiltroCadeias() {
 
   return (
     <div>
-      <form onSubmit={pesquisar} style={{ display: 'flex', gap: '0.6rem', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+      <form onSubmit={pesquisar} className="mb-4 flex flex-wrap items-end gap-2.5">
         <Campo label="Data — De">
-          <input type="date" value={de} onChange={(e) => setDe(e.target.value)} />
+          <Input type="date" value={de} onChange={(e) => setDe(e.target.value)} />
         </Campo>
         <Campo label="Até">
-          <input type="date" value={ate} onChange={(e) => setAte(e.target.value)} />
+          <Input type="date" value={ate} onChange={(e) => setAte(e.target.value)} />
         </Campo>
         <Campo label="Nome da cadeia">
-          <input value={nomeCadeia} onChange={(e) => setNomeCadeia(e.target.value)} placeholder="ex.: GIR_FL" />
+          <Input value={nomeCadeia} onChange={(e) => setNomeCadeia(e.target.value)} placeholder="ex.: GIR_FL" />
         </Campo>
-        <button className="btn btn-primary" type="submit">Pesquisar</button>
+        <Button type="submit">Pesquisar</Button>
       </form>
 
-      <table style={{ width: '100%', fontSize: '0.8rem', borderCollapse: 'collapse' }}>
+      <table className="w-full border-collapse text-sm">
         <thead>
           <tr>
-            <th style={th()}>Data</th>
-            <th style={th()}>Cadeia</th>
-            <th style={th()}>Secção</th>
-            <th style={th()}>Estado</th>
+            <Th>Data</Th>
+            <Th>Cadeia</Th>
+            <Th>Secção</Th>
+            <Th>Estado</Th>
           </tr>
         </thead>
         <tbody>
           {resultados.map((r) => (
             <tr key={r.id}>
-              <td style={td()}>{formatarDataPT(r.data)}</td>
-              <td style={td()}>{r.nome_cadeia}</td>
-              <td style={td()} >{r.secao}</td>
-              <td style={td()}>
-                <span className={`badge ${r.status === 'CONCLUIDO_AUTOMATICO' || r.status === 'CONCLUIDO_MANUAL' ? 'badge-verde' : r.status === 'ATRASADO' ? 'badge-vermelho' : r.status === 'EM_ANDAMENTO' ? 'badge-lock' : 'badge-neutro'}`}>
+              <Td>{formatarDataPT(r.data)}</Td>
+              <Td>{r.nome_cadeia}</Td>
+              <Td>{r.secao}</Td>
+              <Td>
+                <span
+                  className={cn(
+                    'inline-flex items-center rounded-md border px-1.5 py-0.5 text-[0.65rem] font-medium',
+                    r.status === 'CONCLUIDO_AUTOMATICO' || r.status === 'CONCLUIDO_MANUAL'
+                      ? 'border-emerald-100 bg-emerald-50 text-emerald-700'
+                      : r.status === 'ATRASADO'
+                        ? 'border-red-100 bg-red-50 text-red-700'
+                        : r.status === 'EM_ANDAMENTO'
+                          ? 'border-indigo-100 bg-indigo-50 text-indigo-700'
+                          : 'border-zinc-200 bg-zinc-100 text-zinc-500'
+                  )}
+                >
                   {r.status.replace(/_/g, ' ')}
                 </span>
-              </td>
+              </Td>
             </tr>
           ))}
           {resultados.length === 0 && (
-            <tr><td style={td()} colSpan={4}>Sem resultados — ajusta os filtros e pesquisa.</td></tr>
+            <tr>
+              <Td colSpan={4}>Sem resultados — ajusta os filtros e pesquisa.</Td>
+            </tr>
           )}
         </tbody>
       </table>
@@ -337,17 +385,29 @@ function FiltroCadeias() {
 
 function Campo({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <label style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+    <label className="flex flex-col gap-1 text-xs text-zinc-500">
       {label}
       {children}
     </label>
   )
 }
 
-function th(): CSSProperties {
-  return { textAlign: 'left', padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)' }
+function Th({ children }: { children?: ReactNode }) {
+  return <th className="border-b border-zinc-100 px-2 py-1.5 text-left text-xs font-medium text-zinc-400">{children}</th>
 }
 
-function td(): CSSProperties {
-  return { padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border-subtle)' }
+function Td({ children, colSpan }: { children?: ReactNode; colSpan?: number }) {
+  return (
+    <td className="border-b border-zinc-100 px-2 py-1.5" colSpan={colSpan}>
+      {children}
+    </td>
+  )
+}
+
+function ChipNeutro({ children }: { children: ReactNode }) {
+  return (
+    <span className="inline-flex items-center rounded-md border border-zinc-200 bg-zinc-100 px-1.5 py-0.5 text-[0.65rem] font-medium text-zinc-500">
+      {children}
+    </span>
+  )
 }

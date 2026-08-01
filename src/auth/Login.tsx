@@ -1,5 +1,9 @@
 import { useState, type FormEvent } from 'react'
-import { supabase } from '../lib/supabase'
+import { Lock } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 
 export function Login() {
   const [email, setEmail] = useState('')
@@ -21,74 +25,37 @@ export function Login() {
   }
 
   return (
-    <div
-      className="legacy-theme"
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'var(--bg-app)',
-      }}
-    >
-      <form onSubmit={handleSubmit} className="card" style={{ width: 380 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.5rem' }}>
-          <LockMark />
+    <div className="flex min-h-screen items-center justify-center bg-zinc-50">
+      <Card className="w-full max-w-sm">
+        <CardHeader className="flex-row items-center gap-2.5 space-y-0">
+          <span className="flex size-9 items-center justify-center rounded-lg bg-indigo-50">
+            <Lock className="size-4 text-indigo-600" />
+          </span>
           <div>
-            <div style={{ fontWeight: 700, fontSize: '1.05rem' }}>Turno H3</div>
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
-              Accenture · Banco Montepio
-            </div>
+            <div className="text-base font-bold text-zinc-900">Turno H3</div>
+            <div className="text-xs text-zinc-500">Accenture · Banco Montepio</div>
           </div>
-        </div>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <label className="flex flex-col gap-1.5 text-sm">
+              <span className="text-xs text-zinc-500">Email</span>
+              <Input type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} />
+            </label>
 
-        <label style={{ display: 'block', marginBottom: '0.9rem' }}>
-          <span style={{ display: 'block', fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>
-            Email
-          </span>
-          <input
-            type="email"
-            required
-            autoFocus
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            style={{ width: '100%' }}
-          />
-        </label>
+            <label className="flex flex-col gap-1.5 text-sm">
+              <span className="text-xs text-zinc-500">Palavra-passe</span>
+              <Input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+            </label>
 
-        <label style={{ display: 'block', marginBottom: '1.2rem' }}>
-          <span style={{ display: 'block', fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>
-            Palavra-passe
-          </span>
-          <input
-            type="password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            style={{ width: '100%' }}
-          />
-        </label>
+            {erro && <p className="text-sm text-red-600">{erro}</p>}
 
-        {erro && (
-          <div className="badge badge-vermelho" style={{ display: 'flex', marginBottom: '1rem', width: '100%' }}>
-            {erro}
-          </div>
-        )}
-
-        <button type="submit" className="btn btn-primary" disabled={aEnviar} style={{ width: '100%', justifyContent: 'center' }}>
-          {aEnviar ? 'A entrar…' : 'Entrar'}
-        </button>
-      </form>
+            <Button type="submit" disabled={aEnviar} className="w-full">
+              {aEnviar ? 'A entrar…' : 'Entrar'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
-  )
-}
-
-function LockMark() {
-  return (
-    <svg width="30" height="30" viewBox="0 0 32 32">
-      <rect width="32" height="32" rx="7" fill="var(--bg-surface-raised)" />
-      <path d="M11 15v-3a5 5 0 0 1 10 0v3" fill="none" stroke="var(--accent-primary)" strokeWidth="2.4" strokeLinecap="round" />
-      <rect x="9" y="15" width="14" height="11" rx="2.5" fill="var(--accent-secondary)" />
-    </svg>
   )
 }
