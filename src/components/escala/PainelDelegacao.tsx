@@ -1,8 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { supabase } from '../../lib/supabase'
-import { useAuth } from '../../auth/AuthContext'
-import type { DelegacaoAprovacao, Usuario } from '../../types/database'
-import { formatarDataPT } from '../../lib/datas'
+import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/auth/AuthContext'
+import type { DelegacaoAprovacao, Usuario } from '@/types/database'
+import { formatarDataPT } from '@/lib/datas'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 export function PainelDelegacao({ usuarios }: { usuarios: Usuario[] }) {
   const { usuario } = useAuth()
@@ -14,6 +18,7 @@ export function PainelDelegacao({ usuarios }: { usuarios: Usuario[] }) {
   const [aEnviar, setAEnviar] = useState(false)
 
   const souGerenteTitular = usuario?.perfil === 'GERENTE'
+  const candidatos = usuarios.filter((u) => u.id !== usuario?.id)
 
   async function carregar() {
     const { data } = await supabase
@@ -31,6 +36,13 @@ export function PainelDelegacao({ usuarios }: { usuarios: Usuario[] }) {
   async function criar(e: FormEvent) {
     e.preventDefault()
     if (!usuario) return
+    // Ver comentário equivalente em PainelTrocas.tsx — o <Select> não é
+    // um <select> nativo, por isso repõe-se manualmente a validação que
+    // o "required" nativo garantia antes.
+    if (!substitutoId) {
+      setErro('Escolhe um substituto.')
+      return
+    }
     setErro(null)
     setAEnviar(true)
     const { error } = await supabase.from('delegacoes_aprovacao').insert({
@@ -57,46 +69,54 @@ export function PainelDelegacao({ usuarios }: { usuarios: Usuario[] }) {
   if (!souGerenteTitular) return null
 
   return (
-    <div className="card">
-      <h3 style={{ marginTop: 0 }}>Delegação de Aprovação</h3>
-      <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 0 }}>
-        Aditiva — mantém sempre o teu próprio poder de aprovar durante a janela.
-      </p>
+    <Card>
+      <CardHeader>
+        <CardTitle>Delegação de Aprovação</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <p className="-mt-2 text-xs text-zinc-400">
+          Aditiva — mantém sempre o teu próprio poder de aprovar durante a janela.
+        </p>
 
-      <form onSubmit={criar} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
-        <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-          Substituto
-          <select required value={substitutoId} onChange={(e) => setSubstitutoId(e.target.value)} style={{ width: '100%', marginTop: '0.2rem' }}>
-            <option value="">Selecionar…</option>
-            {usuarios.filter((u) => u.id !== usuario?.id).map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.nome}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-          De
-          <input type="date" required value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} style={{ width: '100%', marginTop: '0.2rem' }} />
-        </label>
-        <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-          Até
-          <input type="date" required value={dataFim} onChange={(e) => setDataFim(e.target.value)} style={{ width: '100%', marginTop: '0.2rem' }} />
-        </label>
-        {erro && <div className="badge badge-vermelho" style={{ display: 'block' }}>{erro}</div>}
-        <button className="btn btn-secondary" type="submit" disabled={aEnviar}>
-          {aEnviar ? 'A criar…' : 'Criar delegação'}
-        </button>
-      </form>
+        <form onSubmit={criar} className="flex flex-col gap-2">
+          <label className="flex flex-col gap-1 text-xs text-zinc-500">
+            Substituto
+            <Select value={substitutoId} onValueChange={setSubstitutoId}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Selecionar…" />
+              </SelectTrigger>
+              <SelectContent>
+                {candidatos.map((u) => (
+                  <SelectItem key={u.id} value={u.id}>
+                    {u.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </label>
+          <label className="flex flex-col gap-1 text-xs text-zinc-500">
+            De
+            <Input type="date" required value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} />
+          </label>
+          <label className="flex flex-col gap-1 text-xs text-zinc-500">
+            Até
+            <Input type="date" required value={dataFim} onChange={(e) => setDataFim(e.target.value)} />
+          </label>
+          {erro && <p className="text-xs text-red-600">{erro}</p>}
+          <Button type="submit" variant="secondary" disabled={aEnviar}>
+            {aEnviar ? 'A criar…' : 'Criar delegação'}
+          </Button>
+        </form>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-        {delegacoes.length === 0 && <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Sem delegações ativas.</p>}
-        {delegacoes.map((d) => (
-          <div key={d.id} style={{ fontSize: '0.78rem' }}>
-            {nomeDe(d.substituto)} · {formatarDataPT(d.data_inicio)} a {formatarDataPT(d.data_fim)}
-          </div>
-        ))}
-      </div>
-    </div>
+        <div className="flex flex-col gap-1.5">
+          {delegacoes.length === 0 && <p className="text-sm text-zinc-400">Sem delegações ativas.</p>}
+          {delegacoes.map((d) => (
+            <div key={d.id} className="text-sm text-zinc-700">
+              {nomeDe(d.substituto)} · {formatarDataPT(d.data_inicio)} a {formatarDataPT(d.data_fim)}
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   )
 }

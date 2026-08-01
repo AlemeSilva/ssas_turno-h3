@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { supabase } from '../../lib/supabase'
-import { useAuth } from '../../auth/AuthContext'
-import { useDebounce } from '../../lib/hooks/useDebounce'
-import { usuariosH3Ativos } from '../../data/useUsuarios'
-import type { TrocaEscala, Usuario } from '../../types/database'
-import { formatarDataPT } from '../../lib/datas'
+import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/auth/AuthContext'
+import { useDebounce } from '@/lib/hooks/useDebounce'
+import { usuariosH3Ativos } from '@/data/useUsuarios'
+import type { TrocaEscala, Usuario } from '@/types/database'
+import { formatarDataPT } from '@/lib/datas'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 export function PainelTrocas({ usuarios }: { usuarios: Usuario[] }) {
   const { usuario, ehGerenteOuDelegado } = useAuth()
@@ -14,7 +18,7 @@ export function PainelTrocas({ usuarios }: { usuarios: Usuario[] }) {
   const [erro, setErro] = useState<string | null>(null)
   const [aEnviar, setAEnviar] = useState(false)
 
-  const elegiveisH3 = usuariosH3Ativos(usuarios)
+  const elegiveisH3 = usuariosH3Ativos(usuarios).filter((u) => u.id !== usuario?.id)
   const souOperadorH3 = usuario?.perfil === 'OPERADOR_H3'
 
   // Ver comentário equivalente em PainelFerias.tsx — descarta respostas
@@ -43,6 +47,14 @@ export function PainelTrocas({ usuarios }: { usuarios: Usuario[] }) {
   async function propor(e: FormEvent) {
     e.preventDefault()
     if (!usuario) return
+    // O <Select> do shadcn/Radix não é um <select> nativo, por isso não
+    // participa na validação HTML do formulário (o "required" nativo
+    // que antes impedia submissão sem substituto escolhido) — a
+    // verificação abaixo repõe essa mesma proteção manualmente.
+    if (!substitutoId) {
+      setErro('Escolhe um substituto.')
+      return
+    }
     setErro(null)
     setAEnviar(true)
     const { error } = await supabase.from('trocas_escala').insert({
@@ -76,55 +88,64 @@ export function PainelTrocas({ usuarios }: { usuarios: Usuario[] }) {
   }
 
   return (
-    <div className="card">
-      <h3 style={{ marginTop: 0 }}>Trocas de H3</h3>
+    <Card>
+      <CardHeader>
+        <CardTitle>Trocas de H3</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        {souOperadorH3 && (
+          <form onSubmit={propor} className="flex flex-col gap-2">
+            <label className="flex flex-col gap-1 text-xs text-zinc-500">
+              Semana (Quinta de referência)
+              <Input type="date" required value={semanaRef} onChange={(e) => setSemanaRef(e.target.value)} />
+            </label>
+            <label className="flex flex-col gap-1 text-xs text-zinc-500">
+              Substituto
+              <Select value={substitutoId} onValueChange={setSubstitutoId}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Selecionar…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {elegiveisH3.map((u) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </label>
+            {erro && <p className="text-xs text-red-600">{erro}</p>}
+            <Button type="submit" variant="secondary" disabled={aEnviar}>
+              {aEnviar ? 'A enviar…' : 'Propor troca'}
+            </Button>
+          </form>
+        )}
 
-      {souOperadorH3 && (
-        <form onSubmit={propor} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
-          <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-            Semana (Quinta de referência)
-            <input type="date" required value={semanaRef} onChange={(e) => setSemanaRef(e.target.value)} style={{ width: '100%', marginTop: '0.2rem' }} />
-          </label>
-          <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-            Substituto
-            <select required value={substitutoId} onChange={(e) => setSubstitutoId(e.target.value)} style={{ width: '100%', marginTop: '0.2rem' }}>
-              <option value="">Selecionar…</option>
-              {elegiveisH3.filter((u) => u.id !== usuario?.id).map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.nome}
-                </option>
-              ))}
-            </select>
-          </label>
-          {erro && <div className="badge badge-vermelho" style={{ display: 'block' }}>{erro}</div>}
-          <button className="btn btn-secondary" type="submit" disabled={aEnviar}>
-            {aEnviar ? 'A enviar…' : 'Propor troca'}
-          </button>
-        </form>
-      )}
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-        {trocas.length === 0 && <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Sem trocas propostas.</p>}
-        {trocas.map((t) => (
-          <div key={t.id} style={{ fontSize: '0.78rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
-            <span>
-              {formatarDataPT(t.semana_ref)}: {nomeDe(t.usuario_proponente)} → {nomeDe(t.usuario_substituto)}
-            </span>
-            {ehGerenteOuDelegado ? (
-              <span style={{ display: 'flex', gap: '0.3rem' }}>
-                <button className="btn btn-primary" style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }} onClick={() => decidirDebounced(t.id, 'APROVADA')}>
-                  Aprovar
-                </button>
-                <button className="btn btn-danger" style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }} onClick={() => decidirDebounced(t.id, 'REJEITADA')}>
-                  Rejeitar
-                </button>
+        <div className="flex flex-col gap-2">
+          {trocas.length === 0 && <p className="text-sm text-zinc-400">Sem trocas propostas.</p>}
+          {trocas.map((t) => (
+            <div key={t.id} className="flex items-center justify-between gap-2 text-sm">
+              <span className="text-zinc-700">
+                {formatarDataPT(t.semana_ref)}: {nomeDe(t.usuario_proponente)} → {nomeDe(t.usuario_substituto)}
               </span>
-            ) : (
-              <span className="badge badge-amarelo">PROPOSTA</span>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
+              {ehGerenteOuDelegado ? (
+                <span className="flex shrink-0 gap-1.5">
+                  <Button size="xs" onClick={() => decidirDebounced(t.id, 'APROVADA')}>
+                    Aprovar
+                  </Button>
+                  <Button size="xs" variant="destructive" onClick={() => decidirDebounced(t.id, 'REJEITADA')}>
+                    Rejeitar
+                  </Button>
+                </span>
+              ) : (
+                <span className="shrink-0 rounded-md border border-amber-100 bg-amber-50 px-1.5 py-0.5 text-[0.65rem] font-medium text-amber-700">
+                  PROPOSTA
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   )
 }

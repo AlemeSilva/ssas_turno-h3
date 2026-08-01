@@ -99,7 +99,16 @@ body {
   overflow-x: auto;
 }
 
-a {
+/* As regras desta secção são deliberadamente sem camada (unlayered) —
+   por isso vencem sempre as utilities do Tailwind (que vivem dentro de
+   @layer utilities), independentemente de especificidade. Isto é
+   correto para o resto da app, ainda no tema escuro antigo, mas
+   quebraria qualquer <input>/<select>/<a> nativo dentro de um ecrã já
+   migrado para Tailwind/shadcn. Por isso ficam explicitamente
+   restringidas a .legacy-theme, aplicado em App.tsx só às rotas ainda
+   não migradas — à medida que cada ecrã for migrado, essa classe é
+   removida da respetiva rota. */
+.legacy-theme a {
   color: var(--accent-secondary);
 }
 
@@ -211,9 +220,9 @@ a {
   color: var(--accent-primary);
 }
 
-input,
-select,
-textarea {
+.legacy-theme input,
+.legacy-theme select,
+.legacy-theme textarea {
   background: var(--bg-surface-raised);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
@@ -223,9 +232,9 @@ textarea {
   font-size: 0.85rem;
 }
 
-input:focus,
-select:focus,
-textarea:focus {
+.legacy-theme input:focus,
+.legacy-theme select:focus,
+.legacy-theme textarea:focus {
   outline: none;
   border-color: var(--accent-primary);
   box-shadow: var(--focus-ring);

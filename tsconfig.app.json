@@ -16,6 +16,12 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
+    /* Alias usado pelo shadcn/ui — sem baseUrl (TS 6 marca-o como
+       deprecated); paths resolve relativo à localização deste ficheiro. */
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+
     /* Linting */
     "noUnusedLocals": true,
     "noUnusedParameters": true,

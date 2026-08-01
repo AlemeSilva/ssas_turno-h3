@@ -22,6 +22,7 @@ export function Login() {
 
   return (
     <div
+      className="legacy-theme"
       style={{
         minHeight: '100vh',
         display: 'flex',

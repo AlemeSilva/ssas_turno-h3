@@ -1,9 +1,19 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { supabase } from '../../lib/supabase'
-import { useAuth } from '../../auth/AuthContext'
-import { useDebounce } from '../../lib/hooks/useDebounce'
-import type { Ferias, Usuario } from '../../types/database'
-import { formatarDataPT } from '../../lib/datas'
+import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/auth/AuthContext'
+import { useDebounce } from '@/lib/hooks/useDebounce'
+import type { Ferias, Usuario } from '@/types/database'
+import { formatarDataPT } from '@/lib/datas'
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+
+const ESTILO_STATUS: Record<string, string> = {
+  APROVADA: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+  PENDENTE: 'bg-amber-50 text-amber-700 border-amber-100',
+  REJEITADA: 'bg-red-50 text-red-700 border-red-100',
+}
 
 export function PainelFerias({ usuarios }: { usuarios: Usuario[] }) {
   const { usuario, ehGerenteOuDelegado } = useAuth()
@@ -78,47 +88,57 @@ export function PainelFerias({ usuarios }: { usuarios: Usuario[] }) {
   }
 
   return (
-    <div className="card">
-      <h3 style={{ marginTop: 0 }}>Férias</h3>
+    <Card>
+      <CardHeader>
+        <CardTitle>Férias</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <form onSubmit={pedirFerias} className="flex flex-col gap-2">
+          <label className="flex flex-col gap-1 text-xs text-zinc-500">
+            Data de início
+            <Input type="date" required value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} />
+          </label>
+          <label className="flex flex-col gap-1 text-xs text-zinc-500">
+            Data de fim
+            <Input type="date" required value={dataFim} onChange={(e) => setDataFim(e.target.value)} />
+          </label>
+          {erro && <p className="text-xs text-red-600">{erro}</p>}
+          <Button type="submit" variant="secondary" disabled={aEnviar}>
+            {aEnviar ? 'A enviar…' : 'Pedir férias'}
+          </Button>
+        </form>
 
-      <form onSubmit={pedirFerias} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
-        <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-          Data de início
-          <input type="date" required value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} style={{ width: '100%', marginTop: '0.2rem' }} />
-        </label>
-        <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-          Data de fim
-          <input type="date" required value={dataFim} onChange={(e) => setDataFim(e.target.value)} style={{ width: '100%', marginTop: '0.2rem' }} />
-        </label>
-        {erro && <div className="badge badge-vermelho" style={{ display: 'block' }}>{erro}</div>}
-        <button className="btn btn-secondary" type="submit" disabled={aEnviar}>
-          {aEnviar ? 'A enviar…' : 'Pedir férias'}
-        </button>
-      </form>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-        {pedidos.length === 0 && <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Sem pedidos pendentes.</p>}
-        {pedidos.map((f) => (
-          <div key={f.id} style={{ fontSize: '0.78rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
-            <span>
-              {nomeDe(f.usuario_id)} · {formatarDataPT(f.data_inicio)} a {formatarDataPT(f.data_fim)}
-            </span>
-            {f.status === 'PENDENTE' && ehGerenteOuDelegado ? (
-              <span style={{ display: 'flex', gap: '0.3rem' }}>
-                <button className="btn btn-primary" style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }} onClick={() => decidirDebounced(f.id, 'APROVADA')}>
-                  Aprovar
-                </button>
-                <button className="btn btn-danger" style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }} onClick={() => decidirDebounced(f.id, 'REJEITADA')}>
-                  Rejeitar
-                </button>
+        <div className="flex flex-col gap-2">
+          {pedidos.length === 0 && <p className="text-sm text-zinc-400">Sem pedidos pendentes.</p>}
+          {pedidos.map((f) => (
+            <div key={f.id} className="flex items-center justify-between gap-2 text-sm">
+              <span className="text-zinc-700">
+                {nomeDe(f.usuario_id)} · {formatarDataPT(f.data_inicio)} a {formatarDataPT(f.data_fim)}
               </span>
-            ) : (
-              <span className={`badge ${f.status === 'APROVADA' ? 'badge-verde' : 'badge-amarelo'}`}>{f.status}</span>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
+              {f.status === 'PENDENTE' && ehGerenteOuDelegado ? (
+                <span className="flex shrink-0 gap-1.5">
+                  <Button size="xs" onClick={() => decidirDebounced(f.id, 'APROVADA')}>
+                    Aprovar
+                  </Button>
+                  <Button size="xs" variant="destructive" onClick={() => decidirDebounced(f.id, 'REJEITADA')}>
+                    Rejeitar
+                  </Button>
+                </span>
+              ) : (
+                <span
+                  className={cn(
+                    'shrink-0 rounded-md border px-1.5 py-0.5 text-[0.65rem] font-medium',
+                    ESTILO_STATUS[f.status]
+                  )}
+                >
+                  {f.status}
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 

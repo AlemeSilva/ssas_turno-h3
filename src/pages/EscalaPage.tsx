@@ -1,13 +1,28 @@
-import { useMemo, useState, type CSSProperties } from 'react'
-import { useUsuarios } from '../data/useUsuarios'
-import { useEscalaMes } from '../data/useEscalaMes'
-import { adicionarDias, ehFimDeSemana, formatarDataPT, paraISO } from '../lib/datas'
-import type { EscalaSemanal, Ferias, TurnoTipo, Usuario } from '../types/database'
-import { PainelFerias } from '../components/escala/PainelFerias'
-import { PainelTrocas } from '../components/escala/PainelTrocas'
-import { PainelDelegacao } from '../components/escala/PainelDelegacao'
-import { useAuth } from '../auth/AuthContext'
-import { supabase } from '../lib/supabase'
+import { useMemo, useState } from 'react'
+import { ChevronLeft, ChevronRight, Lock, SlidersHorizontal, X } from 'lucide-react'
+import { useUsuarios } from '@/data/useUsuarios'
+import { useEscalaMes } from '@/data/useEscalaMes'
+import { adicionarDias, ehFimDeSemana, formatarDataPT, formatarMesAnoPT, isoWeekday, paraISO } from '@/lib/datas'
+import type { EscalaSemanal, Ferias, TurnoTipo, Usuario } from '@/types/database'
+import { PainelFerias } from '@/components/escala/PainelFerias'
+import { PainelTrocas } from '@/components/escala/PainelTrocas'
+import { PainelDelegacao } from '@/components/escala/PainelDelegacao'
+import { useAuth } from '@/auth/AuthContext'
+import { supabase } from '@/lib/supabase'
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 interface RespostaSugestao {
   semana_ref: string
@@ -25,13 +40,31 @@ function proximaQuinta(): string {
   return paraISO(quinta)
 }
 
-const CLASSE_BADGE: Record<TurnoTipo | 'F', string> = {
-  H1: 'badge-neutro',
-  H2: 'badge-neutro',
-  H3: 'badge-lock',
-  H4: 'badge-neutro',
-  F: 'badge-amarelo',
+const DIAS_SEMANA_ABREV = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
+
+// Uma cor pastel distinta por turno real (não os 3 baldes genéricos
+// manhã/tarde/noite) — H3 leva ainda um ícone de cadeado, por ser o
+// turno restrito a Caique/Bruno/Kilson.
+const ESTILO_TURNO: Record<TurnoTipo, string> = {
+  H1: 'bg-sky-50 text-sky-700 border-sky-100',
+  H2: 'bg-amber-50 text-amber-700 border-amber-100',
+  H3: 'bg-indigo-50 text-indigo-700 border-indigo-100',
+  H4: 'bg-emerald-50 text-emerald-700 border-emerald-100',
 }
+
+const ESTILO_LEGENDA: Record<TurnoTipo, string> = {
+  H1: 'bg-sky-100 border-sky-200',
+  H2: 'bg-amber-100 border-amber-200',
+  H3: 'bg-indigo-100 border-indigo-200',
+  H4: 'bg-emerald-100 border-emerald-200',
+}
+
+const OPCOES_TURNO: { valor: TurnoTipo; rotulo: string }[] = [
+  { valor: 'H1', rotulo: 'H1 — 07h00 às 16h00' },
+  { valor: 'H2', rotulo: 'H2 — 14h00 às 23h00' },
+  { valor: 'H3', rotulo: 'H3 — 22h00 às 07h00' },
+  { valor: 'H4', rotulo: 'H4 — 09h00 às 18h00' },
+]
 
 function linhaDoDia(
   diaISO: string,
@@ -64,13 +97,9 @@ function valorDoDia(
   return turno
 }
 
-const NOMES_MES = [
-  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
-]
-
 export function EscalaPage() {
   const [mesRef, setMesRef] = useState<Date>(() => new Date())
+  const [mostrarFimDeSemana, setMostrarFimDeSemana] = useState(true)
   const { usuarios, aCarregar: aCarregarUsuarios } = useUsuarios()
   const { escalas, ferias, aCarregar: aCarregarEscala } = useEscalaMes(mesRef)
   const { ehGerenteOuDelegado } = useAuth()
@@ -86,14 +115,13 @@ export function EscalaPage() {
     })
   }, [mesRef])
 
-  const anoSelecionavel = new Date().getFullYear()
-  const anosDisponiveis = Array.from({ length: 4 }, (_, i) => anoSelecionavel - 1 + i)
+  const diasVisiveis = useMemo(
+    () => (mostrarFimDeSemana ? dias : dias.filter((d) => !d.fimDeSemana)),
+    [dias, mostrarFimDeSemana]
+  )
 
-  function mudarMes(novoMes: number) {
-    setMesRef(new Date(mesRef.getFullYear(), novoMes, 1))
-  }
-  function mudarAno(novoAno: number) {
-    setMesRef(new Date(novoAno, mesRef.getMonth(), 1))
+  function mudarMes(delta: number) {
+    setMesRef((atual) => new Date(atual.getFullYear(), atual.getMonth() + delta, 1))
   }
 
   const pessoasAtivas = usuarios.filter((u) => u.ativo)
@@ -106,102 +134,118 @@ export function EscalaPage() {
     : undefined
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '1.25rem', alignItems: 'start' }}>
-      <div className="card" style={{ overflow: 'hidden' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <h2 style={{ margin: 0 }}>Escala do Mês</h2>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <div style={{ display: 'flex', gap: '0.4rem' }}>
-              <select
-                aria-label="Mês"
-                value={mesRef.getMonth()}
-                onChange={(e) => mudarMes(Number(e.target.value))}
-                style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
-              >
-                {NOMES_MES.map((nome, i) => (
-                  <option key={nome} value={i}>{nome}</option>
-                ))}
-              </select>
-              <select
-                aria-label="Ano"
-                value={mesRef.getFullYear()}
-                onChange={(e) => mudarAno(Number(e.target.value))}
-                style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
-              >
-                {anosDisponiveis.map((ano) => (
-                  <option key={ano} value={ano}>{ano}</option>
-                ))}
-              </select>
-            </div>
-            {ehGerenteOuDelegado && (
-              <PainelSugestao usuarios={pessoasAtivas} />
-            )}
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_320px] lg:items-start">
+      <Card className="overflow-hidden">
+        <CardHeader className="flex items-center justify-between gap-3 border-b border-zinc-100 pb-4">
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" aria-label="Mês anterior" onClick={() => mudarMes(-1)}>
+              <ChevronLeft className="size-4" />
+            </Button>
+            <CardTitle className="min-w-40 text-center">{formatarMesAnoPT(mesRef)}</CardTitle>
+            <Button variant="ghost" size="icon" aria-label="Mês seguinte" onClick={() => mudarMes(1)}>
+              <ChevronRight className="size-4" />
+            </Button>
+            <Button variant="ghost" size="sm" className="ml-1 text-zinc-500" onClick={() => setMesRef(new Date())}>
+              Hoje
+            </Button>
           </div>
-        </div>
 
-        {aCarregar ? (
-          <p style={{ color: 'var(--text-muted)' }}>A carregar…</p>
-        ) : (
-          <div className="scrollbar-thin" style={{ overflowX: 'auto' }}>
-            <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.72rem' }}>
-              <thead>
-                <tr>
-                  <th style={celulaCabecalho('sticky')}>Nome</th>
-                  {dias.map((d) => (
-                    <th key={d.iso} style={celulaCabecalho(undefined, d.fimDeSemana)}>
-                      {d.numero}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              aria-pressed={!mostrarFimDeSemana}
+              onClick={() => setMostrarFimDeSemana((v) => !v)}
+            >
+              <SlidersHorizontal className="size-3.5" />
+              {mostrarFimDeSemana ? 'Ocultar fins de semana' : 'Mostrar fins de semana'}
+            </Button>
+            {ehGerenteOuDelegado && <PainelSugestao usuarios={pessoasAtivas} />}
+          </div>
+        </CardHeader>
+
+        <CardContent className="px-0">
+          {aCarregar ? (
+            <p className="px-4 text-sm text-zinc-500">A carregar…</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-xs">
+                <thead>
+                  <tr>
+                    <th className="sticky left-0 z-10 min-w-40 border-b border-zinc-100 bg-white px-4 py-2 text-left text-xs font-medium tracking-wider text-zinc-400 uppercase">
+                      Nome
                     </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {pessoasAtivas.map((p) => (
-                  <tr key={p.id}>
-                    <td style={celulaNome()}>
-                      {p.nome}
-                      {p.perfil === 'OPERADOR_H3' && (
-                        <span className="badge badge-lock" style={{ marginLeft: '0.4rem', fontSize: '0.6rem' }}>
-                          H3
-                        </span>
-                      )}
-                    </td>
-                    {dias.map((d) => {
-                      const valor = valorDoDia(d.iso, p.id, escalas, ferias)
-                      const linha = linhaDoDia(d.iso, p.id, escalas)
-                      const editavel = ehGerenteOuDelegado && linha !== undefined
-                      return (
-                        <td
-                          key={d.iso}
-                          style={celulaDia(d.fimDeSemana, editavel)}
-                          onClick={editavel ? () => setCelulaEmEdicao({ usuarioId: p.id, diaISO: d.iso }) : undefined}
-                          title={editavel ? 'Editar turno desta semana' : undefined}
-                        >
-                          {valor && (
-                            <span className={`badge ${CLASSE_BADGE[valor]}`} style={{ fontSize: '0.6rem', padding: '0.1rem 0.3rem' }}>
-                              {valor}
-                            </span>
-                          )}
-                        </td>
-                      )
-                    })}
+                    {diasVisiveis.map((d) => (
+                      <th
+                        key={d.iso}
+                        className={cn(
+                          'min-w-12 border-b border-l border-zinc-100 px-1 py-2 text-center',
+                          d.fimDeSemana && 'bg-zinc-50/70'
+                        )}
+                      >
+                        <div className="text-[0.6rem] font-medium tracking-wider text-zinc-400 uppercase">
+                          {DIAS_SEMANA_ABREV[isoWeekday(new Date(d.iso + 'T00:00:00')) - 1]}
+                        </div>
+                        <div className="text-sm font-semibold text-zinc-800">{d.numero}</div>
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
-          <Legenda cor="badge-lock" texto="H3 (restrito a Caique/Bruno/Kilson)" />
-          <Legenda cor="badge-neutro" texto="H1 / H2 / H4" />
-          <Legenda cor="badge-amarelo" texto="Férias (F)" />
-          {ehGerenteOuDelegado && (
-            <span style={{ color: 'var(--text-muted)' }}>Clica numa célula para editar a semana</span>
+                </thead>
+                <tbody>
+                  {pessoasAtivas.map((p) => (
+                    <tr key={p.id} className="group">
+                      <td className="sticky left-0 z-10 border-b border-zinc-100 bg-white px-4 py-2 font-medium whitespace-nowrap text-zinc-900 group-hover:bg-zinc-50">
+                        <span className="inline-flex items-center gap-1.5">
+                          {p.nome}
+                          {p.perfil === 'OPERADOR_H3' && (
+                            <Badge
+                              variant="outline"
+                              className="gap-0.5 border-indigo-100 bg-indigo-50 px-1.5 text-[0.65rem] text-indigo-700"
+                            >
+                              <Lock className="size-2.5" />
+                              H3
+                            </Badge>
+                          )}
+                        </span>
+                      </td>
+                      {diasVisiveis.map((d) => {
+                        const valor = valorDoDia(d.iso, p.id, escalas, ferias)
+                        const linha = linhaDoDia(d.iso, p.id, escalas)
+                        const editavel = ehGerenteOuDelegado && linha !== undefined
+                        return (
+                          <td
+                            key={d.iso}
+                            className={cn(
+                              'border-b border-l border-zinc-100 px-1 py-1 text-center align-middle',
+                              d.fimDeSemana && 'bg-zinc-50/70',
+                              editavel && 'cursor-pointer hover:bg-zinc-100'
+                            )}
+                            onClick={editavel ? () => setCelulaEmEdicao({ usuarioId: p.id, diaISO: d.iso }) : undefined}
+                            title={editavel ? 'Editar turno desta semana' : undefined}
+                          >
+                            <CelulaTurno valor={valor} fimDeSemana={d.fimDeSemana} />
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
-        </div>
-      </div>
+        </CardContent>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <CardFooter className="flex-wrap items-center gap-x-4 gap-y-2 text-xs text-zinc-500">
+          <Legenda className={ESTILO_LEGENDA.H1} texto="H1" />
+          <Legenda className={ESTILO_LEGENDA.H2} texto="H2" />
+          <Legenda className={ESTILO_LEGENDA.H3} texto="H3 (restrito a Caique/Bruno/Kilson)" />
+          <Legenda className={ESTILO_LEGENDA.H4} texto="H4" />
+          <Legenda className="border-dashed border-zinc-300 bg-zinc-50" texto="Folga / Férias" />
+          {ehGerenteOuDelegado && <span className="text-zinc-400">Clica numa célula para editar a semana</span>}
+        </CardFooter>
+      </Card>
+
+      <div className="flex flex-col gap-5">
         <PainelFerias usuarios={pessoasAtivas} />
         <PainelTrocas usuarios={pessoasAtivas} />
         {ehGerenteOuDelegado && <PainelDelegacao usuarios={pessoasAtivas} />}
@@ -218,59 +262,47 @@ export function EscalaPage() {
   )
 }
 
-function Legenda({ cor, texto }: { cor: string; texto: string }) {
+function CelulaTurno({ valor, fimDeSemana }: { valor: TurnoTipo | 'F' | null; fimDeSemana: boolean }) {
+  if (valor === 'F') {
+    return (
+      <span className="inline-flex items-center justify-center rounded-md border border-dashed border-zinc-200 bg-zinc-50 px-1.5 py-1 text-[0.65rem] font-medium text-zinc-400">
+        Férias
+      </span>
+    )
+  }
+  if (valor === null) {
+    // Fim de semana sem H3 = folga deliberada (mostra o badge). Um dia
+    // útil sem linha é falta de dados — fica em branco de propósito,
+    // para continuar visível como anomalia em vez de ser mascarado
+    // com um rótulo "Folga" enganador.
+    if (!fimDeSemana) return null
+    return (
+      <span className="inline-flex items-center justify-center rounded-md border border-dashed border-zinc-200 bg-zinc-50 px-1.5 py-1 text-[0.65rem] font-medium text-zinc-400">
+        Folga
+      </span>
+    )
+  }
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-      <span className={`badge ${cor}`} style={{ width: 10, height: 10, padding: 0, borderRadius: '50%' }} />
-      {texto}
-    </div>
+    <span
+      className={cn(
+        'inline-flex items-center justify-center gap-0.5 rounded-md border px-1.5 py-1 text-[0.65rem] font-medium',
+        ESTILO_TURNO[valor]
+      )}
+    >
+      {valor === 'H3' && <Lock className="size-2.5" />}
+      {valor}
+    </span>
   )
 }
 
-function celulaCabecalho(sticky?: 'sticky', fimDeSemana?: boolean): CSSProperties {
-  return {
-    position: sticky ? 'sticky' : undefined,
-    left: sticky ? 0 : undefined,
-    background: fimDeSemana ? 'var(--bg-surface-hover)' : 'var(--bg-surface)',
-    padding: '0.4rem 0.5rem',
-    borderBottom: '1px solid var(--border-subtle)',
-    color: 'var(--text-muted)',
-    fontWeight: 600,
-    minWidth: sticky ? 150 : 26,
-    textAlign: sticky ? 'left' : 'center',
-  }
+function Legenda({ className, texto }: { className: string; texto: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className={cn('size-2.5 rounded-full border', className)} />
+      {texto}
+    </span>
+  )
 }
-
-function celulaNome(): CSSProperties {
-  return {
-    position: 'sticky',
-    left: 0,
-    background: 'var(--bg-surface)',
-    padding: '0.4rem 0.5rem',
-    borderBottom: '1px solid var(--border-subtle)',
-    whiteSpace: 'nowrap',
-    fontWeight: 500,
-  }
-}
-
-function celulaDia(fimDeSemana?: boolean, editavel?: boolean): CSSProperties {
-  return {
-    borderBottom: '1px solid var(--border-subtle)',
-    borderLeft: '1px solid var(--border-subtle)',
-    background: fimDeSemana ? 'var(--bg-surface-hover)' : undefined,
-    textAlign: 'center',
-    minWidth: 26,
-    height: 30,
-    cursor: editavel ? 'pointer' : undefined,
-  }
-}
-
-const OPCOES_TURNO: { valor: TurnoTipo; rotulo: string }[] = [
-  { valor: 'H1', rotulo: 'H1 — 07h00 às 16h00' },
-  { valor: 'H2', rotulo: 'H2 — 14h00 às 23h00' },
-  { valor: 'H3', rotulo: 'H3 — 22h00 às 07h00' },
-  { valor: 'H4', rotulo: 'H4 — 09h00 às 18h00' },
-]
 
 function ModalEdicaoTurno({
   pessoa,
@@ -327,54 +359,49 @@ function ModalEdicaoTurno({
   }
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0, 0, 0, 0.55)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 100,
+    <Dialog
+      open
+      onOpenChange={(aberto) => {
+        if (!aberto && !aGravar) onFechar()
       }}
-      onClick={onFechar}
     >
-      <div
-        className="card"
-        style={{ minWidth: 320, maxWidth: 380, boxShadow: '0 12px 40px rgba(0, 0, 0, 0.5)' }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h3 style={{ marginTop: 0 }}>Editar turno</h3>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
-          {pessoa.nome} — semana de {formatarDataPT(inicioSemanaISO)} a {formatarDataPT(fimSemanaISO)}.
-          A alteração aplica-se à semana inteira, não só ao dia selecionado.
-        </p>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Editar turno</DialogTitle>
+          <DialogDescription>
+            {pessoa.nome} — semana de {formatarDataPT(inicioSemanaISO)} a {formatarDataPT(fimSemanaISO)}. A
+            alteração aplica-se à semana inteira, não só ao dia selecionado.
+          </DialogDescription>
+        </DialogHeader>
 
-        <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '0.25rem', marginBottom: '1rem' }}>
-          Turno
-          <select value={turno} onChange={(e) => setTurno(e.target.value as TurnoTipo)} style={{ width: '100%' }}>
-            {OPCOES_TURNO.map((o) => (
-              <option key={o.valor} value={o.valor}>{o.rotulo}</option>
-            ))}
-          </select>
+        <label className="flex flex-col gap-1.5 text-sm">
+          <span className="font-medium text-zinc-700">Turno</span>
+          <Select value={turno} onValueChange={(v) => setTurno(v as TurnoTipo)}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {OPCOES_TURNO.map((o) => (
+                <SelectItem key={o.valor} value={o.valor}>
+                  {o.rotulo}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </label>
 
-        {erro && (
-          <p style={{ color: 'var(--status-vermelho)', fontSize: '0.78rem', marginBottom: '0.75rem' }}>{erro}</p>
-        )}
+        {erro && <p className="text-sm text-red-600">{erro}</p>}
 
-        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-          <button className="btn btn-ghost" onClick={onFechar} disabled={aGravar}>
+        <DialogFooter>
+          <Button variant="outline" onClick={onFechar} disabled={aGravar}>
             Cancelar
-          </button>
-          <button className="btn btn-primary" onClick={gravar} disabled={aGravar}>
+          </Button>
+          <Button onClick={gravar} disabled={aGravar}>
             {aGravar ? 'A gravar…' : 'Gravar'}
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -417,72 +444,101 @@ function PainelSugestao({ usuarios }: { usuarios: Pick<Usuario, 'id' | 'nome'>[]
 
   if (!aberto) {
     return (
-      <button className="btn btn-ghost" style={{ fontSize: '0.75rem' }} onClick={() => setAberto(true)}>
+      <Button variant="outline" size="sm" onClick={() => setAberto(true)}>
         Sugerir automaticamente
-      </button>
+      </Button>
     )
   }
 
   return (
-    <div style={{ position: 'relative' }}>
-      <div style={{
-        position: 'absolute', top: '100%', right: 0, zIndex: 10,
-        background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
-        borderRadius: '0.5rem', padding: '1rem', minWidth: 280, marginTop: '0.25rem',
-        boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-          <strong style={{ fontSize: '0.8rem' }}>Sugestão automática</strong>
-          <button className="btn btn-ghost" style={{ padding: '0.1rem 0.4rem', fontSize: '0.75rem' }} onClick={() => { setAberto(false); setSugestao(null) }}>✕</button>
+    <div className="relative">
+      <div className="absolute top-full right-0 z-20 mt-2 w-72 rounded-xl bg-white p-4 text-sm ring-1 ring-zinc-200 shadow-lg">
+        <div className="mb-3 flex items-center justify-between">
+          <strong className="text-sm font-semibold text-zinc-900">Sugestão automática</strong>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            aria-label="Fechar"
+            onClick={() => {
+              setAberto(false)
+              setSugestao(null)
+            }}
+          >
+            <X className="size-3.5" />
+          </Button>
         </div>
 
-        <label style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '0.25rem', marginBottom: '0.75rem' }}>
+        <label className="mb-3 flex flex-col gap-1 text-xs text-zinc-500">
           Semana (Quinta-feira de referência)
-          <input type="date" value={semanaRef} onChange={(e) => { setSemanaRef(e.target.value); setSugestao(null) }} />
+          <Input
+            type="date"
+            value={semanaRef}
+            onChange={(e) => {
+              setSemanaRef(e.target.value)
+              setSugestao(null)
+            }}
+          />
         </label>
 
-        <button className="btn btn-primary" style={{ width: '100%', fontSize: '0.8rem' }} onClick={calcular} disabled={aCarregar}>
+        <Button className="w-full" size="sm" onClick={calcular} disabled={aCarregar}>
           {aCarregar ? 'A calcular…' : 'Calcular sugestão'}
-        </button>
+        </Button>
 
-        {erro && <p style={{ color: 'var(--color-error)', fontSize: '0.75rem', marginTop: '0.5rem' }}>{erro}</p>}
+        {erro && <p className="mt-2 text-xs text-red-600">{erro}</p>}
 
         {sugestao && (
-          <div style={{ marginTop: '0.75rem', fontSize: '0.8rem' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <div className="mt-3 text-sm">
+            <table className="w-full border-collapse">
               <tbody>
                 {(['H1', 'H2', 'H4'] as const).map((t) => (
                   <tr key={t}>
-                    <td style={{ padding: '0.25rem 0', color: 'var(--text-muted)', width: 32 }}>
-                      <span className="badge badge-neutro" style={{ fontSize: '0.65rem' }}>{t}</span>
+                    <td className="w-10 py-1">
+                      <span
+                        className={cn(
+                          'inline-flex items-center rounded-md border px-1.5 py-0.5 text-[0.65rem] font-medium',
+                          ESTILO_TURNO[t]
+                        )}
+                      >
+                        {t}
+                      </span>
                     </td>
-                    <td style={{ padding: '0.25rem 0' }}>{nomePorId(sugestao[t])}</td>
+                    <td className="py-1 text-zinc-700">{nomePorId(sugestao[t])}</td>
                   </tr>
                 ))}
                 <tr>
-                  <td style={{ padding: '0.25rem 0', color: 'var(--text-muted)', width: 32 }}>
-                    <span className="badge badge-lock" style={{ fontSize: '0.65rem' }}>H3</span>
+                  <td className="w-10 py-1">
+                    <span
+                      className={cn(
+                        'inline-flex items-center gap-0.5 rounded-md border px-1.5 py-0.5 text-[0.65rem] font-medium',
+                        ESTILO_TURNO.H3
+                      )}
+                    >
+                      <Lock className="size-2.5" />
+                      H3
+                    </span>
                   </td>
-                  <td style={{ padding: '0.25rem 0' }}>
+                  <td className="py-1 text-zinc-700">
                     {sugestao.H3 ? (
                       <span>
                         {sugestao.H3.nome}
                         {sugestao.H3.precisa_override && (
-                          <span style={{ color: 'var(--color-warning)', marginLeft: '0.4rem', fontSize: '0.7rem' }}>⚠ override</span>
+                          <span className="ml-1.5 text-xs text-amber-600">⚠ override</span>
                         )}
                       </span>
-                    ) : '—'}
+                    ) : (
+                      '—'
+                    )}
                   </td>
                 </tr>
               </tbody>
             </table>
 
             {aplicado ? (
-              <p style={{ color: 'var(--color-success)', fontSize: '0.75rem', marginTop: '0.5rem' }}>Aplicado à escala.</p>
+              <p className="mt-2 text-xs text-emerald-600">Aplicado à escala.</p>
             ) : (
-              <button className="btn btn-primary" style={{ width: '100%', marginTop: '0.75rem', fontSize: '0.8rem' }} onClick={aplicar}>
+              <Button className="mt-3 w-full" size="sm" onClick={aplicar}>
                 Aplicar à escala
-              </button>
+              </Button>
             )}
           </div>
         )}
