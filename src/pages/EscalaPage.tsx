@@ -243,7 +243,9 @@ export function EscalaPage() {
                         const feriado = feriadoDoDia(d.iso, feriados)
                         const valor = valorDoDia(d.iso, p.id, escalas, ferias)
                         const linha = linhaDoDia(d.iso, p.id, escalas)
-                        const editavel = ehGerenteOuDelegado && linha !== undefined
+                        // Num feriado só o H3 tem turno real para editar — os
+                        // restantes mostram "Feriado" e deixam de ser clicáveis.
+                        const editavel = ehGerenteOuDelegado && linha !== undefined && (!feriado || valor === 'H3')
                         const substituto = valor === 'F' ? substitutoDoDia(d.iso, p.id, ferias, usuarios) : undefined
                         const plantonista = feriado ? plantonistaDoDia(d.iso, plantoes, usuarios) : undefined
                         return (
@@ -337,9 +339,12 @@ function CelulaTurno({
     )
   }
   // Feriado: ninguém trabalha o turno normal, só quem faz o plantão —
-  // isto vence H1-H4 mesmo que escala_semanal tenha algo marcado
-  // nesse dia (ver decisão do utilizador: ocultar sempre).
-  if (feriado) {
+  // isto vence H1/H2/H4 mesmo que escala_semanal tenha algo marcado
+  // nesse dia. O H3 é exceção: trabalha sempre, feriado ou não (fim de
+  // semana sozinho a cobrir o dia inteiro; dia útil só até às 07h, com
+  // um plantonista a render daí até ao fim da cadeia diária) — por
+  // isso cai para o badge H3 normal em vez de "Feriado"/"Plantão".
+  if (feriado && valor !== 'H3') {
     if (ehPlantonista) {
       return (
         <span

@@ -66,7 +66,10 @@ export function InicioPage() {
   const turnoHoje = valorTurnoDoDia(resumo.turnoAtual, hojeISO)
   const turnoProxima = valorTurnoDoDia(resumo.turnoProximaSemana, proximaSexta)
 
-  const feriadosFuturos = gerente.feriadosSemPlantao.filter((f) => f.data >= hojeISO)
+  // Ao fim de semana o H3 já cobre o dia inteiro sozinho, como num fim
+  // de semana comum — não há plantão a confirmar, por isso a lista só
+  // mostra feriados em dias úteis.
+  const feriadosFuturos = gerente.feriadosSemPlantao.filter((f) => f.data >= hojeISO && !ehFimDeSemana(f.data))
 
   async function escolherSubstituto(feriasId: number, substitutoId: string) {
     if (!usuario) return
