@@ -14,14 +14,16 @@ interface ResumoGerente {
   ausenciasHoje: Ferias[]
   ausenciasProximaSemana: Ferias[]
   aCarregar: boolean
-  confirmarSubstituicao: (feriasId: number, confirmadoPor: string) => Promise<{ error: string | null }>
+  confirmarSubstituto: (feriasId: number, substitutoId: string, confirmadoPor: string) => Promise<{ error: string | null }>
+  confirmarPlantonista: (dataFeriado: string, usuarioId: string) => Promise<{ error: string | null }>
 }
 
 /**
  * Resumo global para a página Início do Gerente: feriados nacionais/
  * municipais sem ninguém confirmado para plantão, e quem da equipa
  * está ou vai estar ausente (hoje / próxima semana administrativa),
- * com a ação de confirmar que a substituição foi tratada.
+ * com a ação de escolher quem cobre a ausência — escolher o
+ * substituto é o próprio ato de confirmar (ver migração 0009).
  *
  * `ativo` evita consultas desnecessárias quando quem vê a página
  * Início não é Gerente/delegado.
@@ -85,13 +87,39 @@ export function useResumoGerente(ativo: boolean): ResumoGerente {
     }
   }, [ativo])
 
-  async function confirmarSubstituicao(feriasId: number, confirmadoPor: string) {
+  async function confirmarSubstituto(feriasId: number, substitutoId: string, confirmadoPor: string) {
     const { error } = await supabase
       .from('ferias')
-      .update({ substituicao_confirmada: true, confirmado_por: confirmadoPor, confirmado_em: new Date().toISOString() })
+      .update({
+        substituto_id: substitutoId,
+        substituicao_confirmada: true,
+        confirmado_por: confirmadoPor,
+        confirmado_em: new Date().toISOString(),
+      })
       .eq('id', feriasId)
     return { error: error?.message ?? null }
   }
 
-  return { feriadosSemPlantao, ausenciasHoje, ausenciasProximaSemana, aCarregar, confirmarSubstituicao }
+  // feriados_sem_plantao só considera o feriado resolvido quando existe
+  // uma linha com voluntario = true (ver definição da view) — a escolha
+  // do Gerente entra nesse mesmo balde, independentemente de a pessoa
+  // se ter oferecido ou ter sido designada.
+  async function confirmarPlantonista(dataFeriado: string, usuarioId: string) {
+    const { error } = await supabase.from('plantao_voluntarios').insert({
+      data_feriado: dataFeriado,
+      usuario_id: usuarioId,
+      voluntario: true,
+      confirmado_em: new Date().toISOString(),
+    })
+    return { error: error?.message ?? null }
+  }
+
+  return {
+    feriadosSemPlantao,
+    ausenciasHoje,
+    ausenciasProximaSemana,
+    aCarregar,
+    confirmarSubstituto,
+    confirmarPlantonista,
+  }
 }

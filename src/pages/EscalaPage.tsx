@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, Lock, SlidersHorizontal, X } from 'lucide-react'
+import { ArrowRightLeft, ChevronLeft, ChevronRight, Lock, SlidersHorizontal, Sun, X } from 'lucide-react'
 import { useUsuarios } from '@/data/useUsuarios'
 import { useEscalaMes } from '@/data/useEscalaMes'
 import { adicionarDias, ehFimDeSemana, formatarDataPT, formatarMesAnoPT, isoWeekday, paraISO } from '@/lib/datas'
-import type { EscalaSemanal, Ferias, TurnoTipo, Usuario } from '@/types/database'
+import type { EscalaSemanal, Ferias, FeriadoPortugal, PlantaoVoluntario, TurnoTipo, Usuario } from '@/types/database'
 import { PainelFerias } from '@/components/escala/PainelFerias'
 import { PainelTrocas } from '@/components/escala/PainelTrocas'
 import { PainelDelegacao } from '@/components/escala/PainelDelegacao'
@@ -97,11 +97,38 @@ function valorDoDia(
   return turno
 }
 
+/** Nome de quem cobre a ausência de `usuarioId` no dia indicado, se a
+ * substituição já tiver sido escolhida (ver migração 0009). */
+function substitutoDoDia(
+  diaISO: string,
+  usuarioId: string,
+  ferias: Ferias[],
+  usuarios: Usuario[]
+): string | undefined {
+  const f = ferias.find(
+    (f) => f.usuario_id === usuarioId && f.data_inicio <= diaISO && f.data_fim >= diaISO && f.substituto_id
+  )
+  if (!f?.substituto_id) return undefined
+  return usuarios.find((u) => u.id === f.substituto_id)?.nome
+}
+
+function feriadoDoDia(diaISO: string, feriados: FeriadoPortugal[]): FeriadoPortugal | undefined {
+  return feriados.find((f) => f.data === diaISO)
+}
+
+/** Quem faz o plantão nesse feriado, se já tiver sido escolhido —
+ * só conta linhas voluntario=true (ver view feriados_sem_plantao). */
+function plantonistaDoDia(diaISO: string, plantoes: PlantaoVoluntario[], usuarios: Usuario[]): Usuario | undefined {
+  const p = plantoes.find((pl) => pl.data_feriado === diaISO && pl.voluntario)
+  if (!p) return undefined
+  return usuarios.find((u) => u.id === p.usuario_id)
+}
+
 export function EscalaPage() {
   const [mesRef, setMesRef] = useState<Date>(() => new Date())
   const [mostrarFimDeSemana, setMostrarFimDeSemana] = useState(true)
   const { usuarios, aCarregar: aCarregarUsuarios } = useUsuarios()
-  const { escalas, ferias, aCarregar: aCarregarEscala } = useEscalaMes(mesRef)
+  const { escalas, ferias, feriados, plantoes, aCarregar: aCarregarEscala } = useEscalaMes(mesRef)
   const { ehGerenteOuDelegado } = useAuth()
 
   const dias = useMemo(() => {
@@ -175,20 +202,24 @@ export function EscalaPage() {
                     <th className="sticky left-0 z-10 min-w-40 border-b border-zinc-100 bg-white px-4 py-2 text-left text-xs font-medium tracking-wider text-zinc-400 uppercase">
                       Nome
                     </th>
-                    {diasVisiveis.map((d) => (
-                      <th
-                        key={d.iso}
-                        className={cn(
-                          'min-w-12 border-b border-l border-zinc-100 px-1 py-2 text-center',
-                          d.fimDeSemana && 'bg-zinc-50/70'
-                        )}
-                      >
-                        <div className="text-[0.6rem] font-medium tracking-wider text-zinc-400 uppercase">
-                          {DIAS_SEMANA_ABREV[isoWeekday(new Date(d.iso + 'T00:00:00')) - 1]}
-                        </div>
-                        <div className="text-sm font-semibold text-zinc-800">{d.numero}</div>
-                      </th>
-                    ))}
+                    {diasVisiveis.map((d) => {
+                      const feriado = feriadoDoDia(d.iso, feriados)
+                      return (
+                        <th
+                          key={d.iso}
+                          className={cn(
+                            'min-w-12 border-b border-l border-zinc-100 px-1 py-2 text-center',
+                            feriado ? 'bg-rose-50/70' : d.fimDeSemana && 'bg-zinc-50/70'
+                          )}
+                          title={feriado?.nome}
+                        >
+                          <div className="text-[0.6rem] font-medium tracking-wider text-zinc-400 uppercase">
+                            {DIAS_SEMANA_ABREV[isoWeekday(new Date(d.iso + 'T00:00:00')) - 1]}
+                          </div>
+                          <div className="text-sm font-semibold text-zinc-800">{d.numero}</div>
+                        </th>
+                      )
+                    })}
                   </tr>
                 </thead>
                 <tbody>
@@ -209,21 +240,30 @@ export function EscalaPage() {
                         </span>
                       </td>
                       {diasVisiveis.map((d) => {
+                        const feriado = feriadoDoDia(d.iso, feriados)
                         const valor = valorDoDia(d.iso, p.id, escalas, ferias)
                         const linha = linhaDoDia(d.iso, p.id, escalas)
                         const editavel = ehGerenteOuDelegado && linha !== undefined
+                        const substituto = valor === 'F' ? substitutoDoDia(d.iso, p.id, ferias, usuarios) : undefined
+                        const plantonista = feriado ? plantonistaDoDia(d.iso, plantoes, usuarios) : undefined
                         return (
                           <td
                             key={d.iso}
                             className={cn(
                               'border-b border-l border-zinc-100 px-1 py-1 text-center align-middle',
-                              d.fimDeSemana && 'bg-zinc-50/70',
+                              feriado ? 'bg-rose-50/40' : d.fimDeSemana && 'bg-zinc-50/70',
                               editavel && 'cursor-pointer hover:bg-zinc-100'
                             )}
                             onClick={editavel ? () => setCelulaEmEdicao({ usuarioId: p.id, diaISO: d.iso }) : undefined}
-                            title={editavel ? 'Editar turno desta semana' : undefined}
+                            title={editavel ? 'Editar turno desta semana' : feriado?.nome}
                           >
-                            <CelulaTurno valor={valor} fimDeSemana={d.fimDeSemana} />
+                            <CelulaTurno
+                              valor={valor}
+                              fimDeSemana={d.fimDeSemana}
+                              substitutoNome={substituto}
+                              feriado={feriado}
+                              ehPlantonista={plantonista?.id === p.id}
+                            />
                           </td>
                         )
                       })}
@@ -241,6 +281,9 @@ export function EscalaPage() {
           <Legenda className={ESTILO_LEGENDA.H3} texto="H3 (restrito a Caique/Bruno/Kilson)" />
           <Legenda className={ESTILO_LEGENDA.H4} texto="H4" />
           <Legenda className="border-dashed border-zinc-300 bg-zinc-50" texto="Folga / Férias" />
+          <Legenda className="border-dashed border-violet-300 bg-violet-50" texto="Substituição confirmada" />
+          <Legenda className="border-dashed border-rose-300 bg-rose-50" texto="Feriado" />
+          <Legenda className="border-rose-200 bg-rose-50" texto="Plantão" />
           {ehGerenteOuDelegado && <span className="text-zinc-400">Clica numa célula para editar a semana</span>}
         </CardFooter>
       </Card>
@@ -262,11 +305,58 @@ export function EscalaPage() {
   )
 }
 
-function CelulaTurno({ valor, fimDeSemana }: { valor: TurnoTipo | 'F' | null; fimDeSemana: boolean }) {
+function CelulaTurno({
+  valor,
+  fimDeSemana,
+  substitutoNome,
+  feriado,
+  ehPlantonista,
+}: {
+  valor: TurnoTipo | 'F' | null
+  fimDeSemana: boolean
+  substitutoNome?: string
+  feriado?: FeriadoPortugal
+  ehPlantonista?: boolean
+}) {
   if (valor === 'F') {
+    if (substitutoNome) {
+      return (
+        <span
+          className="inline-flex items-center justify-center gap-0.5 rounded-md border border-dashed border-violet-200 bg-violet-50 px-1.5 py-1 text-[0.65rem] font-medium text-violet-600"
+          title={`Férias — substituído por ${substitutoNome}`}
+        >
+          <ArrowRightLeft className="size-2.5" />
+          {substitutoNome}
+        </span>
+      )
+    }
     return (
       <span className="inline-flex items-center justify-center rounded-md border border-dashed border-zinc-200 bg-zinc-50 px-1.5 py-1 text-[0.65rem] font-medium text-zinc-400">
         Férias
+      </span>
+    )
+  }
+  // Feriado: ninguém trabalha o turno normal, só quem faz o plantão —
+  // isto vence H1-H4 mesmo que escala_semanal tenha algo marcado
+  // nesse dia (ver decisão do utilizador: ocultar sempre).
+  if (feriado) {
+    if (ehPlantonista) {
+      return (
+        <span
+          className="inline-flex items-center justify-center gap-0.5 rounded-md border border-rose-100 bg-rose-50 px-1.5 py-1 text-[0.65rem] font-medium text-rose-700"
+          title={feriado.nome}
+        >
+          <Sun className="size-2.5" />
+          Plantão
+        </span>
+      )
+    }
+    return (
+      <span
+        className="inline-flex items-center justify-center rounded-md border border-dashed border-rose-200 bg-rose-50/60 px-1.5 py-1 text-[0.65rem] font-medium text-rose-400"
+        title={feriado.nome}
+      >
+        Feriado
       </span>
     )
   }

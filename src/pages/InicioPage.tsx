@@ -44,6 +44,9 @@ export function InicioPage() {
   const resumo = useResumoUsuario(usuario?.id)
   const gerente = useResumoGerente(ehGerenteOuDelegado)
   const [aConfirmar, setAConfirmar] = useState<number | null>(null)
+  const [escolhendoPara, setEscolhendoPara] = useState<number | null>(null)
+  const [aConfirmarPlantao, setAConfirmarPlantao] = useState<string | null>(null)
+  const [escolhendoPlantaoPara, setEscolhendoPlantaoPara] = useState<string | null>(null)
 
   const hoje = agora()
   const hojeISO = paraISO(hoje)
@@ -65,40 +68,122 @@ export function InicioPage() {
 
   const feriadosFuturos = gerente.feriadosSemPlantao.filter((f) => f.data >= hojeISO)
 
-  async function confirmar(feriasId: number) {
+  async function escolherSubstituto(feriasId: number, substitutoId: string) {
     if (!usuario) return
     setAConfirmar(feriasId)
-    await gerente.confirmarSubstituicao(feriasId, usuario.id)
+    await gerente.confirmarSubstituto(feriasId, substitutoId, usuario.id)
     setAConfirmar(null)
+    setEscolhendoPara(null)
   }
 
-  function LinhaAusencia({ f }: { f: Ferias }) {
+  async function escolherPlantonista(dataFeriado: string, usuarioId: string) {
+    setAConfirmarPlantao(dataFeriado)
+    await gerente.confirmarPlantonista(dataFeriado, usuarioId)
+    setAConfirmarPlantao(null)
+    setEscolhendoPlantaoPara(null)
+  }
+
+  function LinhaFeriado({ f }: { f: { data: string; nome: string; tipo: string } }) {
+    const aEscolher = escolhendoPlantaoPara === f.data
+    const candidatos = usuarios.filter((u) => u.ativo)
+
     return (
       <li
         style={{
           display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: '0.75rem',
-          fontSize: '0.85rem',
+          flexDirection: 'column',
+          gap: '0.4rem',
           padding: '0.35rem 0',
           borderBottom: '1px solid var(--border-subtle)',
         }}
       >
-        <span>
-          {nomeDe(f.usuario_id)} · {formatarDataPT(f.data_inicio)} a {formatarDataPT(f.data_fim)}
-        </span>
-        {f.substituicao_confirmada ? (
-          <span className="badge badge-verde">Substituto confirmado</span>
-        ) : (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', fontSize: '0.85rem' }}>
+          <span>
+            {f.nome} · {formatarDataPT(f.data)}
+          </span>
           <button
             className="btn btn-secondary"
             style={{ padding: '0.25rem 0.6rem', fontSize: '0.72rem', whiteSpace: 'nowrap' }}
-            onClick={() => confirmar(f.id)}
-            disabled={aConfirmar === f.id}
+            onClick={() => setEscolhendoPlantaoPara(aEscolher ? null : f.data)}
           >
-            {aConfirmar === f.id ? 'A confirmar…' : 'Confirmar substituto'}
+            Confirmar plantonista
           </button>
+        </div>
+        {aEscolher && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', paddingLeft: '0.25rem' }}>
+            {candidatos.map((u) => (
+              <button
+                key={u.id}
+                className="btn btn-ghost"
+                style={{ padding: '0.2rem 0.55rem', fontSize: '0.72rem' }}
+                onClick={() => escolherPlantonista(f.data, u.id)}
+                disabled={aConfirmarPlantao === f.data}
+              >
+                {aConfirmarPlantao === f.data ? '…' : u.nome}
+              </button>
+            ))}
+          </div>
+        )}
+      </li>
+    )
+  }
+
+  function LinhaAusencia({ f }: { f: Ferias }) {
+    const aEscolher = escolhendoPara === f.id
+    const candidatos = usuarios.filter((u) => u.ativo && u.id !== f.usuario_id)
+
+    return (
+      <li
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.4rem',
+          padding: '0.35rem 0',
+          borderBottom: '1px solid var(--border-subtle)',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '0.75rem',
+            fontSize: '0.85rem',
+          }}
+        >
+          <span>
+            {nomeDe(f.usuario_id)} · {formatarDataPT(f.data_inicio)} a {formatarDataPT(f.data_fim)}
+          </span>
+          {f.substituicao_confirmada && f.substituto_id ? (
+            <span className="badge badge-verde">Substituto: {nomeDe(f.substituto_id)}</span>
+          ) : (
+            <button
+              className="btn btn-secondary"
+              style={{ padding: '0.25rem 0.6rem', fontSize: '0.72rem', whiteSpace: 'nowrap' }}
+              onClick={() => setEscolhendoPara(aEscolher ? null : f.id)}
+            >
+              Confirmar substituto
+            </button>
+          )}
+        </div>
+        {aEscolher && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', paddingLeft: '0.25rem' }}>
+            {candidatos.length === 0 ? (
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Sem candidatos disponíveis.</span>
+            ) : (
+              candidatos.map((u) => (
+                <button
+                  key={u.id}
+                  className="btn btn-ghost"
+                  style={{ padding: '0.2rem 0.55rem', fontSize: '0.72rem' }}
+                  onClick={() => escolherSubstituto(f.id, u.id)}
+                  disabled={aConfirmar === f.id}
+                >
+                  {aConfirmar === f.id ? '…' : u.nome}
+                </button>
+              ))
+            )}
+          </div>
         )}
       </li>
     )
@@ -161,19 +246,7 @@ export function InicioPage() {
               ) : (
                 <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                   {feriadosFuturos.map((f) => (
-                    <li
-                      key={f.data}
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        fontSize: '0.85rem',
-                        padding: '0.35rem 0',
-                        borderBottom: '1px solid var(--border-subtle)',
-                      }}
-                    >
-                      <span>{f.nome}</span>
-                      <span style={{ color: 'var(--text-muted)' }}>{formatarDataPT(f.data)}</span>
-                    </li>
+                    <LinhaFeriado key={f.data} f={f} />
                   ))}
                 </ul>
               )}

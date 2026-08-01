@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import type { EscalaSemanal, Ferias } from '../types/database'
+import type { EscalaSemanal, Ferias, FeriadoPortugal, PlantaoVoluntario } from '../types/database'
 import { adicionarDias, paraISO, semanaRefDe } from '../lib/datas'
 
 interface EscalaDoMes {
   escalas: EscalaSemanal[]
   ferias: Ferias[]
+  feriados: FeriadoPortugal[]
+  plantoes: PlantaoVoluntario[]
   aCarregar: boolean
 }
 
@@ -18,6 +20,8 @@ interface EscalaDoMes {
 export function useEscalaMes(mesRef: Date): EscalaDoMes {
   const [escalas, setEscalas] = useState<EscalaSemanal[]>([])
   const [ferias, setFerias] = useState<Ferias[]>([])
+  const [feriados, setFeriados] = useState<FeriadoPortugal[]>([])
+  const [plantoes, setPlantoes] = useState<PlantaoVoluntario[]>([])
   const [aCarregar, setACarregar] = useState(true)
 
   const inicioMes = new Date(mesRef.getFullYear(), mesRef.getMonth(), 1)
@@ -32,22 +36,27 @@ export function useEscalaMes(mesRef: Date): EscalaDoMes {
 
     async function carregar() {
       setACarregar(true)
-      const [{ data: dadosEscala }, { data: dadosFerias }] = await Promise.all([
-        supabase
-          .from('escala_semanal')
-          .select('*')
-          .gte('semana_ref', janelaInicio)
-          .lte('semana_ref', janelaFim),
-        supabase
-          .from('ferias')
-          .select('*')
-          .eq('status', 'APROVADA')
-          .lte('data_inicio', paraISO(fimMes))
-          .gte('data_fim', paraISO(inicioMes)),
-      ])
+      const [{ data: dadosEscala }, { data: dadosFerias }, { data: dadosFeriados }, { data: dadosPlantoes }] =
+        await Promise.all([
+          supabase
+            .from('escala_semanal')
+            .select('*')
+            .gte('semana_ref', janelaInicio)
+            .lte('semana_ref', janelaFim),
+          supabase
+            .from('ferias')
+            .select('*')
+            .eq('status', 'APROVADA')
+            .lte('data_inicio', paraISO(fimMes))
+            .gte('data_fim', paraISO(inicioMes)),
+          supabase.from('feriados_portugal').select('*').gte('data', janelaInicio).lte('data', janelaFim),
+          supabase.from('plantao_voluntarios').select('*').gte('data_feriado', janelaInicio).lte('data_feriado', janelaFim),
+        ])
       if (!cancelado) {
         setEscalas((dadosEscala as EscalaSemanal[]) ?? [])
         setFerias((dadosFerias as Ferias[]) ?? [])
+        setFeriados((dadosFeriados as FeriadoPortugal[]) ?? [])
+        setPlantoes((dadosPlantoes as PlantaoVoluntario[]) ?? [])
         setACarregar(false)
       }
     }
@@ -58,6 +67,7 @@ export function useEscalaMes(mesRef: Date): EscalaDoMes {
       .channel(`escala-mes-${janelaInicio}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'escala_semanal' }, carregar)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ferias' }, carregar)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'plantao_voluntarios' }, carregar)
       .subscribe()
 
     return () => {
@@ -66,5 +76,5 @@ export function useEscalaMes(mesRef: Date): EscalaDoMes {
     }
   }, [janelaInicio, janelaFim])
 
-  return { escalas, ferias, aCarregar }
+  return { escalas, ferias, feriados, plantoes, aCarregar }
 }

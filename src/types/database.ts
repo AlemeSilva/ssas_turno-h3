@@ -50,6 +50,7 @@ export interface Ferias {
   substituicao_confirmada: boolean
   confirmado_por: string | null
   confirmado_em: string | null
+  substituto_id: string | null
 }
 
 export interface TrocaEscala {
@@ -70,6 +71,25 @@ export interface DelegacaoAprovacao {
   substituto: string
   data_inicio: string
   data_fim: string
+  criado_em: string
+}
+
+export interface FeriadoPortugal {
+  id: number
+  data: string
+  nome: string
+  tipo: string
+  ano: number
+  descricao: string | null
+  criado_em: string
+}
+
+export interface PlantaoVoluntario {
+  id: number
+  data_feriado: string
+  usuario_id: string
+  voluntario: boolean
+  confirmado_em: string | null
   criado_em: string
 }
 
