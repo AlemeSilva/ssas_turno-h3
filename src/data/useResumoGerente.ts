@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { adicionarDias, agora, paraISO, proximaSextaISO } from '../lib/datas'
+import { adicionarDias, agora, diasUteis, paraISO, proximaSextaISO } from '../lib/datas'
 import type { Ferias } from '../types/database'
 
 export interface FeriadoSemPlantao {
@@ -13,6 +13,8 @@ interface ResumoGerente {
   feriadosSemPlantao: FeriadoSemPlantao[]
   ausenciasHoje: Ferias[]
   ausenciasProximaSemana: Ferias[]
+  feriasAprovadasPorPessoa: Map<string, number>
+  feriasPendentesPorPessoa: Map<string, number>
   aCarregar: boolean
   confirmarSubstituto: (feriasId: number, substitutoId: string, confirmadoPor: string) => Promise<{ error: string | null }>
   confirmarPlantonista: (dataFeriado: string, usuarioId: string) => Promise<{ error: string | null }>
@@ -32,6 +34,8 @@ export function useResumoGerente(ativo: boolean): ResumoGerente {
   const [feriadosSemPlantao, setFeriadosSemPlantao] = useState<FeriadoSemPlantao[]>([])
   const [ausenciasHoje, setAusenciasHoje] = useState<Ferias[]>([])
   const [ausenciasProximaSemana, setAusenciasProximaSemana] = useState<Ferias[]>([])
+  const [feriasAprovadasPorPessoa, setFeriasAprovadasPorPessoa] = useState<Map<string, number>>(new Map())
+  const [feriasPendentesPorPessoa, setFeriasPendentesPorPessoa] = useState<Map<string, number>>(new Map())
   const [aCarregar, setACarregar] = useState(true)
 
   const idCarregamentoRef = useRef(0)
@@ -51,8 +55,10 @@ export function useResumoGerente(ativo: boolean): ResumoGerente {
       const hojeISO = paraISO(hoje)
       const proximaSexta = proximaSextaISO(hoje)
       const proximaQuinta = paraISO(adicionarDias(new Date(proximaSexta + 'T00:00:00'), 6))
+      const inicioAno = `${hoje.getFullYear()}-01-01`
+      const fimAno = `${hoje.getFullYear()}-12-31`
 
-      const [{ data: dadosFeriados }, { data: dadosAusencias }] = await Promise.all([
+      const [{ data: dadosFeriados }, { data: dadosAusencias }, { data: dadosFeriasEquipe }] = await Promise.all([
         supabase.from('feriados_sem_plantao').select('data, nome, tipo').order('data'),
         supabase
           .from('ferias')
@@ -60,6 +66,13 @@ export function useResumoGerente(ativo: boolean): ResumoGerente {
           .eq('status', 'APROVADA')
           .lte('data_inicio', proximaQuinta)
           .gte('data_fim', hojeISO),
+        supabase
+          .from('ferias')
+          .select('usuario_id, status, data_inicio, data_fim')
+          .eq('tipo', 'FERIAS')
+          .in('status', ['APROVADA', 'PENDENTE'])
+          .gte('data_inicio', inicioAno)
+          .lte('data_inicio', fimAno),
       ])
 
       if (cancelado || idCarregamentoRef.current !== meuId) return
@@ -71,6 +84,20 @@ export function useResumoGerente(ativo: boolean): ResumoGerente {
       setAusenciasProximaSemana(
         ausencias.filter((f) => f.data_inicio <= proximaQuinta && f.data_fim >= proximaSexta)
       )
+
+      // Total de dias úteis de férias por pessoa este ano, aprovadas e
+      // por aprovar em separado — para o cockpit do Gerente na Início.
+      // Mesma contagem (dias_uteis, ano corrente) que useResumoUsuario
+      // usa para o resumo pessoal, só que agregada por toda a equipa.
+      const aprovadas = new Map<string, number>()
+      const pendentes = new Map<string, number>()
+      for (const f of (dadosFeriasEquipe as Pick<Ferias, 'usuario_id' | 'status' | 'data_inicio' | 'data_fim'>[]) ?? []) {
+        const mapa = f.status === 'APROVADA' ? aprovadas : pendentes
+        mapa.set(f.usuario_id, (mapa.get(f.usuario_id) ?? 0) + diasUteis(f.data_inicio, f.data_fim))
+      }
+      setFeriasAprovadasPorPessoa(aprovadas)
+      setFeriasPendentesPorPessoa(pendentes)
+
       setACarregar(false)
     }
 
@@ -121,6 +148,8 @@ export function useResumoGerente(ativo: boolean): ResumoGerente {
     feriadosSemPlantao,
     ausenciasHoje,
     ausenciasProximaSemana,
+    feriasAprovadasPorPessoa,
+    feriasPendentesPorPessoa,
     aCarregar,
     confirmarSubstituto,
     confirmarPlantonista,

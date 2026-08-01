@@ -8,13 +8,6 @@ export const HORARIO_TURNO: Record<TurnoTipo, string> = {
   H4: '09h00 às 18h00',
 }
 
-// Substituição por defeito quando o titular do H1 (Sérgio) está de
-// férias/licença nessa semana — o Pedro cobre por padrão; o Gerente
-// ajusta manualmente no texto copiado caso não se aplique. Não é uma
-// regra fixa, é só o valor mais comum (confirmado em 2026-07-31).
-export const ID_SERGIO = '8425f2ca-0a98-4884-8371-ed33a03a5257'
-export const ID_PEDRO_BACKUP_H1 = '8809fab9-ee98-4b0b-b300-c46cb8959141'
-
 function saudacao(momentoAtual: Date): string {
   const hora = momentoAtual.getHours()
   if (hora < 12) return 'Bom dia,'
@@ -44,18 +37,13 @@ export function gerarTextoRelatorioSemanal(
 
   const emFerias = ferias.filter((f) => f.data_inicio <= paraISO(fim) && f.data_fim >= semanaRef)
   const idsEmFerias = new Set(emFerias.map((f) => f.usuario_id))
-  const sergioTinhaH1 = escalas.some((e) => e.usuario_id === ID_SERGIO && e.turno === 'H1')
 
   // Mapa id -> turno efetivo (não listas por turno independentes).
   // "Operação SAS" é só a equipa operacional — o Gerente tem turno H4
   // fixo em escala_semanal (para ter uma linha na grelha do mês), mas
   // nunca aparece neste relatório, tal como no modelo real usado hoje.
   // Quem está de férias/licença esta semana também não aparece a
-  // "trabalhar" nenhum turno — inclui isso o próprio titular original
-  // de cada turno, não só o Sérgio. Sobre essa base, o Pedro cobre o H1
-  // do Sérgio por defeito quando este está ausente, exceto se o próprio
-  // Pedro também estiver ausente (nesse caso H1 fica vazio, "—", a
-  // sinalizar decisão manual do Gerente).
+  // "trabalhar" nenhum turno.
   const idsGerentes = new Set(usuarios.filter((u) => u.perfil === 'GERENTE').map((u) => u.id))
   const turnoEfetivo = new Map<string, TurnoTipo>()
   for (const e of escalas) {
@@ -63,8 +51,18 @@ export function gerarTextoRelatorioSemanal(
       turnoEfetivo.set(e.usuario_id, e.turno)
     }
   }
-  if (sergioTinhaH1 && idsEmFerias.has(ID_SERGIO) && !idsEmFerias.has(ID_PEDRO_BACKUP_H1)) {
-    turnoEfetivo.set(ID_PEDRO_BACKUP_H1, 'H1')
+  // Quem está ausente mas já tem substituto escolhido (Início →
+  // "Confirmar substituto", ver migração 0009) cobre o turno de quem
+  // substitui — desde que o próprio substituto não esteja também
+  // ausente essa semana. Sem substituto confirmado, o turno fica
+  // vazio ("—"), a sinalizar decisão manual do Gerente, tal como já
+  // acontecia para qualquer ausência sem cobertura definida.
+  for (const f of emFerias) {
+    if (!f.substituto_id || idsEmFerias.has(f.substituto_id)) continue
+    const turnoDoAusente = escalas.find((e) => e.usuario_id === f.usuario_id)?.turno
+    if (turnoDoAusente) {
+      turnoEfetivo.set(f.substituto_id, turnoDoAusente)
+    }
   }
 
   const linhas: string[] = []

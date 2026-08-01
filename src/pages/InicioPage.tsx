@@ -5,7 +5,7 @@ import { useResumoUsuario, LIMITE_FERIAS_ANUAL } from '@/data/useResumoUsuario'
 import { useResumoGerente, type FeriadoSemPlantao } from '@/data/useResumoGerente'
 import { HORARIO_TURNO } from '@/lib/gerarRelatorioSemanal'
 import { adicionarDias, agora, ehFimDeSemana, formatarDataPT, paraISO, proximaSextaISO } from '@/lib/datas'
-import type { Ferias, TurnoTipo } from '@/types/database'
+import type { Ferias, TurnoTipo, Usuario } from '@/types/database'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -16,6 +16,49 @@ function valorTurnoDoDia(turno: TurnoTipo | null, diaISO: string): { valor: stri
   if (turno === null) return { valor: '—' }
   if (ehFimDeSemana(diaISO) && turno !== 'H3') return { valor: 'Fim de semana' }
   return { valor: turno, detalhe: HORARIO_TURNO[turno] }
+}
+
+interface LinhaEquipe {
+  id: string
+  nome: string
+  dias: number
+}
+
+/** As férias do próprio Gerente são geridas fora desta app — só a
+ * equipa entra nas listas do cockpit. Ordenado por dias (desc.), o
+ * pedido é destacar quem tem mais pendente por aprovar primeiro. */
+function listaEquipePorDias(mapa: Map<string, number>, usuarios: Usuario[]): LinhaEquipe[] {
+  return usuarios
+    .filter((u) => u.ativo && u.perfil !== 'GERENTE')
+    .map((u) => ({ id: u.id, nome: u.nome, dias: mapa.get(u.id) ?? 0 }))
+    .sort((a, b) => b.dias - a.dias || a.nome.localeCompare(b.nome))
+}
+
+function ListaEquipe({ titulo, dados, destacarNaoZero }: { titulo: string; dados: LinhaEquipe[]; destacarNaoZero?: boolean }) {
+  return (
+    <div className="flex h-full flex-col gap-2.5">
+      <div className="text-xs font-bold tracking-wide text-zinc-400 uppercase">{titulo}</div>
+      <div className="flex flex-col gap-1">
+        {dados.length === 0 ? (
+          <p className="text-sm text-zinc-400">Sem equipa ativa.</p>
+        ) : (
+          dados.map((d) => (
+            <div key={d.id} className="flex items-center justify-between text-sm">
+              <span className="text-zinc-700">{d.nome}</span>
+              <span
+                className={cn(
+                  'font-semibold tabular-nums',
+                  d.dias === 0 ? 'text-zinc-300' : destacarNaoZero ? 'text-amber-600' : 'text-zinc-900'
+                )}
+              >
+                {d.dias}
+              </span>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  )
 }
 
 export function InicioPage() {
@@ -166,32 +209,48 @@ export function InicioPage() {
 
       <div className="grid grid-cols-3 gap-5">
         <Card>
-          <CardContent className="flex flex-col gap-2.5 pt-6">
-            <div className="text-xs font-bold tracking-wide text-zinc-400 uppercase">Férias</div>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-4xl font-bold text-zinc-900">{totalFerias}</span>
-              <span className="text-base text-zinc-500">de {LIMITE_FERIAS_ANUAL} dias</span>
-            </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-zinc-100">
-              <div
-                className={cn('h-full rounded-full', corBarraFerias)}
-                style={{ width: `${Math.min(100, (totalFerias / LIMITE_FERIAS_ANUAL) * 100)}%` }}
-              />
-            </div>
-            <div className="text-sm text-zinc-500">
-              {resumo.feriasAprovadasDias} aprovados · {resumo.feriasPendentesDias} por aprovar
-            </div>
+          <CardContent className="pt-6">
+            {ehGerenteOuDelegado ? (
+              <ListaEquipe titulo="Férias aprovadas (equipa)" dados={listaEquipePorDias(gerente.feriasAprovadasPorPessoa, usuarios)} />
+            ) : (
+              <div className="flex flex-col gap-2.5">
+                <div className="text-xs font-bold tracking-wide text-zinc-400 uppercase">Férias</div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-4xl font-bold text-zinc-900">{totalFerias}</span>
+                  <span className="text-base text-zinc-500">de {LIMITE_FERIAS_ANUAL} dias</span>
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-zinc-100">
+                  <div
+                    className={cn('h-full rounded-full', corBarraFerias)}
+                    style={{ width: `${Math.min(100, (totalFerias / LIMITE_FERIAS_ANUAL) * 100)}%` }}
+                  />
+                </div>
+                <div className="text-sm text-zinc-500">
+                  {resumo.feriasAprovadasDias} aprovados · {resumo.feriasPendentesDias} por aprovar
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="flex flex-col gap-2.5 pt-6">
-            <div className="text-xs font-bold tracking-wide text-zinc-400 uppercase">Turno atual</div>
-            <div className={cn('font-bold text-zinc-900', resumo.emFeriasHoje ? 'text-3xl' : 'text-4xl')}>
-              {resumo.emFeriasHoje ? 'Férias' : turnoHoje.valor}
-            </div>
-            {!resumo.emFeriasHoje && turnoHoje.detalhe && <div className="text-sm text-zinc-500">{turnoHoje.detalhe}</div>}
-            <div className="text-xs text-zinc-400">{formatarDataPT(hojeISO)}</div>
+          <CardContent className="pt-6">
+            {ehGerenteOuDelegado ? (
+              <ListaEquipe
+                titulo="Férias por aprovar (equipa)"
+                dados={listaEquipePorDias(gerente.feriasPendentesPorPessoa, usuarios)}
+                destacarNaoZero
+              />
+            ) : (
+              <div className="flex flex-col gap-2.5">
+                <div className="text-xs font-bold tracking-wide text-zinc-400 uppercase">Turno atual</div>
+                <div className={cn('font-bold text-zinc-900', resumo.emFeriasHoje ? 'text-3xl' : 'text-4xl')}>
+                  {resumo.emFeriasHoje ? 'Férias' : turnoHoje.valor}
+                </div>
+                {!resumo.emFeriasHoje && turnoHoje.detalhe && <div className="text-sm text-zinc-500">{turnoHoje.detalhe}</div>}
+                <div className="text-xs text-zinc-400">{formatarDataPT(hojeISO)}</div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
