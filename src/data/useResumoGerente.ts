@@ -84,9 +84,19 @@ export function useResumoGerente(ativo: boolean): ResumoGerente {
       setFeriadosSemPlantao((dadosFeriados as FeriadoSemPlantao[]) ?? [])
 
       const ausencias = (dadosAusencias as Ferias[]) ?? []
-      setAusenciasHoje(ausencias.filter((f) => f.data_inicio <= hojeISO && f.data_fim >= hojeISO))
+      const hoje_ = ausencias.filter((f) => f.data_inicio <= hojeISO && f.data_fim >= hojeISO)
+      const idsHoje = new Set(hoje_.map((f) => f.id))
+      setAusenciasHoje(hoje_)
+      // Exclui quem já aparece em "Hoje" — essa secção já mostra o
+      // período completo da ausência (incluindo o regresso), por isso
+      // repetir a mesma linha aqui não acrescenta informação, mesmo
+      // quando o último dia da ausência coincide com o primeiro dia
+      // desta janela (ex.: ausência até sexta, janela a começar nessa
+      // mesma sexta).
       setAusenciasProximaSemana(
-        ausencias.filter((f) => f.data_inicio <= proximaQuinta && f.data_fim >= proximaSexta)
+        ausencias.filter(
+          (f) => !idsHoje.has(f.id) && f.data_inicio <= proximaQuinta && f.data_fim >= proximaSexta
+        )
       )
 
       // Total de dias úteis de férias por pessoa este ano, aprovadas e
