@@ -13,14 +13,27 @@ interface Payload {
   semana_ref: string // YYYY-MM-DD, Quinta-feira
 }
 
+// O browser envia sempre um pré-voo OPTIONS antes de um POST com
+// cabeçalho Authorization — sem estes cabeçalhos em todas as respostas
+// (incluindo o próprio pré-voo), o browser bloqueia o pedido antes de
+// chegar aqui, mesmo que a função em si esteja saudável.
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
   if (req.method !== 'POST') {
-    return new Response('Método não permitido', { status: 405 })
+    return new Response('Método não permitido', { status: 405, headers: corsHeaders })
   }
 
   const { semana_ref }: Payload = await req.json()
   if (!semana_ref) {
-    return new Response(JSON.stringify({ erro: 'semana_ref em falta' }), { status: 400 })
+    return new Response(JSON.stringify({ erro: 'semana_ref em falta' }), { status: 400, headers: corsHeaders })
   }
 
   const supabase = createClient(
@@ -100,6 +113,6 @@ Deno.serve(async (req) => {
   }
 
   return new Response(JSON.stringify(sugestao), {
-    headers: { 'Content-Type': 'application/json' },
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   })
 })

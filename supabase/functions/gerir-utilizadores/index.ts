@@ -33,14 +33,34 @@ interface PedidoDesativar {
 
 type Pedido = PedidoCriar | PedidoResetPassword | PedidoDesativar
 
+// O browser envia sempre um pré-voo OPTIONS antes de um POST com
+// cabeçalho Authorization — sem estes cabeçalhos em todas as respostas
+// (incluindo o próprio pré-voo), o browser bloqueia o pedido antes de
+// chegar aqui, mesmo que a função em si esteja saudável.
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  })
+}
+
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ erro: 'Método não permitido' }), { status: 405 })
+    return json({ erro: 'Método não permitido' }, 405)
   }
 
   const authHeader = req.headers.get('Authorization')
   if (!authHeader) {
-    return new Response(JSON.stringify({ erro: 'Não autenticado' }), { status: 401 })
+    return json({ erro: 'Não autenticado' }, 401)
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
@@ -55,7 +75,7 @@ Deno.serve(async (req) => {
 
   const { data: userData, error: erroUser } = await clienteChamador.auth.getUser()
   if (erroUser || !userData.user) {
-    return new Response(JSON.stringify({ erro: 'Sessão inválida' }), { status: 401 })
+    return json({ erro: 'Sessão inválida' }, 401)
   }
 
   const admin = createClient(supabaseUrl, serviceRoleKey)
@@ -69,7 +89,7 @@ Deno.serve(async (req) => {
   const { data: souGerenteOuDelegado } = await clienteChamador.rpc('is_gerente_ou_delegado')
 
   if (!chamador?.ativo || !souGerenteOuDelegado) {
-    return new Response(JSON.stringify({ erro: 'Sem permissão — reservado ao Gerente/delegado.' }), { status: 403 })
+    return json({ erro: 'Sem permissão — reservado ao Gerente/delegado.' }, 403)
   }
 
   const ehGerenteTitular = chamador.perfil === 'GERENTE'
@@ -80,7 +100,7 @@ Deno.serve(async (req) => {
     if (pedido.acao === 'criar') {
       const { nome, email, password, perfil, empresa, limite_h3_mensal } = pedido
       if (!nome || !email || !password || !perfil || !empresa) {
-        return new Response(JSON.stringify({ erro: 'Faltam campos obrigatórios.' }), { status: 400 })
+        return json({ erro: 'Faltam campos obrigatórios.' }, 400)
       }
 
       const { data: novoAuth, error: erroCriar } = await admin.auth.admin.createUser({
@@ -89,7 +109,7 @@ Deno.serve(async (req) => {
         email_confirm: true,
       })
       if (erroCriar || !novoAuth.user) {
-        return new Response(JSON.stringify({ erro: erroCriar?.message ?? 'Falha ao criar conta.' }), { status: 400 })
+        return json({ erro: erroCriar?.message ?? 'Falha ao criar conta.' }, 400)
       }
 
       const { error: erroPerfil } = await admin.from('usuarios').insert({
@@ -117,7 +137,7 @@ Deno.serve(async (req) => {
             descricao_detalhada: `Falha a criar perfil (${erroPerfil.message}) E a limpar a conta de autenticação ${novoAuth.user.id} (${email}): ${erroLimpeza.message}. Requer remoção manual no Supabase.`,
           })
         }
-        return new Response(JSON.stringify({ erro: erroPerfil.message }), { status: 400 })
+        return json({ erro: erroPerfil.message }, 400)
       }
 
       await admin.from('logs_auditoria').insert({
@@ -127,26 +147,26 @@ Deno.serve(async (req) => {
         descricao_detalhada: `${nome} (${email}, ${perfil}) registado por ${chamador.id}.`,
       })
 
-      return new Response(JSON.stringify({ id: novoAuth.user.id }), { status: 200 })
+      return json({ id: novoAuth.user.id })
     }
 
     if (pedido.acao === 'reset_password') {
       const { usuario_id, nova_password } = pedido
       if (!usuario_id || !nova_password) {
-        return new Response(JSON.stringify({ erro: 'Faltam campos obrigatórios.' }), { status: 400 })
+        return json({ erro: 'Faltam campos obrigatórios.' }, 400)
       }
 
       const { data: alvo } = await admin.from('usuarios').select('nome, perfil').eq('id', usuario_id).single()
       if (!alvo) {
-        return new Response(JSON.stringify({ erro: 'Utilizador não encontrado.' }), { status: 404 })
+        return json({ erro: 'Utilizador não encontrado.' }, 404)
       }
       if (alvo.perfil === 'GERENTE' && !ehGerenteTitular) {
-        return new Response(JSON.stringify({ erro: 'Um delegado não pode repor a password do Gerente titular.' }), { status: 403 })
+        return json({ erro: 'Um delegado não pode repor a password do Gerente titular.' }, 403)
       }
 
       const { error: erroReset } = await admin.auth.admin.updateUserById(usuario_id, { password: nova_password })
       if (erroReset) {
-        return new Response(JSON.stringify({ erro: erroReset.message }), { status: 400 })
+        return json({ erro: erroReset.message }, 400)
       }
 
       await admin.from('logs_auditoria').insert({
@@ -156,26 +176,26 @@ Deno.serve(async (req) => {
         descricao_detalhada: `Password de ${alvo.nome} reposta por ${chamador.id}.`,
       })
 
-      return new Response(JSON.stringify({ ok: true }), { status: 200 })
+      return json({ ok: true })
     }
 
     if (pedido.acao === 'desativar') {
       const { usuario_id } = pedido
       if (!usuario_id) {
-        return new Response(JSON.stringify({ erro: 'Falta usuario_id.' }), { status: 400 })
+        return json({ erro: 'Falta usuario_id.' }, 400)
       }
 
       const { data: alvo } = await admin.from('usuarios').select('nome, perfil').eq('id', usuario_id).single()
       if (!alvo) {
-        return new Response(JSON.stringify({ erro: 'Utilizador não encontrado.' }), { status: 404 })
+        return json({ erro: 'Utilizador não encontrado.' }, 404)
       }
       if (alvo.perfil === 'GERENTE' && !ehGerenteTitular) {
-        return new Response(JSON.stringify({ erro: 'Um delegado não pode desativar o Gerente titular.' }), { status: 403 })
+        return json({ erro: 'Um delegado não pode desativar o Gerente titular.' }, 403)
       }
 
       const { error: erroDesativar } = await admin.from('usuarios').update({ ativo: false }).eq('id', usuario_id)
       if (erroDesativar) {
-        return new Response(JSON.stringify({ erro: erroDesativar.message }), { status: 400 })
+        return json({ erro: erroDesativar.message }, 400)
       }
 
       // Invalida sessões já abertas — supabase-js não expõe um método
@@ -185,7 +205,7 @@ Deno.serve(async (req) => {
       // ver migração 0018) em vez de aceder a auth.sessions direto.
       const { error: erroRevogar } = await admin.rpc('revogar_sessoes_utilizador', { p_usuario_id: usuario_id })
       if (erroRevogar) {
-        return new Response(JSON.stringify({ erro: erroRevogar.message }), { status: 500 })
+        return json({ erro: erroRevogar.message }, 500)
       }
 
       await admin.from('logs_auditoria').insert({
@@ -195,11 +215,11 @@ Deno.serve(async (req) => {
         descricao_detalhada: `${alvo.nome} desativado por ${chamador.id}; sessões ativas terminadas.`,
       })
 
-      return new Response(JSON.stringify({ ok: true }), { status: 200 })
+      return json({ ok: true })
     }
 
-    return new Response(JSON.stringify({ erro: 'Ação desconhecida.' }), { status: 400 })
+    return json({ erro: 'Ação desconhecida.' }, 400)
   } catch (e) {
-    return new Response(JSON.stringify({ erro: e instanceof Error ? e.message : 'Erro inesperado.' }), { status: 500 })
+    return json({ erro: e instanceof Error ? e.message : 'Erro inesperado.' }, 500)
   }
 })
