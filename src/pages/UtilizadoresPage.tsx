@@ -128,7 +128,11 @@ export function UtilizadoresPage() {
         return
       }
     } else {
-      await supabase.from('usuarios').update({ ativo: true }).eq('id', alvo.id)
+      const { error } = await supabase.from('usuarios').update({ ativo: true }).eq('id', alvo.id)
+      if (error) {
+        setErroDesativar({ id: alvo.id, mensagem: error.message })
+        return
+      }
     }
     recarregar()
   }

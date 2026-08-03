@@ -23,6 +23,7 @@ export function PainelFerias({ usuarios }: { usuarios: Usuario[] }) {
   const [dataFim, setDataFim] = useState('')
   const [erro, setErro] = useState<string | null>(null)
   const [aEnviar, setAEnviar] = useState(false)
+  const [erroDecisao, setErroDecisao] = useState<{ id: number; mensagem: string } | null>(null)
 
   // Conta invocações de carregar() para descartar respostas antigas que
   // resolvam depois de uma mais recente — a subscrição realtime pode
@@ -76,10 +77,12 @@ export function PainelFerias({ usuarios }: { usuarios: Usuario[] }) {
   const decidirDebounced = useDebounce(
     async (id: number, status: 'APROVADA' | 'REJEITADA') => {
       if (!usuario) return
-      await supabase
+      setErroDecisao(null)
+      const { error } = await supabase
         .from('ferias')
         .update({ status, aprovado_por: usuario.id, data_aprovacao: new Date().toISOString() })
         .eq('id', id)
+      if (error) setErroDecisao({ id, mensagem: traduzirErro(error.message) })
     },
     500
   )
@@ -112,39 +115,42 @@ export function PainelFerias({ usuarios }: { usuarios: Usuario[] }) {
         <div className="flex flex-col gap-2">
           {pedidos.length === 0 && <p className="text-sm text-zinc-400">Sem pedidos pendentes.</p>}
           {pedidos.map((f) => (
-            <div key={f.id} className="flex items-center justify-between gap-2 text-sm">
-              <span className="text-zinc-700">
-                {nomeDe(f.usuario_id)} · {formatarDataPT(f.data_inicio)} a {formatarDataPT(f.data_fim)}
-              </span>
-              {f.status === 'PENDENTE' && ehGerenteOuDelegado ? (
-                <span className="flex shrink-0 gap-1.5">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button size="xs" onClick={() => decidirDebounced(f.id, 'APROVADA')}>
-                        Aprovar
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Aprova o pedido — conta para o limite anual de 22 dias úteis</TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button size="xs" variant="destructive" onClick={() => decidirDebounced(f.id, 'REJEITADA')}>
-                        Rejeitar
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Recusa o pedido — não conta para o limite anual</TooltipContent>
-                  </Tooltip>
+            <div key={f.id} className="flex flex-col gap-1">
+              <div className="flex items-center justify-between gap-2 text-sm">
+                <span className="text-zinc-700">
+                  {nomeDe(f.usuario_id)} · {formatarDataPT(f.data_inicio)} a {formatarDataPT(f.data_fim)}
                 </span>
-              ) : (
-                <span
-                  className={cn(
-                    'shrink-0 rounded-md border px-1.5 py-0.5 text-[0.65rem] font-medium',
-                    ESTILO_STATUS[f.status]
-                  )}
-                >
-                  {f.status}
-                </span>
-              )}
+                {f.status === 'PENDENTE' && ehGerenteOuDelegado ? (
+                  <span className="flex shrink-0 gap-1.5">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button size="xs" onClick={() => decidirDebounced(f.id, 'APROVADA')}>
+                          Aprovar
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Aprova o pedido — conta para o limite anual de 22 dias úteis</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button size="xs" variant="destructive" onClick={() => decidirDebounced(f.id, 'REJEITADA')}>
+                          Rejeitar
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Recusa o pedido — não conta para o limite anual</TooltipContent>
+                    </Tooltip>
+                  </span>
+                ) : (
+                  <span
+                    className={cn(
+                      'shrink-0 rounded-md border px-1.5 py-0.5 text-[0.65rem] font-medium',
+                      ESTILO_STATUS[f.status]
+                    )}
+                  >
+                    {f.status}
+                  </span>
+                )}
+              </div>
+              {erroDecisao?.id === f.id && <p className="text-xs text-red-600">{erroDecisao.mensagem}</p>}
             </div>
           ))}
         </div>
@@ -156,6 +162,6 @@ export function PainelFerias({ usuarios }: { usuarios: Usuario[] }) {
 function traduzirErro(mensagem: string): string {
   if (mensagem.includes('sobrepostas')) return 'Já existem férias pedidas/aprovadas de outro colega neste período.'
   if (mensagem.includes('saldo anual')) return 'Este pedido ultrapassa o saldo anual de 22 dias úteis de férias.'
-  if (mensagem.includes('escala atribuída')) return 'Já existe escala atribuída a esta pessoa num período sobreposto.'
+  if (mensagem.includes('pedido pendente')) return 'Já existe um pedido pendente para esta pessoa — tem de ser decidido primeiro.'
   return mensagem
 }

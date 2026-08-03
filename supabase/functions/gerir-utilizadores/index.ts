@@ -105,7 +105,18 @@ Deno.serve(async (req) => {
       if (erroPerfil) {
         // Sem o perfil em usuarios a conta fica inutilizável — remove a
         // conta de autenticação para não deixar um utilizador "fantasma".
-        await admin.auth.admin.deleteUser(novoAuth.user.id)
+        // Se esta limpeza também falhar, regista-se para não desaparecer
+        // sem rasto nenhum — fica uma conta de login sem perfil, a
+        // precisar de remoção manual.
+        const { error: erroLimpeza } = await admin.auth.admin.deleteUser(novoAuth.user.id)
+        if (erroLimpeza) {
+          await admin.from('logs_auditoria').insert({
+            referencia_tipo: 'USUARIO',
+            id_usuario: userData.user.id,
+            acao: 'UTILIZADOR_FANTASMA',
+            descricao_detalhada: `Falha a criar perfil (${erroPerfil.message}) E a limpar a conta de autenticação ${novoAuth.user.id} (${email}): ${erroLimpeza.message}. Requer remoção manual no Supabase.`,
+          })
+        }
         return new Response(JSON.stringify({ erro: erroPerfil.message }), { status: 400 })
       }
 
