@@ -6,20 +6,11 @@ import { cn } from '@/lib/utils'
 
 export function AlertBar() {
   const [agora, setAgora] = useState(getNow())
-  const [online, setOnline] = useState(navigator.onLine)
   const [ehManutencao, setEhManutencao] = useState(false)
 
   useEffect(() => {
     const t = setInterval(() => setAgora(getNow()), 30_000)
-    const onOnline = () => setOnline(true)
-    const onOffline = () => setOnline(false)
-    window.addEventListener('online', onOnline)
-    window.addEventListener('offline', onOffline)
-    return () => {
-      clearInterval(t)
-      window.removeEventListener('online', onOnline)
-      window.removeEventListener('offline', onOffline)
-    }
+    return () => clearInterval(t)
   }, [])
 
   useEffect(() => {
@@ -35,7 +26,7 @@ export function AlertBar() {
   const proximo = calcularProximoAlerta(agora, ehManutencao)
 
   return (
-    <div className="flex items-center justify-between border-b border-zinc-100 bg-zinc-50 px-5 py-2.5">
+    <div className="flex items-center border-b border-zinc-100 bg-zinc-50 px-5 py-2.5">
       <div className="flex items-center gap-2.5">
         <span
           className={cn(
@@ -51,15 +42,6 @@ export function AlertBar() {
           </span>
         )}
       </div>
-
-      <span
-        className={cn(
-          'inline-flex items-center rounded-md border px-1.5 py-0.5 text-[0.65rem] font-medium',
-          online ? 'border-emerald-100 bg-emerald-50 text-emerald-700' : 'border-red-100 bg-red-50 text-red-700'
-        )}
-      >
-        {online ? 'Rede OK' : 'Sem rede'}
-      </span>
     </div>
   )
 }
