@@ -539,13 +539,19 @@ function PainelSugestao({ usuarios }: { usuarios: Pick<Usuario, 'id' | 'nome'>[]
 
   async function aplicar() {
     if (!sugestao) return
+    setErro(null)
     const linhas: { usuario_id: string; semana_ref: string; turno: string }[] = []
     if (sugestao.H3) linhas.push({ usuario_id: sugestao.H3.usuario_id, semana_ref: sugestao.semana_ref, turno: 'H3' })
     if (sugestao.H1) linhas.push({ usuario_id: sugestao.H1, semana_ref: sugestao.semana_ref, turno: 'H1' })
     if (sugestao.H2) linhas.push({ usuario_id: sugestao.H2, semana_ref: sugestao.semana_ref, turno: 'H2' })
     if (sugestao.H4) linhas.push({ usuario_id: sugestao.H4, semana_ref: sugestao.semana_ref, turno: 'H4' })
     const { error } = await supabase.from('escala_semanal').upsert(linhas, { onConflict: 'usuario_id,semana_ref' })
-    if (!error) setAplicado(true)
+    // A sugestão de H1/H2/H4 não sabe se a pessoa tem férias aprovadas
+    // essa semana (só o H3 verifica isso) — o erro mais provável aqui
+    // é mesmo essa sobreposição; mostra-se tal e qual em vez de falhar
+    // em silêncio.
+    if (error) setErro(error.message)
+    else setAplicado(true)
   }
 
   if (!aberto) {
