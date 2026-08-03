@@ -18,6 +18,7 @@ export function PainelTrocas({ usuarios }: { usuarios: Usuario[] }) {
   const [substitutoId, setSubstitutoId] = useState('')
   const [erro, setErro] = useState<string | null>(null)
   const [aEnviar, setAEnviar] = useState(false)
+  const [erroDecisao, setErroDecisao] = useState<{ id: number; mensagem: string } | null>(null)
 
   const elegiveisH3 = usuariosH3Ativos(usuarios).filter((u) => u.id !== usuario?.id)
   const souOperadorH3 = usuario?.perfil === 'OPERADOR_H3'
@@ -76,10 +77,12 @@ export function PainelTrocas({ usuarios }: { usuarios: Usuario[] }) {
   const decidirDebounced = useDebounce(
     async (id: number, status: 'APROVADA' | 'REJEITADA') => {
       if (!usuario) return
-      await supabase
+      setErroDecisao(null)
+      const { error } = await supabase
         .from('trocas_escala')
         .update({ status, aprovado_por: usuario.id, data_aprovacao: new Date().toISOString() })
         .eq('id', id)
+      if (error) setErroDecisao({ id, mensagem: error.message })
     },
     500
   )
@@ -125,34 +128,37 @@ export function PainelTrocas({ usuarios }: { usuarios: Usuario[] }) {
         <div className="flex flex-col gap-2">
           {trocas.length === 0 && <p className="text-sm text-zinc-400">Sem trocas propostas.</p>}
           {trocas.map((t) => (
-            <div key={t.id} className="flex items-center justify-between gap-2 text-sm">
-              <span className="text-zinc-700">
-                {formatarDataPT(t.semana_ref)}: {nomeDe(t.usuario_proponente)} → {nomeDe(t.usuario_substituto)}
-              </span>
-              {ehGerenteOuDelegado ? (
-                <span className="flex shrink-0 gap-1.5">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button size="xs" onClick={() => decidirDebounced(t.id, 'APROVADA')}>
-                        Aprovar
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Confirma a troca — o substituto passa a cobrir esta semana no lugar do proponente</TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button size="xs" variant="destructive" onClick={() => decidirDebounced(t.id, 'REJEITADA')}>
-                        Rejeitar
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Recusa a troca — a escala original mantém-se sem alterações</TooltipContent>
-                  </Tooltip>
+            <div key={t.id} className="flex flex-col gap-1">
+              <div className="flex items-center justify-between gap-2 text-sm">
+                <span className="text-zinc-700">
+                  {formatarDataPT(t.semana_ref)}: {nomeDe(t.usuario_proponente)} → {nomeDe(t.usuario_substituto)}
                 </span>
-              ) : (
-                <span className="shrink-0 rounded-md border border-amber-100 bg-amber-50 px-1.5 py-0.5 text-[0.65rem] font-medium text-amber-700">
-                  PROPOSTA
-                </span>
-              )}
+                {ehGerenteOuDelegado ? (
+                  <span className="flex shrink-0 gap-1.5">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button size="xs" onClick={() => decidirDebounced(t.id, 'APROVADA')}>
+                          Aprovar
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Confirma a troca — o substituto passa a cobrir esta semana no lugar do proponente</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button size="xs" variant="destructive" onClick={() => decidirDebounced(t.id, 'REJEITADA')}>
+                          Rejeitar
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Recusa a troca — a escala original mantém-se sem alterações</TooltipContent>
+                    </Tooltip>
+                  </span>
+                ) : (
+                  <span className="shrink-0 rounded-md border border-amber-100 bg-amber-50 px-1.5 py-0.5 text-[0.65rem] font-medium text-amber-700">
+                    PROPOSTA
+                  </span>
+                )}
+              </div>
+              {erroDecisao?.id === t.id && <p className="text-xs text-red-600">{erroDecisao.mensagem}</p>}
             </div>
           ))}
         </div>
