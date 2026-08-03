@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useUsuarios } from '@/data/useUsuarios'
 import { supabase } from '@/lib/supabase'
-import { adicionarDias, paraISO, formatarDataPT, proximaSextaISO } from '@/lib/datas'
+import { adicionarDias, paraISO, formatarDataPT, quintaEscalaDe } from '@/lib/datas'
 import { gerarTextoRelatorioSemanal } from '@/lib/gerarRelatorioSemanal'
 import type { EscalaSemanal, Ferias } from '@/types/database'
 import { Button } from '@/components/ui/button'
@@ -9,16 +9,25 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 
 export function RelatoriosPage() {
-  const semanaRef = useMemo(() => proximaSextaISO(), [])
+  // Ancora à quinta-feira do ciclo em curso (mesma âncora do Plano de
+  // Fim de Semana) — só avança para o ciclo seguinte a partir de
+  // quinta-feira, quando o Gerente de facto publica o novo relatório.
+  // proximaSextaISO() avançava logo no sábado anterior, 4 dias cedo
+  // demais.
+  const quintaCiclo = useMemo(() => paraISO(quintaEscalaDe(new Date())), [])
+  const semanaRef = useMemo(
+    () => paraISO(adicionarDias(new Date(quintaCiclo + 'T00:00:00'), 1)),
+    [quintaCiclo]
+  )
   // escala_semanal ancora ao sábado seguinte à sexta administrativa
   // (ver EscalaPage/valorDoDia) — não é o mesmo valor que semanaRef.
   const semanaRefConsulta = useMemo(
-    () => paraISO(adicionarDias(new Date(semanaRef + 'T00:00:00'), 1)),
-    [semanaRef]
+    () => paraISO(adicionarDias(new Date(quintaCiclo + 'T00:00:00'), 2)),
+    [quintaCiclo]
   )
   const fimSemana = useMemo(
-    () => paraISO(adicionarDias(new Date(semanaRef + 'T00:00:00'), 6)),
-    [semanaRef]
+    () => paraISO(adicionarDias(new Date(quintaCiclo + 'T00:00:00'), 7)),
+    [quintaCiclo]
   )
 
   const { usuarios } = useUsuarios()

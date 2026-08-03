@@ -100,6 +100,23 @@ export function proximaSextaISO(referencia: Date = agora()): string {
   return paraISO(adicionarDias(referencia, diasAteSexta))
 }
 
+/**
+ * Quinta-feira da escala (H1-H4) em vigor nesta data — diferente de
+ * semanaRefDe(): essa serve o ciclo Qui→Seg do Plano de Fim de Semana
+ * e propositadamente avança Terça/Quarta para a quinta seguinte (não
+ * há plano a meio da semana). A escala cobre a semana inteira
+ * (Qui→Qua seguinte), por isso recua sempre até à quinta mais
+ * recente, todos os dias sem exceção — só avança no próprio dia em
+ * que o Gerente publica o relatório novo, nunca antes.
+ */
+export function quintaEscalaDe(d: Date): Date {
+  const deslocamento = (isoWeekday(d) - 4 + 7) % 7
+  const resultado = new Date(d)
+  resultado.setDate(resultado.getDate() - deslocamento)
+  resultado.setHours(0, 0, 0, 0)
+  return resultado
+}
+
 /** Sábado ou Domingo — ao fim de semana só o H3 está escalado. */
 export function ehFimDeSemana(diaISO: string): boolean {
   const dia = isoWeekday(new Date(diaISO + 'T00:00:00'))
