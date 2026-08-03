@@ -9,6 +9,7 @@ import { EscalaPage } from './pages/EscalaPage'
 import { RelatoriosPage } from './pages/RelatoriosPage'
 import { HistoricoPage } from './pages/HistoricoPage'
 import { DefinicoesPage } from './pages/DefinicoesPage'
+import { UtilizadoresPage } from './pages/UtilizadoresPage'
 import { TooltipProvider } from '@/components/ui/tooltip'
 
 function App() {
@@ -27,6 +28,7 @@ function App() {
                 <Route path="/relatorios" element={<RelatoriosPage />} />
                 <Route path="/historico" element={<HistoricoPage />} />
                 <Route path="/definicoes" element={<DefinicoesPage />} />
+                <Route path="/utilizadores" element={<UtilizadoresPage />} />
                 <Route path="*" element={<Navigate to="/inicio" replace />} />
               </Routes>
             </AppShell>

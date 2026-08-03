@@ -16,7 +16,9 @@ const ABAS = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { usuario, ehGerenteOuDelegado, signOut } = useAuth()
-  const abas = ehGerenteOuDelegado ? [...ABAS, { to: '/definicoes', label: 'Definições' }] : ABAS
+  const abas = ehGerenteOuDelegado
+    ? [...ABAS, { to: '/definicoes', label: 'Definições' }, { to: '/utilizadores', label: 'Utilizadores' }]
+    : ABAS
 
   return (
     <div className="flex min-h-screen flex-col bg-white">

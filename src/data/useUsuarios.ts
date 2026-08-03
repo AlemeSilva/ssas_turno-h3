@@ -6,10 +6,17 @@ export function useUsuarios() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([])
   const [aCarregar, setACarregar] = useState(true)
 
+  async function carregar() {
+    setACarregar(true)
+    const { data } = await supabase.from('usuarios').select('*').order('nome')
+    setUsuarios((data as Usuario[]) ?? [])
+    setACarregar(false)
+  }
+
   useEffect(() => {
     let cancelado = false
 
-    async function carregar() {
+    async function carregarInicial() {
       setACarregar(true)
       const { data } = await supabase.from('usuarios').select('*').order('nome')
       if (!cancelado) {
@@ -18,13 +25,13 @@ export function useUsuarios() {
       }
     }
 
-    carregar()
+    carregarInicial()
     return () => {
       cancelado = true
     }
   }, [])
 
-  return { usuarios, aCarregar }
+  return { usuarios, aCarregar, recarregar: carregar }
 }
 
 export function usuariosH3Ativos(usuarios: Usuario[]) {
