@@ -4,20 +4,12 @@ import { useAuth } from '@/auth/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { semanaRefDe, paraISO, formatarDataPT } from '@/lib/datas'
 import { gerarTextoPlano } from '@/lib/exportarPlano'
-import type { StatusTarefa } from '@/types/database'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-
-const ESTILO_STATUS_TAREFA: Record<StatusTarefa, string> = {
-  PENDENTE: 'border-zinc-200 bg-zinc-100 text-zinc-500',
-  EM_ANDAMENTO: 'border-amber-100 bg-amber-50 text-amber-700',
-  CONCLUIDO: 'border-emerald-100 bg-emerald-50 text-emerald-700',
-  ATRASADO: 'border-red-100 bg-red-50 text-red-700',
-}
 
 const ROTULO_STATUS_PLANO: Record<string, string> = {
   RASCUNHO: 'Rascunho',
@@ -189,15 +181,12 @@ export function PlanoPage() {
           <CardContent className="flex flex-col gap-2 pt-6">
             <CardTitle>{formatarDataPT(dia)}</CardTitle>
             {lista.map((t) => (
-              <div key={t.id} className="flex items-center justify-between border-b border-zinc-100 pb-2 text-sm last:border-b-0">
-                <div>
-                  <strong className="font-semibold text-zinc-900">{t.hora_arranque ?? '—'}</strong> · {t.descricao_tarefa}
-                  <div className="text-xs text-zinc-400">
-                    {t.equipa_responsavel}
-                    {t.hr_limite ? ` · HR. LIMITE: ${t.hr_limite}` : ''}
-                  </div>
+              <div key={t.id} className="border-b border-zinc-100 pb-2 text-sm last:border-b-0">
+                <strong className="font-semibold text-zinc-900">{t.hora_arranque ?? '—'}</strong> · {t.descricao_tarefa}
+                <div className="text-xs text-zinc-400">
+                  {t.equipa_responsavel}
+                  {t.hr_limite ? ` · HR. LIMITE: ${t.hr_limite}` : ''}
                 </div>
-                <Badge className={ESTILO_STATUS_TAREFA[t.status]}>{t.status}</Badge>
               </div>
             ))}
           </CardContent>
