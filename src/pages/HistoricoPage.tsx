@@ -1,5 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/auth/AuthContext'
 import { useUsuarios } from '@/data/useUsuarios'
 import type { CadeiaDiaria, EscalaSemanal, LogAuditoria, Plano, StatusPlano } from '@/types/database'
 import { formatarDataPT } from '@/lib/datas'
@@ -25,8 +26,17 @@ const TABS: { id: Separador; label: string }[] = [
 ]
 
 export function HistoricoPage() {
+  const { ehGerenteOuDelegado } = useAuth()
   const [separador, setSeparador] = useState<Separador>('ESCALA')
   const { usuarios } = useUsuarios()
+
+  if (!ehGerenteOuDelegado) {
+    return (
+      <Card>
+        <CardContent className="pt-6 text-sm text-zinc-500">Esta área é reservada ao Gerente.</CardContent>
+      </Card>
+    )
+  }
 
   return (
     <Card>

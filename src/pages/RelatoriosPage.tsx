@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useAuth } from '@/auth/AuthContext'
 import { useUsuarios } from '@/data/useUsuarios'
 import { supabase } from '@/lib/supabase'
 import { adicionarDias, paraISO, formatarDataPT, quintaEscalaDe } from '@/lib/datas'
@@ -9,6 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 
 export function RelatoriosPage() {
+  const { ehGerenteOuDelegado } = useAuth()
+
   // Ancora à quinta-feira do ciclo em curso (mesma âncora do Plano de
   // Fim de Semana) — só avança para o ciclo seguinte a partir de
   // quinta-feira, quando o Gerente de facto publica o novo relatório.
@@ -75,6 +78,14 @@ export function RelatoriosPage() {
     () => gerarTextoRelatorioSemanal(semanaRef, escalas, ferias, usuarios),
     [semanaRef, escalas, ferias, usuarios]
   )
+
+  if (!ehGerenteOuDelegado) {
+    return (
+      <Card>
+        <CardContent className="pt-6 text-sm text-zinc-500">Esta área é reservada ao Gerente.</CardContent>
+      </Card>
+    )
+  }
 
   async function copiar() {
     await navigator.clipboard.writeText(texto)

@@ -10,15 +10,18 @@ const ABAS = [
   { to: '/plano', label: 'Plano de Fim de Semana' },
   { to: '/checklist', label: 'Checklist Ativo' },
   { to: '/escala', label: 'Escala do Mês' },
+]
+
+const ABAS_GERENTE = [
   { to: '/relatorios', label: 'Relatórios' },
   { to: '/historico', label: 'Histórico' },
+  { to: '/definicoes', label: 'Definições' },
+  { to: '/utilizadores', label: 'Utilizadores' },
 ]
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { usuario, ehGerenteOuDelegado, signOut } = useAuth()
-  const abas = ehGerenteOuDelegado
-    ? [...ABAS, { to: '/definicoes', label: 'Definições' }, { to: '/utilizadores', label: 'Utilizadores' }]
-    : ABAS
+  const abas = ehGerenteOuDelegado ? [...ABAS, ...ABAS_GERENTE] : ABAS
 
   return (
     <div className="flex min-h-screen flex-col bg-white">
