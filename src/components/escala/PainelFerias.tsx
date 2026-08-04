@@ -24,6 +24,7 @@ export function PainelFerias({ usuarios }: { usuarios: Usuario[] }) {
   const [erro, setErro] = useState<string | null>(null)
   const [aEnviar, setAEnviar] = useState(false)
   const [erroDecisao, setErroDecisao] = useState<{ id: number; mensagem: string } | null>(null)
+  const [aConfirmarCancelar, setAConfirmarCancelar] = useState<number | null>(null)
 
   // Conta invocações de carregar() para descartar respostas antigas que
   // resolvam depois de uma mais recente — a subscrição realtime pode
@@ -87,6 +88,21 @@ export function PainelFerias({ usuarios }: { usuarios: Usuario[] }) {
     500
   )
 
+  // Dois cliques em vez de window.confirm() — mantém o estilo shadcn
+  // em vez de um popup nativo do browser, para uma ação rara mas
+  // irreversível (corrigir um registo de férias errado, ex.: 22/07).
+  function pedirCancelamento(id: number) {
+    setAConfirmarCancelar(id)
+    setTimeout(() => setAConfirmarCancelar((atual) => (atual === id ? null : atual)), 4000)
+  }
+
+  async function cancelar(id: number) {
+    setErroDecisao(null)
+    const { error } = await supabase.from('ferias').delete().eq('id', id)
+    if (error) setErroDecisao({ id, mensagem: traduzirErro(error.message) })
+    setAConfirmarCancelar(null)
+  }
+
   function nomeDe(id: string) {
     return usuarios.find((u) => u.id === id)?.nome ?? id
   }
@@ -120,35 +136,57 @@ export function PainelFerias({ usuarios }: { usuarios: Usuario[] }) {
                 <span className="text-zinc-700">
                   {nomeDe(f.usuario_id)} · {formatarDataPT(f.data_inicio)} a {formatarDataPT(f.data_fim)}
                 </span>
-                {f.status === 'PENDENTE' && ehGerenteOuDelegado ? (
-                  <span className="flex shrink-0 gap-1.5">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button size="xs" onClick={() => decidirDebounced(f.id, 'APROVADA')}>
-                          Aprovar
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Aprova o pedido — conta para o limite anual de 22 dias úteis</TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button size="xs" variant="destructive" onClick={() => decidirDebounced(f.id, 'REJEITADA')}>
-                          Rejeitar
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Recusa o pedido — não conta para o limite anual</TooltipContent>
-                    </Tooltip>
-                  </span>
-                ) : (
-                  <span
-                    className={cn(
-                      'shrink-0 rounded-md border px-1.5 py-0.5 text-[0.65rem] font-medium',
-                      ESTILO_STATUS[f.status]
-                    )}
-                  >
-                    {f.status}
-                  </span>
-                )}
+                <span className="flex shrink-0 items-center gap-1.5">
+                  {f.status === 'PENDENTE' && ehGerenteOuDelegado ? (
+                    <>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button size="xs" onClick={() => decidirDebounced(f.id, 'APROVADA')}>
+                            Aprovar
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Aprova o pedido — conta para o limite anual de 22 dias úteis</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button size="xs" variant="destructive" onClick={() => decidirDebounced(f.id, 'REJEITADA')}>
+                            Rejeitar
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Recusa o pedido — não conta para o limite anual</TooltipContent>
+                      </Tooltip>
+                    </>
+                  ) : (
+                    <span
+                      className={cn(
+                        'rounded-md border px-1.5 py-0.5 text-[0.65rem] font-medium',
+                        ESTILO_STATUS[f.status]
+                      )}
+                    >
+                      {f.status}
+                    </span>
+                  )}
+                  {ehGerenteOuDelegado &&
+                    (aConfirmarCancelar === f.id ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button size="xs" variant="destructive" onClick={() => cancelar(f.id)}>
+                            Confirmar?
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Clica outra vez para apagar em definitivo — não há forma de desfazer</TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button size="xs" variant="ghost" onClick={() => pedirCancelamento(f.id)}>
+                            Cancelar
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Apaga este pedido de férias — usar para corrigir um registo enganado</TooltipContent>
+                      </Tooltip>
+                    ))}
+                </span>
               </div>
               {erroDecisao?.id === f.id && <p className="text-xs text-red-600">{erroDecisao.mensagem}</p>}
             </div>
