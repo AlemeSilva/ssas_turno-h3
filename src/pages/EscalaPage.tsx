@@ -130,7 +130,8 @@ export function EscalaPage() {
   const [mostrarFimDeSemana, setMostrarFimDeSemana] = useState(true)
   const { usuarios, aCarregar: aCarregarUsuarios } = useUsuarios()
   const { escalas, ferias, feriados, plantoes, aCarregar: aCarregarEscala } = useEscalaMes(mesRef)
-  const { ehGerenteOuDelegado } = useAuth()
+  const { usuario, ehGerenteOuDelegado } = useAuth()
+  const souOperadorH3 = usuario?.perfil === 'OPERADOR_H3'
 
   const dias = useMemo(() => {
     const ano = mesRef.getFullYear()
@@ -303,7 +304,7 @@ export function EscalaPage() {
 
       <div className="flex flex-col gap-5">
         <PainelFerias usuarios={pessoasAtivas} />
-        <PainelTrocas usuarios={pessoasAtivas} />
+        {(souOperadorH3 || ehGerenteOuDelegado) && <PainelTrocas usuarios={pessoasAtivas} />}
         {ehGerenteOuDelegado && <PainelDelegacao usuarios={pessoasAtivas} />}
       </div>
 

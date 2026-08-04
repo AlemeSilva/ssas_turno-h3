@@ -1,8 +1,9 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { usePlanoCiclo } from '@/data/usePlanoCiclo'
 import { useAuth } from '@/auth/AuthContext'
+import { useUsuarios } from '@/data/useUsuarios'
 import { supabase } from '@/lib/supabase'
-import { semanaRefDe, paraISO, formatarDataPT } from '@/lib/datas'
+import { semanaRefDe, adicionarDias, paraISO, formatarDataPT } from '@/lib/datas'
 import { gerarTextoPlano } from '@/lib/exportarPlano'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -29,12 +30,40 @@ function Badge({ className, children }: { className: string; children: React.Rea
 
 export function PlanoPage() {
   const { usuario, ehGerenteOuDelegado } = useAuth()
+  const { usuarios } = useUsuarios()
   const dataInicioCiclo = useMemo(() => paraISO(semanaRefDe(new Date())), [])
   const { plano, tarefas, aCarregar, recarregar, criarPlano } = usePlanoCiclo(dataInicioCiclo)
 
   const [textoExportado, setTextoExportado] = useState<string | null>(null)
   const [novaTarefa, setNovaTarefa] = useState('')
   const [erro, setErro] = useState<string | null>(null)
+
+  // undefined = ainda a carregar; null = ninguém escalado de H3 para
+  // este ciclo. Só o Gerente/delegado ou esta pessoa podem criar o
+  // plano — mesma regra já aplicada em planos_insert (RLS), aqui só
+  // para a interface não mostrar o botão a quem a base ia recusar.
+  const [operadorCicloId, setOperadorCicloId] = useState<string | null | undefined>(undefined)
+
+  useEffect(() => {
+    let cancelado = false
+    async function carregar() {
+      const sabadoCiclo = paraISO(adicionarDias(new Date(dataInicioCiclo + 'T00:00:00'), 2))
+      const { data } = await supabase
+        .from('escala_semanal')
+        .select('usuario_id')
+        .eq('semana_ref', sabadoCiclo)
+        .eq('turno', 'H3')
+        .maybeSingle()
+      if (!cancelado) setOperadorCicloId((data as { usuario_id: string } | null)?.usuario_id ?? null)
+    }
+    carregar()
+    return () => {
+      cancelado = true
+    }
+  }, [dataInicioCiclo])
+
+  const nomeOperadorCiclo = usuarios.find((u) => u.id === operadorCicloId)?.nome ?? null
+  const podeCriarPlano = ehGerenteOuDelegado || (usuario && usuario.id === operadorCicloId)
 
   async function handleCriarPlano() {
     if (!usuario) return
@@ -92,10 +121,22 @@ export function PlanoPage() {
           <p className="text-sm text-zinc-500">
             Ainda não existe plano para o ciclo com início em {formatarDataPT(dataInicioCiclo)}.
           </p>
-          {erro && <Badge className="border-red-100 bg-red-50 text-red-700">{erro}</Badge>}
-          <Button onClick={handleCriarPlano} className="self-start">
-            Criar plano (pré-popula tarefas fixas)
-          </Button>
+          {operadorCicloId === undefined ? (
+            <p className="text-sm text-zinc-400">A verificar permissões…</p>
+          ) : podeCriarPlano ? (
+            <>
+              {erro && <Badge className="border-red-100 bg-red-50 text-red-700">{erro}</Badge>}
+              <Button onClick={handleCriarPlano} className="self-start">
+                Criar plano (pré-popula tarefas fixas)
+              </Button>
+            </>
+          ) : (
+            <p className="text-sm text-zinc-400">
+              {nomeOperadorCiclo
+                ? `Só ${nomeOperadorCiclo} (operador H3 desta semana) ou o Gerente podem criar este plano.`
+                : 'Só o operador H3 desta semana ou o Gerente podem criar este plano — ainda não há H3 atribuído para este ciclo.'}
+            </p>
+          )}
         </CardContent>
       </Card>
     )
