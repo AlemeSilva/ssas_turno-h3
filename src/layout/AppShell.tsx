@@ -31,7 +31,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="flex items-center gap-2.5">
           <LockMark />
           <div>
-            <div className="font-bold text-zinc-900">Turno H3</div>
+            <div className="font-bold text-zinc-900">Gestão de Turnos</div>
             <div className="text-xs text-zinc-500">Accenture · Banco Montepio</div>
           </div>
         </div>

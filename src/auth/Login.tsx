@@ -32,7 +32,7 @@ export function Login() {
             <Lock className="size-4 text-indigo-600" />
           </span>
           <div>
-            <div className="text-base font-bold text-zinc-900">Turno H3</div>
+            <div className="text-base font-bold text-zinc-900">Gestão de Turnos</div>
             <div className="text-xs text-zinc-500">Accenture · Banco Montepio</div>
           </div>
         </CardHeader>

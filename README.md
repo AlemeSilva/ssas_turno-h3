@@ -1,4 +1,4 @@
-# Turno H3 — Accenture / Banco Montepio
+# Gestão de Turnos — Accenture / Banco Montepio
 
 Central de controlo, planeamento e execução operacional do Turno H3 (equipa DEOS — operação SAS).
 
