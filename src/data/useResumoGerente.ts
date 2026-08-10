@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { adicionarDias, agora, diasUteis, paraISO, proximaSextaISO } from '../lib/datas'
-import type { Ferias } from '../types/database'
+import type { AusenciaComSemanas, Ferias } from '../types/database'
+
+export type { AusenciaComSemanas }
 
 export interface FeriadoSemPlantao {
   data: string
@@ -13,13 +15,18 @@ export type PeriodoFeriasEquipe = Pick<Ferias, 'id' | 'usuario_id' | 'status' | 
 
 interface ResumoGerente {
   feriadosSemPlantao: FeriadoSemPlantao[]
-  ausenciasHoje: Ferias[]
-  ausenciasProximaSemana: Ferias[]
+  ausenciasHoje: AusenciaComSemanas[]
+  ausenciasProximaSemana: AusenciaComSemanas[]
   feriasAprovadasPorPessoa: Map<string, number>
   feriasPendentesPorPessoa: Map<string, number>
   feriasEquipeAno: PeriodoFeriasEquipe[]
   aCarregar: boolean
-  confirmarSubstituto: (feriasId: number, substitutoId: string, confirmadoPor: string) => Promise<{ error: string | null }>
+  confirmarSubstitutoSemana: (
+    feriasId: number,
+    semanaInicio: string,
+    substitutoId: string | null,
+    confirmadoPor: string
+  ) => Promise<{ error: string | null }>
   confirmarPlantonista: (dataFeriado: string, usuarioId: string) => Promise<{ error: string | null }>
 }
 
@@ -27,16 +34,17 @@ interface ResumoGerente {
  * Resumo global para a página Início do Gerente: feriados nacionais/
  * municipais sem ninguém confirmado para plantão, e quem da equipa
  * está ou vai estar ausente (hoje / próxima semana administrativa),
- * com a ação de escolher quem cobre a ausência — escolher o
- * substituto é o próprio ato de confirmar (ver migração 0009).
+ * com a ação de escolher quem cobre a ausência — por semana civil
+ * (Segunda a Sexta), já que uma ausência longa pode precisar de gente
+ * diferente, ou ninguém, em cada semana (ver migração 0025).
  *
  * `ativo` evita consultas desnecessárias quando quem vê a página
  * Início não é Gerente/delegado.
  */
 export function useResumoGerente(ativo: boolean): ResumoGerente {
   const [feriadosSemPlantao, setFeriadosSemPlantao] = useState<FeriadoSemPlantao[]>([])
-  const [ausenciasHoje, setAusenciasHoje] = useState<Ferias[]>([])
-  const [ausenciasProximaSemana, setAusenciasProximaSemana] = useState<Ferias[]>([])
+  const [ausenciasHoje, setAusenciasHoje] = useState<AusenciaComSemanas[]>([])
+  const [ausenciasProximaSemana, setAusenciasProximaSemana] = useState<AusenciaComSemanas[]>([])
   const [feriasAprovadasPorPessoa, setFeriasAprovadasPorPessoa] = useState<Map<string, number>>(new Map())
   const [feriasPendentesPorPessoa, setFeriasPendentesPorPessoa] = useState<Map<string, number>>(new Map())
   const [feriasEquipeAno, setFeriasEquipeAno] = useState<PeriodoFeriasEquipe[]>([])
@@ -66,7 +74,7 @@ export function useResumoGerente(ativo: boolean): ResumoGerente {
         supabase.from('feriados_sem_plantao').select('data, nome, tipo').order('data'),
         supabase
           .from('ferias')
-          .select('*')
+          .select('*, ferias_semanas(*)')
           .eq('status', 'APROVADA')
           .lte('data_inicio', proximaQuinta)
           .gte('data_fim', hojeISO),
@@ -83,7 +91,7 @@ export function useResumoGerente(ativo: boolean): ResumoGerente {
 
       setFeriadosSemPlantao((dadosFeriados as FeriadoSemPlantao[]) ?? [])
 
-      const ausencias = (dadosAusencias as Ferias[]) ?? []
+      const ausencias = (dadosAusencias as AusenciaComSemanas[]) ?? []
       const hoje_ = ausencias.filter((f) => f.data_inicio <= hojeISO && f.data_fim >= hojeISO)
       const idsHoje = new Set(hoje_.map((f) => f.id))
       setAusenciasHoje(hoje_)
@@ -123,6 +131,7 @@ export function useResumoGerente(ativo: boolean): ResumoGerente {
     const canal = supabase
       .channel('resumo-gerente')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ferias' }, carregar)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ferias_semanas' }, carregar)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'plantao_voluntarios' }, carregar)
       .subscribe()
 
@@ -132,16 +141,24 @@ export function useResumoGerente(ativo: boolean): ResumoGerente {
     }
   }, [ativo])
 
-  async function confirmarSubstituto(feriasId: number, substitutoId: string, confirmadoPor: string) {
-    const { error } = await supabase
-      .from('ferias')
-      .update({
+  // substitutoId a null grava a decisão "Nenhum" — distinto de ainda
+  // não haver linha nenhuma para esta semana (por decidir).
+  async function confirmarSubstitutoSemana(
+    feriasId: number,
+    semanaInicio: string,
+    substitutoId: string | null,
+    confirmadoPor: string
+  ) {
+    const { error } = await supabase.from('ferias_semanas').upsert(
+      {
+        ferias_id: feriasId,
+        semana_inicio: semanaInicio,
         substituto_id: substitutoId,
-        substituicao_confirmada: true,
         confirmado_por: confirmadoPor,
         confirmado_em: new Date().toISOString(),
-      })
-      .eq('id', feriasId)
+      },
+      { onConflict: 'ferias_id,semana_inicio' }
+    )
     return { error: error?.message ?? null }
   }
 
@@ -170,7 +187,7 @@ export function useResumoGerente(ativo: boolean): ResumoGerente {
     feriasPendentesPorPessoa,
     feriasEquipeAno,
     aCarregar,
-    confirmarSubstituto,
+    confirmarSubstitutoSemana,
     confirmarPlantonista,
   }
 }

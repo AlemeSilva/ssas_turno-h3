@@ -4,7 +4,7 @@ import { useUsuarios } from '@/data/useUsuarios'
 import { supabase } from '@/lib/supabase'
 import { adicionarDias, paraISO, formatarDataPT, quintaEscalaDe } from '@/lib/datas'
 import { gerarTextoRelatorioSemanal } from '@/lib/gerarRelatorioSemanal'
-import type { EscalaSemanal, Ferias } from '@/types/database'
+import type { AusenciaComSemanas, EscalaSemanal } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
@@ -35,7 +35,7 @@ export function RelatoriosPage() {
 
   const { usuarios } = useUsuarios()
   const [escalas, setEscalas] = useState<EscalaSemanal[]>([])
-  const [ferias, setFerias] = useState<Ferias[]>([])
+  const [ferias, setFerias] = useState<AusenciaComSemanas[]>([])
   const [aCarregar, setACarregar] = useState(true)
   const [erroCarregar, setErroCarregar] = useState<string | null>(null)
   const [copiado, setCopiado] = useState(false)
@@ -52,7 +52,7 @@ export function RelatoriosPage() {
         supabase.from('escala_semanal').select('*').eq('semana_ref', semanaRefConsulta),
         supabase
           .from('ferias')
-          .select('*')
+          .select('*, ferias_semanas(*)')
           .eq('status', 'APROVADA')
           .lte('data_inicio', fimSemana)
           .gte('data_fim', semanaRef),
@@ -63,7 +63,7 @@ export function RelatoriosPage() {
           setErroCarregar(erro.message)
         } else {
           setEscalas((dadosEscala as EscalaSemanal[]) ?? [])
-          setFerias((dadosFerias as Ferias[]) ?? [])
+          setFerias((dadosFerias as AusenciaComSemanas[]) ?? [])
         }
         setACarregar(false)
       }

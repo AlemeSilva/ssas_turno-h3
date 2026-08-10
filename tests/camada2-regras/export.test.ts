@@ -1,7 +1,25 @@
 import { describe, expect, it } from 'vitest'
 import { gerarTextoPlano } from '../../src/lib/exportarPlano'
 import { gerarTextoRelatorioSemanal } from '../../src/lib/gerarRelatorioSemanal'
-import type { EscalaSemanal, Ferias, Plano, TarefaPlano, Usuario } from '../../src/types/database'
+import type { AusenciaComSemanas, EscalaSemanal, Ferias, Plano, TarefaPlano, Usuario } from '../../src/types/database'
+
+// Segunda-feira da semana civil que mais se sobrepõe a semanaRef =
+// '2026-07-30' (Quinta) — mesma fórmula usada em gerarRelatorioSemanal
+// (segundaDaSemanaDe(semanaRef + 3 dias)). Constante calculada uma vez
+// aqui para todos os testes deste ficheiro, em vez de "magic strings"
+// espalhadas.
+const SEMANA_CIVIL_DOMINANTE = '2026-07-27'
+
+function semDecisao(f: Ferias): AusenciaComSemanas {
+  return { ...f, ferias_semanas: [] }
+}
+
+function comSubstituto(f: Ferias, substitutoId: string | null, semanaInicio = SEMANA_CIVIL_DOMINANTE): AusenciaComSemanas {
+  return {
+    ...f,
+    ferias_semanas: [{ id: f.id, ferias_id: f.id, semana_inicio: semanaInicio, substituto_id: substitutoId, confirmado_por: null, confirmado_em: null }],
+  }
+}
 
 const PLANO_BASE: Plano = {
   id: 1,
@@ -74,8 +92,8 @@ describe('gerarTextoRelatorioSemanal — mesmo formato do email real usado pelo 
     { id: 2, semana_ref: '2026-07-30', usuario_id: 'kilson', turno: 'H3', criado_por: null, atualizado_em: '' },
   ]
 
-  const ferias: Ferias[] = [
-    { id: 1, usuario_id: 'sergio', data_inicio: '2026-07-28', data_fim: '2026-08-02', status: 'APROVADA', aprovado_por: null, data_aprovacao: null, criado_em: '' },
+  const ferias: AusenciaComSemanas[] = [
+    semDecisao({ id: 1, usuario_id: 'sergio', data_inicio: '2026-07-28', data_fim: '2026-08-02', status: 'APROVADA', aprovado_por: null, data_aprovacao: null, criado_em: '', tipo: 'FERIAS', eh_operador_h3: false }),
   ]
 
   it('inclui a listagem dos 4 turnos, mesmo quando algum fica sem ninguém atribuído', () => {
@@ -114,19 +132,23 @@ describe('gerarTextoRelatorioSemanal — substituto real (ferias.substituto_id) 
   const feriasDoSergio: Ferias = {
     id: 1, usuario_id: 'sergio', data_inicio: '2026-07-28', data_fim: '2026-08-02',
     status: 'APROVADA', aprovado_por: null, data_aprovacao: null, criado_em: '',
-    tipo: 'FERIAS', eh_operador_h3: false, substituicao_confirmada: false, confirmado_por: null,
-    confirmado_em: null, substituto_id: null,
+    tipo: 'FERIAS', eh_operador_h3: false,
   }
 
   it('com substituto confirmado, este cobre o turno de quem está ausente e some do seu próprio (não aparece duas vezes)', () => {
-    const texto = gerarTextoRelatorioSemanal('2026-07-30', escalas, [{ ...feriasDoSergio, substituto_id: 'leonardo' }], usuarios)
+    const texto = gerarTextoRelatorioSemanal('2026-07-30', escalas, [comSubstituto(feriasDoSergio, 'leonardo')], usuarios)
     expect(texto).toContain('H1 - 07h00 às 16h00 – Leonardo Real')
     expect(texto).toContain('H4 - 09h00 às 18h00 – —')
     expect(texto.match(/Leonardo Real/g)?.length).toBe(1)
   })
 
-  it('sem substituto confirmado, o turno fica vazio em vez de adivinhar um nome', () => {
-    const texto = gerarTextoRelatorioSemanal('2026-07-30', escalas, [feriasDoSergio], usuarios)
+  it('sem semana decidida, o turno fica vazio em vez de adivinhar um nome', () => {
+    const texto = gerarTextoRelatorioSemanal('2026-07-30', escalas, [semDecisao(feriasDoSergio)], usuarios)
+    expect(texto).toContain('H1 - 07h00 às 16h00 – —')
+  })
+
+  it('semana decidida como "Nenhum" (substituto_id nulo) também deixa o turno vazio', () => {
+    const texto = gerarTextoRelatorioSemanal('2026-07-30', escalas, [comSubstituto(feriasDoSergio, null)], usuarios)
     expect(texto).toContain('H1 - 07h00 às 16h00 – —')
   })
 
@@ -143,7 +165,7 @@ describe('gerarTextoRelatorioSemanal — substituto real (ferias.substituto_id) 
     const texto = gerarTextoRelatorioSemanal(
       '2026-07-30',
       escalas,
-      [{ ...feriasDoSergio, substituto_id: 'leonardo' }, feriasDoLeonardoTambem],
+      [comSubstituto(feriasDoSergio, 'leonardo'), semDecisao(feriasDoLeonardoTambem)],
       usuarios
     )
     expect(texto).toContain('H1 - 07h00 às 16h00 – —')
@@ -158,13 +180,18 @@ describe('gerarTextoRelatorioSemanal — substituto real (ferias.substituto_id) 
     const segundoPedidoDoSergio: Ferias = {
       ...feriasDoSergio, id: 3, data_inicio: '2026-08-03', data_fim: '2026-08-05',
     }
-    const texto = gerarTextoRelatorioSemanal('2026-07-30', escalas, [feriasDoSergio, segundoPedidoDoSergio], usuarios)
+    const texto = gerarTextoRelatorioSemanal(
+      '2026-07-30',
+      escalas,
+      [semDecisao(feriasDoSergio), semDecisao(segundoPedidoDoSergio)],
+      usuarios
+    )
     expect(texto.match(/Sérgio Real/g)?.length).toBe(1)
   })
 
   it('férias que termina exatamente no dia rotulado como início da semana (dia de transição) já não afeta esta semana — caso real Sérgio/Leonardo', () => {
-    const feriasNaFronteira: Ferias = { ...feriasDoSergio, data_inicio: '2026-07-26', data_fim: '2026-07-30', substituto_id: 'leonardo' }
-    const texto = gerarTextoRelatorioSemanal('2026-07-30', escalas, [feriasNaFronteira], usuarios)
+    const feriasNaFronteira: Ferias = { ...feriasDoSergio, data_inicio: '2026-07-26', data_fim: '2026-07-30' }
+    const texto = gerarTextoRelatorioSemanal('2026-07-30', escalas, [comSubstituto(feriasNaFronteira, 'leonardo')], usuarios)
     expect(texto).toContain('H1 - 07h00 às 16h00 – Sérgio Real')
     expect(texto).toContain('H4 - 09h00 às 18h00 – Leonardo Real')
     const secaoFerias = texto.split('Férias/Licenças')[1]
@@ -172,9 +199,28 @@ describe('gerarTextoRelatorioSemanal — substituto real (ferias.substituto_id) 
   })
 
   it('férias que se estende um dia além do dia de transição ainda conta normalmente', () => {
-    const feriasPassaFronteira: Ferias = { ...feriasDoSergio, data_inicio: '2026-07-26', data_fim: '2026-07-31', substituto_id: 'leonardo' }
-    const texto = gerarTextoRelatorioSemanal('2026-07-30', escalas, [feriasPassaFronteira], usuarios)
+    const feriasPassaFronteira: Ferias = { ...feriasDoSergio, data_inicio: '2026-07-26', data_fim: '2026-07-31' }
+    const texto = gerarTextoRelatorioSemanal('2026-07-30', escalas, [comSubstituto(feriasPassaFronteira, 'leonardo')], usuarios)
     expect(texto).toContain('H1 - 07h00 às 16h00 – Leonardo Real')
     expect(texto).toContain('H4 - 09h00 às 18h00 – —')
+  })
+
+  it('duas semanas diferentes da mesma ausência podem ter substitutos diferentes — mesmo padrão do caso real Caique/Kilson', () => {
+    // Reaproveita o utilizador "sergio" já definido acima, mas com o
+    // padrão de datas/semanas real que motivou ferias_semanas: férias
+    // de 20/08 (Quinta) a 28/08 (Sexta), semana de 17/08 sem substituto
+    // (fecha o ciclo em curso) e semana de 24/08 com substituto.
+    const feriasComDuasSemanas: AusenciaComSemanas = {
+      id: 4, usuario_id: 'sergio', data_inicio: '2026-08-20', data_fim: '2026-08-28',
+      status: 'APROVADA', aprovado_por: null, data_aprovacao: null, criado_em: '',
+      tipo: 'FERIAS', eh_operador_h3: false,
+      ferias_semanas: [
+        { id: 1, ferias_id: 4, semana_inicio: '2026-08-17', substituto_id: null, confirmado_por: null, confirmado_em: null },
+        { id: 2, ferias_id: 4, semana_inicio: '2026-08-24', substituto_id: 'kilson', confirmado_por: null, confirmado_em: null },
+      ],
+    }
+    // semanaRef = Sexta 21/08 → semana civil dominante = Segunda 24/08 (a que tem o substituto).
+    const texto = gerarTextoRelatorioSemanal('2026-08-21', escalas, [feriasComDuasSemanas], usuarios)
+    expect(texto).toContain('H1 - 07h00 às 16h00 – Kilson Júnior')
   })
 })

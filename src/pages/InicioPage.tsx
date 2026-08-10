@@ -2,10 +2,19 @@ import { useState } from 'react'
 import { useAuth } from '@/auth/AuthContext'
 import { useUsuarios } from '@/data/useUsuarios'
 import { useResumoUsuario, LIMITE_FERIAS_ANUAL } from '@/data/useResumoUsuario'
-import { useResumoGerente, type FeriadoSemPlantao, type PeriodoFeriasEquipe } from '@/data/useResumoGerente'
+import { useResumoGerente, type AusenciaComSemanas, type FeriadoSemPlantao, type PeriodoFeriasEquipe } from '@/data/useResumoGerente'
 import { HORARIO_TURNO } from '@/lib/gerarRelatorioSemanal'
-import { adicionarDias, agora, diasUteis, ehFimDeSemana, formatarDataPT, paraISO, proximaSextaISO } from '@/lib/datas'
-import type { Ferias, TurnoTipo, Usuario } from '@/types/database'
+import {
+  adicionarDias,
+  agora,
+  diasUteis,
+  ehFimDeSemana,
+  formatarDataPT,
+  paraISO,
+  proximaSextaISO,
+  semanasTocadas,
+} from '@/lib/datas'
+import type { TurnoTipo, Usuario } from '@/types/database'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -82,8 +91,10 @@ export function InicioPage() {
   const { usuarios } = useUsuarios()
   const resumo = useResumoUsuario(usuario?.id)
   const gerente = useResumoGerente(ehGerenteOuDelegado)
-  const [aConfirmar, setAConfirmar] = useState<number | null>(null)
-  const [escolhendoPara, setEscolhendoPara] = useState<number | null>(null)
+  // Chave composta "feriasId:semanaInicio" — cada semana de cada
+  // ausência decide-se de forma independente.
+  const [aConfirmar, setAConfirmar] = useState<string | null>(null)
+  const [escolhendoPara, setEscolhendoPara] = useState<string | null>(null)
   const [erroSubstituto, setErroSubstituto] = useState<string | null>(null)
   const [aConfirmarPlantao, setAConfirmarPlantao] = useState<string | null>(null)
   const [escolhendoPlantaoPara, setEscolhendoPlantaoPara] = useState<string | null>(null)
@@ -120,11 +131,12 @@ export function InicioPage() {
     setDetalhePessoa({ nome, status, periodos })
   }
 
-  async function escolherSubstituto(feriasId: number, substitutoId: string) {
+  async function escolherSubstitutoSemana(feriasId: number, semanaInicio: string, substitutoId: string | null) {
     if (!usuario) return
-    setAConfirmar(feriasId)
+    const chave = `${feriasId}:${semanaInicio}`
+    setAConfirmar(chave)
     setErroSubstituto(null)
-    const { error } = await gerente.confirmarSubstituto(feriasId, substitutoId, usuario.id)
+    const { error } = await gerente.confirmarSubstitutoSemana(feriasId, semanaInicio, substitutoId, usuario.id)
     setAConfirmar(null)
     if (error) setErroSubstituto(error)
     else setEscolhendoPara(null)
@@ -185,58 +197,90 @@ export function InicioPage() {
     )
   }
 
-  function LinhaAusencia({ f }: { f: Ferias }) {
-    const aEscolher = escolhendoPara === f.id
+  function LinhaAusencia({ f }: { f: AusenciaComSemanas }) {
     const candidatos = usuarios.filter((u) => u.ativo && u.id !== f.usuario_id)
+    const semanas = semanasTocadas(f.data_inicio, f.data_fim)
 
     return (
       <li className="flex flex-col gap-1.5 border-b border-zinc-100 py-2 last:border-b-0">
-        <div className="flex items-center justify-between gap-3 text-sm">
-          <span className="text-zinc-700">
-            {nomeDe(f.usuario_id)} · {formatarDataPT(f.data_inicio)} a {formatarDataPT(f.data_fim)}
-          </span>
-          {f.substituicao_confirmada && f.substituto_id ? (
-            <span className="inline-flex items-center rounded-md border border-emerald-100 bg-emerald-50 px-1.5 py-0.5 text-[0.65rem] font-medium whitespace-nowrap text-emerald-700">
-              Substituto: {nomeDe(f.substituto_id)}
-            </span>
-          ) : (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  size="xs"
-                  variant="secondary"
-                  onClick={() => {
-                    setEscolhendoPara(aEscolher ? null : f.id)
-                    setErroSubstituto(null)
-                  }}
-                >
-                  Confirmar substituto
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Abre a lista da equipa para escolheres quem cobre esta ausência — aparece já na Escala do Mês</TooltipContent>
-            </Tooltip>
-          )}
+        <div className="text-sm text-zinc-700">
+          {nomeDe(f.usuario_id)} · {formatarDataPT(f.data_inicio)} a {formatarDataPT(f.data_fim)}
         </div>
-        {aEscolher && (
-          <div className="flex flex-wrap gap-1.5 pl-1">
-            {candidatos.length === 0 ? (
-              <span className="text-xs text-zinc-400">Sem candidatos disponíveis.</span>
-            ) : (
-              candidatos.map((u) => (
-                <Button
-                  key={u.id}
-                  size="xs"
-                  variant="ghost"
-                  onClick={() => escolherSubstituto(f.id, u.id)}
-                  disabled={aConfirmar === f.id}
-                >
-                  {aConfirmar === f.id ? '…' : u.nome}
-                </Button>
-              ))
-            )}
-          </div>
-        )}
-        {aEscolher && erroSubstituto && <p className="pl-1 text-xs text-red-600">{erroSubstituto}</p>}
+        <div className="flex flex-col gap-1.5 pl-1">
+          {semanas.map((semana) => {
+            const decisao = f.ferias_semanas.find((fs) => fs.semana_inicio === semana.semanaInicio)
+            const chave = `${f.id}:${semana.semanaInicio}`
+            const aEscolher = escolhendoPara === chave
+            const rotuloSemana =
+              semana.inicio === semana.fim
+                ? formatarDataPT(semana.inicio)
+                : `${formatarDataPT(semana.inicio)} a ${formatarDataPT(semana.fim)}`
+
+            return (
+              <div key={semana.semanaInicio} className="flex flex-col gap-1">
+                <div className="flex items-center justify-between gap-3 text-xs">
+                  <span className="text-zinc-500">{rotuloSemana}</span>
+                  {decisao ? (
+                    decisao.substituto_id ? (
+                      <span className="inline-flex items-center rounded-md border border-emerald-100 bg-emerald-50 px-1.5 py-0.5 text-[0.65rem] font-medium whitespace-nowrap text-emerald-700">
+                        Substituto: {nomeDe(decisao.substituto_id)}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center rounded-md border border-zinc-200 bg-zinc-100 px-1.5 py-0.5 text-[0.65rem] font-medium whitespace-nowrap text-zinc-500">
+                        Sem substituto
+                      </span>
+                    )
+                  ) : (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="xs"
+                          variant="secondary"
+                          onClick={() => {
+                            setEscolhendoPara(aEscolher ? null : chave)
+                            setErroSubstituto(null)
+                          }}
+                        >
+                          Confirmar substituto
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Abre a lista da equipa para escolheres quem cobre esta semana — aparece já na Escala do Mês</TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
+                {aEscolher && (
+                  <div className="flex flex-wrap gap-1.5 pl-1">
+                    {candidatos.map((u) => (
+                      <Button
+                        key={u.id}
+                        size="xs"
+                        variant="ghost"
+                        onClick={() => escolherSubstitutoSemana(f.id, semana.semanaInicio, u.id)}
+                        disabled={aConfirmar === chave}
+                      >
+                        {aConfirmar === chave ? '…' : u.nome}
+                      </Button>
+                    ))}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="xs"
+                          variant="outline"
+                          onClick={() => escolherSubstitutoSemana(f.id, semana.semanaInicio, null)}
+                          disabled={aConfirmar === chave}
+                        >
+                          {aConfirmar === chave ? '…' : 'Nenhum'}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Regista que esta semana não precisa de substituto</TooltipContent>
+                    </Tooltip>
+                  </div>
+                )}
+                {aEscolher && erroSubstituto && <p className="pl-1 text-xs text-red-600">{erroSubstituto}</p>}
+              </div>
+            )
+          })}
+        </div>
       </li>
     )
   }

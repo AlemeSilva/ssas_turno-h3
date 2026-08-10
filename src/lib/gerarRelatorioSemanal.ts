@@ -1,5 +1,5 @@
-import type { EscalaSemanal, Ferias, TurnoTipo, Usuario } from '../types/database'
-import { adicionarDias, agora, formatarDataPT, paraISO } from './datas'
+import type { AusenciaComSemanas, EscalaSemanal, TurnoTipo, Usuario } from '../types/database'
+import { adicionarDias, agora, formatarDataPT, paraISO, segundaDaSemanaDe } from './datas'
 
 export const HORARIO_TURNO: Record<TurnoTipo, string> = {
   H1: '07h00 às 16h00',
@@ -27,13 +27,21 @@ function saudacao(momentoAtual: Date): string {
 export function gerarTextoRelatorioSemanal(
   semanaRef: string,
   escalas: EscalaSemanal[],
-  ferias: Ferias[],
+  ferias: AusenciaComSemanas[],
   usuarios: Usuario[],
   momentoAtual: Date = agora()
 ): string {
   const inicio = new Date(semanaRef + 'T00:00:00')
   const fim = adicionarDias(inicio, 6)
   const nomeDe = (id: string) => usuarios.find((u) => u.id === id)?.nome ?? id
+
+  // O relatório é rotulado Sexta a Quinta, mas o substituto agora é
+  // decidido por semana civil (Segunda a Sexta, ver migração 0025) —
+  // as duas semanas não se alinham. A civil que mais se sobrepõe ao
+  // período reportado é a que começa na Segunda logo a seguir a
+  // semanaRef (4 dos seus 5 dias úteis ficam dentro do período); é
+  // essa que se usa para decidir quem substitui quem esta semana.
+  const semanaCivilDominante = paraISO(segundaDaSemanaDe(adicionarDias(inicio, 3)))
 
   // O dia rotulado como início da semana (semanaRef) é ainda um dia de
   // transição do ciclo anterior — o H3 só arranca às 22h desse dia.
@@ -57,17 +65,19 @@ export function gerarTextoRelatorioSemanal(
       turnoEfetivo.set(e.usuario_id, e.turno)
     }
   }
-  // Quem está ausente mas já tem substituto escolhido (Início →
-  // "Confirmar substituto", ver migração 0009) cobre o turno de quem
-  // substitui — desde que o próprio substituto não esteja também
-  // ausente essa semana. Sem substituto confirmado, o turno fica
-  // vazio ("—"), a sinalizar decisão manual do Gerente, tal como já
-  // acontecia para qualquer ausência sem cobertura definida.
+  // Quem está ausente mas já tem substituto escolhido para a semana
+  // civil dominante (Início → "Confirmar substituto", ver migração
+  // 0025) cobre o turno de quem substitui — desde que o próprio
+  // substituto não esteja também ausente essa semana. Sem substituto
+  // confirmado (ou decisão "Nenhum"), o turno fica vazio ("—"), a
+  // sinalizar decisão manual do Gerente, tal como já acontecia para
+  // qualquer ausência sem cobertura definida.
   for (const f of emFerias) {
-    if (!f.substituto_id || idsEmFerias.has(f.substituto_id)) continue
+    const substitutoId = f.ferias_semanas.find((fs) => fs.semana_inicio === semanaCivilDominante)?.substituto_id
+    if (!substitutoId || idsEmFerias.has(substitutoId)) continue
     const turnoDoAusente = escalas.find((e) => e.usuario_id === f.usuario_id)?.turno
     if (turnoDoAusente) {
-      turnoEfetivo.set(f.substituto_id, turnoDoAusente)
+      turnoEfetivo.set(substitutoId, turnoDoAusente)
     }
   }
 

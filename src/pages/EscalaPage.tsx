@@ -2,8 +2,16 @@ import { useMemo, useState } from 'react'
 import { ArrowRightLeft, ChevronLeft, ChevronRight, Lock, SlidersHorizontal, Sun, X } from 'lucide-react'
 import { useUsuarios } from '@/data/useUsuarios'
 import { useEscalaMes } from '@/data/useEscalaMes'
-import { adicionarDias, ehFimDeSemana, formatarDataPT, formatarMesAnoPT, isoWeekday, paraISO } from '@/lib/datas'
-import type { EscalaSemanal, Ferias, FeriadoPortugal, PlantaoVoluntario, TurnoTipo, Usuario } from '@/types/database'
+import {
+  adicionarDias,
+  ehFimDeSemana,
+  formatarDataPT,
+  formatarMesAnoPT,
+  isoWeekday,
+  paraISO,
+  segundaDaSemanaDe,
+} from '@/lib/datas'
+import type { AusenciaComSemanas, EscalaSemanal, FeriadoPortugal, PlantaoVoluntario, TurnoTipo, Usuario } from '@/types/database'
 import { PainelFerias } from '@/components/escala/PainelFerias'
 import { PainelTrocas } from '@/components/escala/PainelTrocas'
 import { PainelDelegacao } from '@/components/escala/PainelDelegacao'
@@ -84,12 +92,16 @@ function valorDoDia(
   diaISO: string,
   usuarioId: string,
   escalas: EscalaSemanal[],
-  ferias: Ferias[]
+  ferias: AusenciaComSemanas[],
+  feriados: FeriadoPortugal[]
 ): TurnoTipo | 'F' | null {
   const temFerias = ferias.some(
     (f) => f.usuario_id === usuarioId && f.data_inicio <= diaISO && f.data_fim >= diaISO
   )
-  if (temFerias) return 'F'
+  // Fim de semana e feriados não são computados para efeito de férias
+  // — mesmo dentro de um período aprovado, esses dias não marcam 'F',
+  // caem antes na verificação normal de turno (linha abaixo).
+  if (temFerias && !ehFimDeSemana(diaISO) && !feriadoDoDia(diaISO, feriados)) return 'F'
 
   const turno = linhaDoDia(diaISO, usuarioId, escalas)?.turno ?? null
   // Ao fim de semana só o H3 está escalado — os restantes turnos (H1/H2/H4)
@@ -98,19 +110,24 @@ function valorDoDia(
   return turno
 }
 
-/** Nome de quem cobre a ausência de `usuarioId` no dia indicado, se a
- * substituição já tiver sido escolhida (ver migração 0009). */
+/** Nome de quem cobre a ausência de `usuarioId` no dia indicado, para
+ * a semana civil (Segunda a Sexta) a que esse dia pertence — o
+ * substituto é escolhido por semana, não para o período inteiro (ver
+ * migração 0025). */
 function substitutoDoDia(
   diaISO: string,
   usuarioId: string,
-  ferias: Ferias[],
+  ferias: AusenciaComSemanas[],
   usuarios: Usuario[]
 ): string | undefined {
   const f = ferias.find(
-    (f) => f.usuario_id === usuarioId && f.data_inicio <= diaISO && f.data_fim >= diaISO && f.substituto_id
+    (f) => f.usuario_id === usuarioId && f.data_inicio <= diaISO && f.data_fim >= diaISO
   )
-  if (!f?.substituto_id) return undefined
-  return usuarios.find((u) => u.id === f.substituto_id)?.nome
+  if (!f) return undefined
+  const semanaInicio = paraISO(segundaDaSemanaDe(new Date(diaISO + 'T00:00:00')))
+  const substitutoId = f.ferias_semanas.find((fs) => fs.semana_inicio === semanaInicio)?.substituto_id
+  if (!substitutoId) return undefined
+  return usuarios.find((u) => u.id === substitutoId)?.nome
 }
 
 function feriadoDoDia(diaISO: string, feriados: FeriadoPortugal[]): FeriadoPortugal | undefined {
@@ -253,7 +270,7 @@ export function EscalaPage() {
                       </td>
                       {diasVisiveis.map((d) => {
                         const feriado = feriadoDoDia(d.iso, feriados)
-                        const valor = valorDoDia(d.iso, p.id, escalas, ferias)
+                        const valor = valorDoDia(d.iso, p.id, escalas, ferias, feriados)
                         const linha = linhaDoDia(d.iso, p.id, escalas)
                         // Num feriado só o H3 tem turno real para editar — os
                         // restantes mostram "Feriado" e deixam de ser clicáveis.

@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import type { EscalaSemanal, Ferias, FeriadoPortugal, PlantaoVoluntario } from '../types/database'
+import type { AusenciaComSemanas, EscalaSemanal, FeriadoPortugal, PlantaoVoluntario } from '../types/database'
 import { adicionarDias, paraISO, semanaRefDe } from '../lib/datas'
 
 interface EscalaDoMes {
   escalas: EscalaSemanal[]
-  ferias: Ferias[]
+  ferias: AusenciaComSemanas[]
   feriados: FeriadoPortugal[]
   plantoes: PlantaoVoluntario[]
   aCarregar: boolean
@@ -19,7 +19,7 @@ interface EscalaDoMes {
  */
 export function useEscalaMes(mesRef: Date): EscalaDoMes {
   const [escalas, setEscalas] = useState<EscalaSemanal[]>([])
-  const [ferias, setFerias] = useState<Ferias[]>([])
+  const [ferias, setFerias] = useState<AusenciaComSemanas[]>([])
   const [feriados, setFeriados] = useState<FeriadoPortugal[]>([])
   const [plantoes, setPlantoes] = useState<PlantaoVoluntario[]>([])
   const [aCarregar, setACarregar] = useState(true)
@@ -45,7 +45,7 @@ export function useEscalaMes(mesRef: Date): EscalaDoMes {
             .lte('semana_ref', janelaFim),
           supabase
             .from('ferias')
-            .select('*')
+            .select('*, ferias_semanas(*)')
             .eq('status', 'APROVADA')
             .lte('data_inicio', paraISO(fimMes))
             .gte('data_fim', paraISO(inicioMes)),
@@ -54,7 +54,7 @@ export function useEscalaMes(mesRef: Date): EscalaDoMes {
         ])
       if (!cancelado) {
         setEscalas((dadosEscala as EscalaSemanal[]) ?? [])
-        setFerias((dadosFerias as Ferias[]) ?? [])
+        setFerias((dadosFerias as AusenciaComSemanas[]) ?? [])
         setFeriados((dadosFeriados as FeriadoPortugal[]) ?? [])
         setPlantoes((dadosPlantoes as PlantaoVoluntario[]) ?? [])
         setACarregar(false)
@@ -67,6 +67,7 @@ export function useEscalaMes(mesRef: Date): EscalaDoMes {
       .channel(`escala-mes-${janelaInicio}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'escala_semanal' }, carregar)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ferias' }, carregar)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ferias_semanas' }, carregar)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'plantao_voluntarios' }, carregar)
       .subscribe()
 

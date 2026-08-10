@@ -47,11 +47,28 @@ export interface Ferias {
   criado_em: string
   tipo: TipoAusencia
   eh_operador_h3: boolean
-  substituicao_confirmada: boolean
+}
+
+/**
+ * Substituto de uma ausência, decidido por semana civil (Segunda a
+ * Sexta) — uma ausência de várias semanas pode precisar de gente
+ * diferente, ou ninguém, em cada uma. A ausência de uma linha para
+ * dada (ferias_id, semana_inicio) significa "por decidir"; mesmo
+ * "Nenhum" é uma decisão explícita, gravada com substituto_id nulo.
+ */
+export interface FeriasSemana {
+  id: number
+  ferias_id: number
+  semana_inicio: string
+  substituto_id: string | null
   confirmado_por: string | null
   confirmado_em: string | null
-  substituto_id: string | null
 }
+
+/** Ferias com as semanas já decididas embutidas (consulta com
+ * `select('*, ferias_semanas(*)')`) — forma usada em toda a app
+ * sempre que se precisa de saber o substituto por semana. */
+export type AusenciaComSemanas = Ferias & { ferias_semanas: FeriasSemana[] }
 
 export interface TrocaEscala {
   id: number

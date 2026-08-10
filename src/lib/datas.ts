@@ -122,3 +122,50 @@ export function ehFimDeSemana(diaISO: string): boolean {
   const dia = isoWeekday(new Date(diaISO + 'T00:00:00'))
   return dia === 6 || dia === 7
 }
+
+/** Segunda-feira da semana civil (Segunda a Sexta) que contém a data indicada. */
+export function segundaDaSemanaDe(d: Date): Date {
+  const deslocamento = isoWeekday(d) - 1
+  const resultado = new Date(d)
+  resultado.setDate(resultado.getDate() - deslocamento)
+  resultado.setHours(0, 0, 0, 0)
+  return resultado
+}
+
+export interface SemanaTocada {
+  /** Segunda-feira da semana civil — chave usada em ferias_semanas. */
+  semanaInicio: string
+  /** Sobreposição real com o período indicado (pode ser só parte da semana). */
+  inicio: string
+  fim: string
+}
+
+/**
+ * Semanas civis (Segunda a Sexta) que um período [inicioISO, fimISO]
+ * toca, cada uma com o sub-intervalo real de sobreposição — nunca a
+ * semana inteira, se o período só tocar parte dela. Usada para decidir
+ * o substituto de uma ausência por semana em vez de um valor único
+ * para o período inteiro (uma ausência que atravesse fim de semana ou
+ * várias semanas pode precisar de gente diferente, ou ninguém, em
+ * cada uma).
+ */
+export function semanasTocadas(inicioISO: string, fimISO: string): SemanaTocada[] {
+  const inicio = new Date(inicioISO + 'T00:00:00')
+  const fim = new Date(fimISO + 'T00:00:00')
+  const semanas: SemanaTocada[] = []
+
+  let segunda = segundaDaSemanaDe(inicio)
+  while (segunda <= fim) {
+    const sexta = adicionarDias(segunda, 4)
+    // Sexta antes do início real acontece só se o período começar ao
+    // fim de semana (a segunda dessa semana fica "antes" do próprio
+    // início) — essa semana não tem sobreposição nenhuma, salta-se.
+    if (sexta >= inicio) {
+      const inicioEfetivo = segunda < inicio ? inicio : segunda
+      const fimEfetivo = sexta > fim ? fim : sexta
+      semanas.push({ semanaInicio: paraISO(segunda), inicio: paraISO(inicioEfetivo), fim: paraISO(fimEfetivo) })
+    }
+    segunda = adicionarDias(segunda, 7)
+  }
+  return semanas
+}
