@@ -56,6 +56,12 @@ export function UtilizadoresPage() {
   const [erroDesativar, setErroDesativar] = useState<{ id: string; mensagem: string } | null>(null)
 
   const ehGerenteTitular = usuario?.perfil === 'GERENTE'
+  // Um delegado pode registar OPERADOR/OPERADOR_H3, mas nunca outro
+  // Gerente — mesma fronteira aplicada na Edge Function e na RLS
+  // (usuarios_insert_gerente), para não ficar só na interface.
+  const perfisDisponiveis = (Object.keys(ROTULO_PERFIL) as PerfilUsuario[]).filter(
+    (p) => p !== 'GERENTE' || ehGerenteTitular
+  )
 
   if (!ehGerenteOuDelegado) {
     return (
@@ -250,7 +256,7 @@ export function UtilizadoresPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {(Object.keys(ROTULO_PERFIL) as PerfilUsuario[]).map((p) => (
+                  {perfisDisponiveis.map((p) => (
                     <SelectItem key={p} value={p}>
                       {ROTULO_PERFIL[p]}
                     </SelectItem>

@@ -102,6 +102,9 @@ Deno.serve(async (req) => {
       if (!nome || !email || !password || !perfil || !empresa) {
         return json({ erro: 'Faltam campos obrigatórios.' }, 400)
       }
+      if (perfil === 'GERENTE' && !ehGerenteTitular) {
+        return json({ erro: 'Um delegado não pode criar uma conta com perfil Gerente.' }, 403)
+      }
 
       const { data: novoAuth, error: erroCriar } = await admin.auth.admin.createUser({
         email,
