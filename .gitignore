@@ -36,3 +36,6 @@ supabase/.temp/
 
 # Local Netlify folder
 .netlify
+
+# Connection string Postgres direta, para consultas pontuais — nunca ir a commit
+.db_conn
