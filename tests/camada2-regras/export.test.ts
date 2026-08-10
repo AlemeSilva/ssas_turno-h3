@@ -161,4 +161,20 @@ describe('gerarTextoRelatorioSemanal — substituto real (ferias.substituto_id) 
     const texto = gerarTextoRelatorioSemanal('2026-07-30', escalas, [feriasDoSergio, segundoPedidoDoSergio], usuarios)
     expect(texto.match(/Sérgio Real/g)?.length).toBe(1)
   })
+
+  it('férias que termina exatamente no dia rotulado como início da semana (dia de transição) já não afeta esta semana — caso real Sérgio/Leonardo', () => {
+    const feriasNaFronteira: Ferias = { ...feriasDoSergio, data_inicio: '2026-07-26', data_fim: '2026-07-30', substituto_id: 'leonardo' }
+    const texto = gerarTextoRelatorioSemanal('2026-07-30', escalas, [feriasNaFronteira], usuarios)
+    expect(texto).toContain('H1 - 07h00 às 16h00 – Sérgio Real')
+    expect(texto).toContain('H4 - 09h00 às 18h00 – Leonardo Real')
+    const secaoFerias = texto.split('Férias/Licenças')[1]
+    expect(secaoFerias.trim()).toBe('—')
+  })
+
+  it('férias que se estende um dia além do dia de transição ainda conta normalmente', () => {
+    const feriasPassaFronteira: Ferias = { ...feriasDoSergio, data_inicio: '2026-07-26', data_fim: '2026-07-31', substituto_id: 'leonardo' }
+    const texto = gerarTextoRelatorioSemanal('2026-07-30', escalas, [feriasPassaFronteira], usuarios)
+    expect(texto).toContain('H1 - 07h00 às 16h00 – Leonardo Real')
+    expect(texto).toContain('H4 - 09h00 às 18h00 – —')
+  })
 })

@@ -35,7 +35,13 @@ export function gerarTextoRelatorioSemanal(
   const fim = adicionarDias(inicio, 6)
   const nomeDe = (id: string) => usuarios.find((u) => u.id === id)?.nome ?? id
 
-  const emFerias = ferias.filter((f) => f.data_inicio <= paraISO(fim) && f.data_fim >= semanaRef)
+  // O dia rotulado como início da semana (semanaRef) é ainda um dia de
+  // transição do ciclo anterior — o H3 só arranca às 22h desse dia.
+  // Uma férias que termine exatamente nesse dia já não afeta a semana
+  // nova (por isso data_fim > semanaRef, não >=): testado com o caso
+  // real do Sérgio, cuja férias terminava na sexta que rotula a semana
+  // seguinte e continuava a "roubar-lhe" o turno indevidamente.
+  const emFerias = ferias.filter((f) => f.data_inicio <= paraISO(fim) && f.data_fim > semanaRef)
   const idsEmFerias = new Set(emFerias.map((f) => f.usuario_id))
 
   // Mapa id -> turno efetivo (não listas por turno independentes).
