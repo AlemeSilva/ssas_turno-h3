@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
@@ -34,8 +35,24 @@ export function PlanoPage() {
   const dataInicioCiclo = useMemo(() => paraISO(semanaRefDe(new Date())), [])
   const { plano, tarefas, aCarregar, recarregar, criarPlano } = usePlanoCiclo(dataInicioCiclo)
 
+  // Os 5 dias válidos do ciclo aberto (Qui→Seg), para a tarefa
+  // excecional ser sempre associada a um deles — nunca a uma data
+  // arbitrária fora do plano.
+  const diasCiclo = useMemo(() => {
+    const nomes = ['Quinta', 'Sexta', 'Sábado', 'Domingo', 'Segunda']
+    const quinta = new Date(dataInicioCiclo + 'T00:00:00')
+    return nomes.map((nome, i) => {
+      const iso = paraISO(adicionarDias(quinta, i))
+      return { iso, rotulo: `${nome} · ${formatarDataPT(iso)}` }
+    })
+  }, [dataInicioCiclo])
+
   const [textoExportado, setTextoExportado] = useState<string | null>(null)
   const [novaTarefa, setNovaTarefa] = useState('')
+  const [novaData, setNovaData] = useState('')
+  const [novaHora, setNovaHora] = useState('')
+  const [novaEquipa, setNovaEquipa] = useState('DEOS - Operações')
+  const [erroNovaTarefa, setErroNovaTarefa] = useState<string | null>(null)
   const [erro, setErro] = useState<string | null>(null)
 
   // undefined = ainda a carregar; null = ninguém escalado de H3 para
@@ -89,14 +106,30 @@ export function PlanoPage() {
   async function adicionarTarefaExcecional(e: FormEvent) {
     e.preventDefault()
     if (!plano || !novaTarefa.trim()) return
+    if (!novaData) {
+      setErroNovaTarefa('Escolhe o dia da tarefa.')
+      return
+    }
+    if (!novaHora) {
+      setErroNovaTarefa('Escolhe a hora de arranque.')
+      return
+    }
+    if (!novaEquipa.trim()) {
+      setErroNovaTarefa('Indica a equipa responsável.')
+      return
+    }
+    setErroNovaTarefa(null)
     await supabase.from('tarefas_plano').insert({
       id_plano: plano.id,
-      data_execucao: paraISO(new Date()),
+      data_execucao: novaData,
+      hora_arranque: novaHora,
       descricao_tarefa: novaTarefa.trim(),
-      equipa_responsavel: 'DEOS - Operações',
+      equipa_responsavel: novaEquipa.trim(),
       origem: 'EXCECIONAL',
     })
     setNovaTarefa('')
+    setNovaData('')
+    setNovaHora('')
     recarregar()
   }
 
@@ -236,21 +269,49 @@ export function PlanoPage() {
 
       <Card>
         <CardContent className="pt-6">
-          <form onSubmit={adicionarTarefaExcecional} className="flex gap-2">
-            <Input
-              placeholder="Descrição da tarefa excecional"
-              value={novaTarefa}
-              onChange={(e) => setNovaTarefa(e.target.value)}
-              className="flex-1"
-            />
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button type="submit" variant="secondary">
-                  Adicionar tarefa excecional
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Junta uma tarefa avulsa a hoje, fora das tarefas fixas que já vêm no modelo do plano</TooltipContent>
-            </Tooltip>
+          <form onSubmit={adicionarTarefaExcecional} className="flex flex-col gap-2">
+            <div className="flex gap-2">
+              <Select value={novaData} onValueChange={setNovaData}>
+                <SelectTrigger className="w-44">
+                  <SelectValue placeholder="Dia…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {diasCiclo.map((d) => (
+                    <SelectItem key={d.iso} value={d.iso}>
+                      {d.rotulo}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                type="time"
+                aria-label="Hora de arranque"
+                value={novaHora}
+                onChange={(e) => setNovaHora(e.target.value)}
+                className="w-28"
+              />
+              <Input
+                placeholder="Equipa responsável"
+                value={novaEquipa}
+                onChange={(e) => setNovaEquipa(e.target.value)}
+                className="w-44"
+              />
+              <Input
+                placeholder="Descrição da tarefa excecional"
+                value={novaTarefa}
+                onChange={(e) => setNovaTarefa(e.target.value)}
+                className="flex-1"
+              />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button type="submit" variant="secondary">
+                    Adicionar tarefa excecional
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Junta uma tarefa avulsa a um dos dias do ciclo, fora das tarefas fixas que já vêm no modelo do plano</TooltipContent>
+              </Tooltip>
+            </div>
+            {erroNovaTarefa && <p className="text-xs text-red-600">{erroNovaTarefa}</p>}
           </form>
         </CardContent>
       </Card>
