@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useAuth } from '@/auth/AuthContext'
 import { useUsuarios } from '@/data/useUsuarios'
 import { useResumoUsuario, LIMITE_FERIAS_ANUAL } from '@/data/useResumoUsuario'
-import { useResumoGerente, type AusenciaComSemanas, type FeriadoSemPlantao, type PeriodoFeriasEquipe } from '@/data/useResumoGerente'
+import { useResumoGerente, type AusenciaComSemanas, type FeriadoDoAno, type PeriodoFeriasEquipe } from '@/data/useResumoGerente'
 import { HORARIO_TURNO } from '@/lib/gerarRelatorioSemanal'
 import {
   adicionarDias,
@@ -88,6 +88,10 @@ function ListaEquipe({
 
 export function InicioPage() {
   const { usuario, ehGerenteOuDelegado } = useAuth()
+  // Alterar um plantonista já confirmado é exclusivo do Gerente
+  // titular — um delegado só pode fazer a primeira escolha, quando
+  // ainda não há ninguém (RLS: plantao_voluntarios_update_titular).
+  const ehGerenteTitular = usuario?.perfil === 'GERENTE'
   const { usuarios } = useUsuarios()
   const resumo = useResumoUsuario(usuario?.id)
   const gerente = useResumoGerente(ehGerenteOuDelegado)
@@ -122,7 +126,7 @@ export function InicioPage() {
   // Ao fim de semana o H3 já cobre o dia inteiro sozinho, como num fim
   // de semana comum — não há plantão a confirmar, por isso a lista só
   // mostra feriados em dias úteis.
-  const feriadosFuturos = gerente.feriadosSemPlantao.filter((f) => f.data >= hojeISO && !ehFimDeSemana(f.data))
+  const feriadosFuturos = gerente.feriadosDoAno.filter((f) => f.data >= hojeISO && !ehFimDeSemana(f.data))
 
   function abrirDetalhePessoa(id: string, nome: string, status: 'APROVADA' | 'PENDENTE') {
     const periodos = gerente.feriasEquipeAno
@@ -142,18 +146,24 @@ export function InicioPage() {
     else setEscolhendoPara(null)
   }
 
-  async function escolherPlantonista(dataFeriado: string, usuarioId: string) {
+  async function escolherPlantonista(dataFeriado: string, usuarioId: string, jaConfirmado: boolean) {
+    if (!usuario) return
     setAConfirmarPlantao(dataFeriado)
     setErroPlantao(null)
-    const { error } = await gerente.confirmarPlantonista(dataFeriado, usuarioId)
+    const { error } = jaConfirmado
+      ? await gerente.alterarPlantonista(dataFeriado, usuarioId, usuario.id)
+      : await gerente.confirmarPlantonista(dataFeriado, usuarioId, usuario.id)
     setAConfirmarPlantao(null)
     if (error) setErroPlantao(error)
     else setEscolhendoPlantaoPara(null)
   }
 
-  function LinhaFeriado({ f }: { f: FeriadoSemPlantao }) {
+  function LinhaFeriado({ f }: { f: FeriadoDoAno }) {
     const aEscolher = escolhendoPlantaoPara === f.data
     const candidatos = usuarios.filter((u) => u.ativo)
+    // Sem ninguém ainda: Gerente ou delegado escolhe. Já confirmado:
+    // só o titular pode trocar (RLS reforça a mesma fronteira).
+    const podeAgir = f.plantonistaId ? ehGerenteTitular : ehGerenteOuDelegado
 
     return (
       <li className="flex flex-col gap-1.5 border-b border-zinc-100 py-2 last:border-b-0">
@@ -161,21 +171,34 @@ export function InicioPage() {
           <span className="text-zinc-700">
             {f.nome} · {formatarDataPT(f.data)}
           </span>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="xs"
-                variant="secondary"
-                onClick={() => {
-                  setEscolhendoPlantaoPara(aEscolher ? null : f.data)
-                  setErroPlantao(null)
-                }}
-              >
-                Confirmar plantonista
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Abre a lista da equipa para escolheres quem fica de plantão neste feriado</TooltipContent>
-          </Tooltip>
+          <div className="flex shrink-0 items-center gap-1.5">
+            {f.plantonistaId && (
+              <span className="inline-flex items-center rounded-md border border-emerald-100 bg-emerald-50 px-1.5 py-0.5 text-[0.65rem] font-medium whitespace-nowrap text-emerald-700">
+                Plantonista: {nomeDe(f.plantonistaId)}
+              </span>
+            )}
+            {podeAgir && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="xs"
+                    variant={f.plantonistaId ? 'ghost' : 'secondary'}
+                    onClick={() => {
+                      setEscolhendoPlantaoPara(aEscolher ? null : f.data)
+                      setErroPlantao(null)
+                    }}
+                  >
+                    {f.plantonistaId ? 'Alterar' : 'Confirmar plantonista'}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {f.plantonistaId
+                    ? 'Escolhe outra pessoa para cobrir este feriado'
+                    : 'Abre a lista da equipa para escolheres quem fica de plantão neste feriado'}
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </div>
         </div>
         {aEscolher && (
           <div className="flex flex-wrap gap-1.5 pl-1">
@@ -184,7 +207,7 @@ export function InicioPage() {
                 key={u.id}
                 size="xs"
                 variant="ghost"
-                onClick={() => escolherPlantonista(f.data, u.id)}
+                onClick={() => escolherPlantonista(f.data, u.id, f.plantonistaId !== null)}
                 disabled={aConfirmarPlantao === f.data}
               >
                 {aConfirmarPlantao === f.data ? '…' : u.nome}
@@ -359,11 +382,11 @@ export function InicioPage() {
           <div className="grid grid-cols-2 items-start gap-5">
             <Card>
               <CardHeader>
-                <CardTitle>Feriados sem plantão confirmado</CardTitle>
+                <CardTitle>Plantão de feriados</CardTitle>
               </CardHeader>
               <CardContent>
                 {feriadosFuturos.length === 0 ? (
-                  <p className="text-sm text-zinc-400">Sem feriados pendentes este ano.</p>
+                  <p className="text-sm text-zinc-400">Sem feriados a partir de hoje este ano.</p>
                 ) : (
                   <ul>
                     {feriadosFuturos.map((f) => (

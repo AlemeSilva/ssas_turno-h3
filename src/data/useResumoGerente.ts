@@ -5,16 +5,20 @@ import type { AusenciaComSemanas, Ferias } from '../types/database'
 
 export type { AusenciaComSemanas }
 
-export interface FeriadoSemPlantao {
+/** Feriado do ano com o plantonista atual, se já houver algum
+ * confirmado — plantonistaId nulo significa ainda por decidir, não
+ * "sem ninguém disponível". */
+export interface FeriadoDoAno {
   data: string
   nome: string
   tipo: string
+  plantonistaId: string | null
 }
 
 export type PeriodoFeriasEquipe = Pick<Ferias, 'id' | 'usuario_id' | 'status' | 'data_inicio' | 'data_fim'>
 
 interface ResumoGerente {
-  feriadosSemPlantao: FeriadoSemPlantao[]
+  feriadosDoAno: FeriadoDoAno[]
   ausenciasHoje: AusenciaComSemanas[]
   ausenciasProximaSemana: AusenciaComSemanas[]
   feriasAprovadasPorPessoa: Map<string, number>
@@ -27,7 +31,12 @@ interface ResumoGerente {
     substitutoId: string | null,
     confirmadoPor: string
   ) => Promise<{ error: string | null }>
-  confirmarPlantonista: (dataFeriado: string, usuarioId: string) => Promise<{ error: string | null }>
+  /** Primeira escolha, quando ainda não há ninguém confirmado —
+   * aberta a Gerente/delegado (RLS: plantao_voluntarios_insert_gerente). */
+  confirmarPlantonista: (dataFeriado: string, usuarioId: string, confirmadoPor: string) => Promise<{ error: string | null }>
+  /** Troca de quem já está confirmado — exclusiva do Gerente titular
+   * (RLS: plantao_voluntarios_update_titular, migração 0027). */
+  alterarPlantonista: (dataFeriado: string, usuarioId: string, confirmadoPor: string) => Promise<{ error: string | null }>
 }
 
 /**
@@ -42,7 +51,7 @@ interface ResumoGerente {
  * Início não é Gerente/delegado.
  */
 export function useResumoGerente(ativo: boolean): ResumoGerente {
-  const [feriadosSemPlantao, setFeriadosSemPlantao] = useState<FeriadoSemPlantao[]>([])
+  const [feriadosDoAno, setFeriadosDoAno] = useState<FeriadoDoAno[]>([])
   const [ausenciasHoje, setAusenciasHoje] = useState<AusenciaComSemanas[]>([])
   const [ausenciasProximaSemana, setAusenciasProximaSemana] = useState<AusenciaComSemanas[]>([])
   const [feriasAprovadasPorPessoa, setFeriasAprovadasPorPessoa] = useState<Map<string, number>>(new Map())
@@ -70,26 +79,41 @@ export function useResumoGerente(ativo: boolean): ResumoGerente {
       const inicioAno = `${hoje.getFullYear()}-01-01`
       const fimAno = `${hoje.getFullYear()}-12-31`
 
-      const [{ data: dadosFeriados }, { data: dadosAusencias }, { data: dadosFeriasEquipe }] = await Promise.all([
-        supabase.from('feriados_sem_plantao').select('data, nome, tipo').order('data'),
-        supabase
-          .from('ferias')
-          .select('*, ferias_semanas(*)')
-          .eq('status', 'APROVADA')
-          .lte('data_inicio', proximaQuinta)
-          .gte('data_fim', hojeISO),
-        supabase
-          .from('ferias')
-          .select('id, usuario_id, status, data_inicio, data_fim')
-          .eq('tipo', 'FERIAS')
-          .in('status', ['APROVADA', 'PENDENTE'])
-          .gte('data_inicio', inicioAno)
-          .lte('data_inicio', fimAno),
-      ])
+      const [{ data: dadosFeriados }, { data: dadosPlantoes }, { data: dadosAusencias }, { data: dadosFeriasEquipe }] =
+        await Promise.all([
+          supabase.from('feriados_portugal').select('data, nome, tipo').gte('data', inicioAno).lte('data', fimAno).order('data'),
+          supabase
+            .from('plantao_voluntarios')
+            .select('data_feriado, usuario_id')
+            .eq('voluntario', true)
+            .gte('data_feriado', inicioAno)
+            .lte('data_feriado', fimAno),
+          supabase
+            .from('ferias')
+            .select('*, ferias_semanas(*)')
+            .eq('status', 'APROVADA')
+            .lte('data_inicio', proximaQuinta)
+            .gte('data_fim', hojeISO),
+          supabase
+            .from('ferias')
+            .select('id, usuario_id, status, data_inicio, data_fim')
+            .eq('tipo', 'FERIAS')
+            .in('status', ['APROVADA', 'PENDENTE'])
+            .gte('data_inicio', inicioAno)
+            .lte('data_inicio', fimAno),
+        ])
 
       if (cancelado || idCarregamentoRef.current !== meuId) return
 
-      setFeriadosSemPlantao((dadosFeriados as FeriadoSemPlantao[]) ?? [])
+      const plantonistaPorData = new Map(
+        ((dadosPlantoes as { data_feriado: string; usuario_id: string }[]) ?? []).map((p) => [p.data_feriado, p.usuario_id])
+      )
+      setFeriadosDoAno(
+        ((dadosFeriados as Omit<FeriadoDoAno, 'plantonistaId'>[]) ?? []).map((f) => ({
+          ...f,
+          plantonistaId: plantonistaPorData.get(f.data) ?? null,
+        }))
+      )
 
       const ausencias = (dadosAusencias as AusenciaComSemanas[]) ?? []
       const hoje_ = ausencias.filter((f) => f.data_inicio <= hojeISO && f.data_fim >= hojeISO)
@@ -162,15 +186,16 @@ export function useResumoGerente(ativo: boolean): ResumoGerente {
     return { error: error?.message ?? null }
   }
 
-  // feriados_sem_plantao só considera o feriado resolvido quando existe
-  // uma linha com voluntario = true (ver definição da view) — a escolha
-  // do Gerente entra nesse mesmo balde, independentemente de a pessoa
-  // se ter oferecido ou ter sido designada.
-  async function confirmarPlantonista(dataFeriado: string, usuarioId: string) {
+  // Índice único parcial (voluntario=true) só permite um plantonista
+  // confirmado por feriado — a escolha do Gerente entra nesse mesmo
+  // balde, independentemente de a pessoa se ter oferecido ou ter sido
+  // designada. Sem plantonista ainda: insert. Já há um: 23505.
+  async function confirmarPlantonista(dataFeriado: string, usuarioId: string, confirmadoPor: string) {
     const { error } = await supabase.from('plantao_voluntarios').insert({
       data_feriado: dataFeriado,
       usuario_id: usuarioId,
       voluntario: true,
+      confirmado_por: confirmadoPor,
       confirmado_em: new Date().toISOString(),
     })
     if (error?.code === '23505') {
@@ -179,8 +204,20 @@ export function useResumoGerente(ativo: boolean): ResumoGerente {
     return { error: error?.message ?? null }
   }
 
+  // Update, nunca insert — já existe uma linha confirmada, só troca
+  // quem é. RLS (plantao_voluntarios_update_titular) recusa isto a
+  // quem não for o Gerente titular.
+  async function alterarPlantonista(dataFeriado: string, usuarioId: string, confirmadoPor: string) {
+    const { error } = await supabase
+      .from('plantao_voluntarios')
+      .update({ usuario_id: usuarioId, confirmado_por: confirmadoPor, confirmado_em: new Date().toISOString() })
+      .eq('data_feriado', dataFeriado)
+      .eq('voluntario', true)
+    return { error: error?.message ?? null }
+  }
+
   return {
-    feriadosSemPlantao,
+    feriadosDoAno,
     ausenciasHoje,
     ausenciasProximaSemana,
     feriasAprovadasPorPessoa,
@@ -189,5 +226,6 @@ export function useResumoGerente(ativo: boolean): ResumoGerente {
     aCarregar,
     confirmarSubstitutoSemana,
     confirmarPlantonista,
+    alterarPlantonista,
   }
 }
