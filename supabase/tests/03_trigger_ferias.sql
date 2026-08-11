@@ -1,48 +1,66 @@
 begin;
 select plan(6);
 
+-- Isto corre contra uma base com dados reais (não só num Postgres
+-- local vazio) — limpa temporariamente, só dentro desta transação
+-- (revertida no fim, nunca commitada), qualquer férias/escala real
+-- que possa colidir com as datas fixas usadas abaixo.
+delete from ferias where data_inicio <= '2026-12-31' and data_fim >= '2026-01-01';
+delete from escala_semanal where semana_ref between '2026-01-01' and '2026-12-31';
+
 select tests.criar_usuario('Bruno Diniz', 'bruno@teste.pt', 'OPERADOR_H3') as bruno_id \gset
 select tests.criar_usuario('Kilson Júnior', 'kilson@teste.pt', 'OPERADOR_H3') as kilson_id \gset
 
--- (a) sem sobreposição entre colegas diferentes
+-- (a) sem sobreposição entre colegas diferentes — a validação de
+-- sobreposição só se aplica entre OPERADOR_H3 (trg_valida_ferias),
+-- por isso os dois utilizadores de teste aqui são H3.
 select lives_ok(
-    $$ insert into ferias (usuario_id, data_inicio, data_fim) values (:'bruno_id', '2026-08-10', '2026-08-14') $$,
+    format($f$ insert into ferias (usuario_id, data_inicio, data_fim) values (%L, '2026-08-10', '2026-08-14') $f$, :'bruno_id'),
     'primeiro pedido de férias insere sem problema'
 );
 
 select throws_ok(
-    $$ insert into ferias (usuario_id, data_inicio, data_fim) values (:'kilson_id', '2026-08-12', '2026-08-16') $$,
+    format($f$ insert into ferias (usuario_id, data_inicio, data_fim) values (%L, '2026-08-12', '2026-08-16') $f$, :'kilson_id'),
     'P0001',
-    'Já existem férias pedidas/aprovadas de outro colega sobrepostas a este período.',
-    'colega diferente com período sobreposto é bloqueado, mesmo os dois em PENDENTE'
+    'Já existem férias/licença de outro operador H3 sobrepostas a este período.',
+    'colega H3 diferente com período sobreposto é bloqueado, mesmo os dois em PENDENTE'
 );
 
 select lives_ok(
-    $$ insert into ferias (usuario_id, data_inicio, data_fim) values (:'kilson_id', '2026-08-20', '2026-08-24') $$,
+    format($f$ insert into ferias (usuario_id, data_inicio, data_fim) values (%L, '2026-08-20', '2026-08-24') $f$, :'kilson_id'),
     'período sem sobreposição real é aceite normalmente'
 );
 
--- (b) saldo anual de 22 dias úteis (soma de PENDENTE + APROVADA)
+-- (b) saldo anual de 22 dias úteis (soma de PENDENTE + APROVADA) — o
+-- primeiro pedido tem de estar APROVADA (não PENDENTE) antes do
+-- segundo, porque desde a migração 0016 só se pode ter um pedido
+-- PENDENTE de cada vez por pessoa (regra testada à parte, abaixo).
 select tests.criar_usuario('Caique Araújo', 'caique@teste.pt', 'OPERADOR_H3') as caique_id \gset
 select lives_ok(
-    $$ insert into ferias (usuario_id, data_inicio, data_fim) values (:'caique_id', '2026-01-05', '2026-01-30') $$,
+    format($f$ insert into ferias (usuario_id, data_inicio, data_fim) values (%L, '2026-01-05', '2026-01-30') $f$, :'caique_id'),
     'primeiro grande bloco de férias (dentro do saldo de 22 dias úteis) é aceite'
 );
+update ferias set status = 'APROVADA' where usuario_id = :'caique_id';
 select throws_ok(
-    $$ insert into ferias (usuario_id, data_inicio, data_fim) values (:'caique_id', '2026-11-02', '2026-11-06') $$,
+    format($f$ insert into ferias (usuario_id, data_inicio, data_fim) values (%L, '2026-11-02', '2026-11-06') $f$, :'caique_id'),
     'P0001',
     'Este pedido ultrapassa o saldo anual de 22 dias úteis de férias.',
-    'segundo pedido no mesmo ano civil que ultrapasse 22 dias úteis é bloqueado'
+    'segundo pedido no mesmo ano civil que ultrapasse 22 dias úteis (somando o já aprovado) é bloqueado'
 );
 
--- (c) bloqueia se já há escala atribuída no período pedido
+-- (c) um segundo pedido PENDENTE da mesma pessoa é sempre bloqueado,
+-- mesmo sem qualquer sobreposição de datas — regra adicionada na
+-- migração 0016, substitui o antigo "bloqueia se já há escala
+-- atribuída" (migração 0017 removeu essa verificação deliberadamente:
+-- o mecanismo de substituto passou a tratar a cobertura em vez de
+-- impedir o pedido à partida — decisão do Gerente, 2026-08-03).
 select tests.criar_usuario('Sérgio Gomes', 'sergio@teste.pt', 'OPERADOR') as sergio_id \gset
-insert into escala_semanal (semana_ref, usuario_id, turno) values ('2026-09-03', :'sergio_id', 'H1');
+insert into ferias (usuario_id, data_inicio, data_fim) values (:'sergio_id', '2026-09-05', '2026-09-06');
 select throws_ok(
-    $$ insert into ferias (usuario_id, data_inicio, data_fim) values (:'sergio_id', '2026-09-05', '2026-09-06') $$,
+    format($f$ insert into ferias (usuario_id, data_inicio, data_fim) values (%L, '2026-10-10', '2026-10-11') $f$, :'sergio_id'),
     'P0001',
-    'Já existe escala atribuída a esta pessoa num período sobreposto a este pedido de férias.',
-    'pedido de férias sobreposto a turno já escalado é bloqueado na submissão'
+    'Já tens um pedido pendente — aguarda que seja decidido antes de submeter outro.',
+    'um segundo pedido PENDENTE da mesma pessoa é sempre bloqueado, mesmo sem sobreposição de datas'
 );
 
 select * from finish();

@@ -46,3 +46,14 @@ begin
     perform set_config('role', 'anon', true);
 end;
 $$ language plpgsql;
+
+-- Sem isto, a PRIMEIRA chamada a tests.autenticar_como() funciona
+-- (ainda a correr como o role de ligação, tipicamente superuser), mas
+-- QUALQUER chamada seguinte a uma função tests.* falha com "permission
+-- denied for schema tests" — a troca de role para authenticated já
+-- não tem USAGE no schema tests, por isso nunca se consegue mudar de
+-- utilizador simulado uma segunda vez. Só descoberto ao correr mesmo
+-- os testes (nunca tinham corrido antes nesta sessão).
+grant usage on schema tests to authenticated, anon;
+grant execute on all functions in schema tests to authenticated, anon;
+alter default privileges in schema tests grant execute on functions to authenticated, anon;

@@ -4,8 +4,8 @@ select plan(6);
 select tests.criar_usuario('Kilson Júnior', 'kilson3@teste.pt', 'OPERADOR_H3') as kilson_id \gset
 select tests.criar_usuario('Gerente Teste', 'gerente3@teste.pt', 'GERENTE') as gerente_id \gset
 
-insert into planos (data_inicio_ciclo, criado_por) values ('2026-08-06', :'gerente_id') returning id as plano_id \gset
-insert into escala_semanal (semana_ref, usuario_id, turno) values ('2026-08-06', :'kilson_id', 'H3');
+insert into planos (data_inicio_ciclo, criado_por) values ('2099-08-06', :'gerente_id') returning id as plano_id \gset
+insert into escala_semanal (semana_ref, usuario_id, turno) values ('2099-08-06', :'kilson_id', 'H3');
 insert into checklist_itens (id_plano, secao, item_descricao) values (:'plano_id', 'PREPARACAO', 'Verificar espaço em disco') returning id as item_id \gset
 
 update checklist_itens set concluido = true, concluido_por = :'kilson_id', data_hora_conclusao = now() where id = :'item_id';

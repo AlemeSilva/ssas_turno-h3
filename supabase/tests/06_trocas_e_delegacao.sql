@@ -10,7 +10,7 @@ insert into escala_semanal (semana_ref, usuario_id, turno) values ('2026-08-06',
 
 -- O substituto de uma troca tem de ser OPERADOR_H3
 select throws_ok(
-    $$ insert into trocas_escala (usuario_proponente, usuario_substituto, semana_ref) values (:'bruno_id', :'leonardo_id', '2026-08-06') $$,
+    format($f$ insert into trocas_escala (usuario_proponente, usuario_substituto, semana_ref) values (%L, %L, '2026-08-06') $f$, :'bruno_id', :'leonardo_id'),
     'P0001',
     'O substituto de uma troca de H3 tem de ter perfil OPERADOR_H3 e estar ativo.',
     'não é possível propor um OPERADOR comum (não-H3) como substituto numa troca'
@@ -39,12 +39,18 @@ select is(
 -- Delegação: aditiva, sem sobreposição
 -- Datas relativas a current_date para que is_gerente_ou_delegado() (que avalia
 -- current_date between data_inicio and data_fim) retorne true no momento do teste.
+-- A verificação de sobreposição em trg_valida_delegacao() não é
+-- restrita ao mesmo gerente_titular — limpa temporariamente (só nesta
+-- transação, revertida no fim) qualquer delegação real que já cubra
+-- esta janela, para não colidir com uma delegação real em curso.
+delete from delegacoes_aprovacao where data_inicio <= current_date + 30 and data_fim >= current_date - 30;
+
 insert into delegacoes_aprovacao (gerente_titular, substituto, data_inicio, data_fim)
 values (:'gerente_id', :'bruno_id', current_date - 5, current_date + 5);
 
 select throws_ok(
-    $$ insert into delegacoes_aprovacao (gerente_titular, substituto, data_inicio, data_fim)
-       values (:'gerente_id', :'kilson_id', current_date - 2, current_date + 2) $$,
+    format($f$ insert into delegacoes_aprovacao (gerente_titular, substituto, data_inicio, data_fim)
+       values (%L, %L, current_date - 2, current_date + 2) $f$, :'gerente_id', :'kilson_id'),
     'P0001',
     'Já existe uma delegação de aprovação ativa nesse período.',
     'não é possível criar duas delegações com janelas sobrepostas'

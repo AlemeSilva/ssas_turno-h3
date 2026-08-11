@@ -29,18 +29,18 @@ select is(calcula_tipo_fim_semana('2026-02-26'::date), 'MANUTENCAO'::tipo_fim_se
 
 -- Gerente pode substituir manualmente o cálculo automático.
 select tests.criar_usuario('Gerente Teste', 'gerente2@teste.pt', 'GERENTE') as gerente_id \gset
-insert into planos (data_inicio_ciclo, criado_por) values ('2026-08-06', :'gerente_id');
-select is((select tipo_fim_semana from planos where data_inicio_ciclo = '2026-08-06'), 'NORMAL'::tipo_fim_semana,
+insert into planos (data_inicio_ciclo, criado_por) values ('2099-08-06', :'gerente_id');
+select is((select tipo_fim_semana from planos where data_inicio_ciclo = '2099-08-06'), 'NORMAL'::tipo_fim_semana,
     'cálculo automático inicial classifica 06/08 como NORMAL');
 
-update planos set tipo_fim_semana = 'MANUTENCAO', tipo_fim_semana_manual = true where data_inicio_ciclo = '2026-08-06';
-select is((select tipo_fim_semana from planos where data_inicio_ciclo = '2026-08-06'), 'MANUTENCAO'::tipo_fim_semana,
+update planos set tipo_fim_semana = 'MANUTENCAO', tipo_fim_semana_manual = true where data_inicio_ciclo = '2099-08-06';
+select is((select tipo_fim_semana from planos where data_inicio_ciclo = '2099-08-06'), 'MANUTENCAO'::tipo_fim_semana,
     'Gerente consegue forçar MANUTENCAO manualmente para um ciclo específico');
 
 -- E essa substituição manual sobrevive a um UPDATE não relacionado
 -- (ex.: mudar o status), sem ser recalculada por engano.
-update planos set status = 'PENDENTE_APROVACAO' where data_inicio_ciclo = '2026-08-06';
-select is((select tipo_fim_semana from planos where data_inicio_ciclo = '2026-08-06'), 'MANUTENCAO'::tipo_fim_semana,
+update planos set status = 'PENDENTE_APROVACAO' where data_inicio_ciclo = '2099-08-06';
+select is((select tipo_fim_semana from planos where data_inicio_ciclo = '2099-08-06'), 'MANUTENCAO'::tipo_fim_semana,
     'override manual persiste depois de uma atualização não relacionada ao tipo');
 
 select * from finish();
