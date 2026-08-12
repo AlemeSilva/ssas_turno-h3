@@ -9,6 +9,7 @@
 // próprio.
 
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { semanasParaNovoOperador } from './composicaoEscala.ts'
 
 interface PedidoCriar {
   acao: 'criar'
@@ -18,6 +19,10 @@ interface PedidoCriar {
   perfil: 'GERENTE' | 'OPERADOR' | 'OPERADOR_H3'
   empresa: string
   limite_h3_mensal: number | null
+  // H1 ou H4 — obrigatório quando perfil === 'OPERADOR' (é o que
+  // compõe a escala dessa pessoa, ver preencher_escala_anual() e
+  // composicaoEscala.ts); tem de vir nulo para os outros perfis.
+  turno_fixo: 'H1' | 'H4' | null
 }
 
 interface PedidoResetPassword {
@@ -98,12 +103,18 @@ Deno.serve(async (req) => {
 
   try {
     if (pedido.acao === 'criar') {
-      const { nome, email, password, perfil, empresa, limite_h3_mensal } = pedido
+      const { nome, email, password, perfil, empresa, limite_h3_mensal, turno_fixo } = pedido
       if (!nome || !email || !password || !perfil || !empresa) {
         return json({ erro: 'Faltam campos obrigatórios.' }, 400)
       }
       if (perfil === 'GERENTE' && !ehGerenteTitular) {
         return json({ erro: 'Um delegado não pode criar uma conta com perfil Gerente.' }, 403)
+      }
+      if (perfil === 'OPERADOR' && turno_fixo !== 'H1' && turno_fixo !== 'H4') {
+        return json({ erro: 'Um Operador tem de ter um turno fixo (H1 ou H4) indicado.' }, 400)
+      }
+      if (perfil !== 'OPERADOR' && turno_fixo != null) {
+        return json({ erro: 'Turno fixo só se aplica a perfil Operador.' }, 400)
       }
 
       const { data: novoAuth, error: erroCriar } = await admin.auth.admin.createUser({
@@ -123,6 +134,7 @@ Deno.serve(async (req) => {
         empresa,
         ativo: true,
         limite_h3_mensal: perfil === 'OPERADOR_H3' ? limite_h3_mensal : null,
+        turno_fixo: perfil === 'OPERADOR' ? turno_fixo : null,
         data_saida: null,
       })
       if (erroPerfil) {
@@ -149,6 +161,26 @@ Deno.serve(async (req) => {
         acao: 'UTILIZADOR_CRIADO',
         descricao_detalhada: `${nome} (${email}, ${perfil}) registado por ${chamador.id}.`,
       })
+
+      // Compõe já a escala desta pessoa até ao fim do ano (e do ano
+      // seguinte também, se o registo for em Novembro/Dezembro — ver
+      // composicaoEscala.ts). Falha aqui não deve desfazer a conta já
+      // criada — fica registado em auditoria para correção manual.
+      if (perfil === 'OPERADOR' && turno_fixo) {
+        const hoje = new Date().toISOString().slice(0, 10)
+        const semanas = semanasParaNovoOperador(hoje)
+        const { error: erroEscala } = await admin.from('escala_semanal').insert(
+          semanas.map((semana_ref) => ({ semana_ref, usuario_id: novoAuth.user.id, turno: turno_fixo, criado_por: userData.user.id }))
+        )
+        if (erroEscala) {
+          await admin.from('logs_auditoria').insert({
+            referencia_tipo: 'USUARIO',
+            id_usuario: userData.user.id,
+            acao: 'COMPOSICAO_ESCALA_FALHOU',
+            descricao_detalhada: `Conta de ${nome} criada, mas falhou compor a escala (${turno_fixo}) automaticamente: ${erroEscala.message}. Requer preenchimento manual na Escala.`,
+          })
+        }
+      }
 
       return json({ id: novoAuth.user.id })
     }
@@ -211,11 +243,18 @@ Deno.serve(async (req) => {
         return json({ erro: erroRevogar.message }, 500)
       }
 
+      // Remove a escala futura desta pessoa — sem isto, semanas já
+      // gravadas antes da desativação continuariam a atribuí-la a um
+      // turno (visível no relatório semanal, que não filtra por ativo)
+      // mesmo depois de ter saído da equipa.
+      const hoje = new Date().toISOString().slice(0, 10)
+      await admin.from('escala_semanal').delete().eq('usuario_id', usuario_id).gte('semana_ref', hoje)
+
       await admin.from('logs_auditoria').insert({
         referencia_tipo: 'USUARIO',
         id_usuario: userData.user.id,
         acao: 'UTILIZADOR_DESATIVADO',
-        descricao_detalhada: `${alvo.nome} desativado por ${chamador.id}; sessões ativas terminadas.`,
+        descricao_detalhada: `${alvo.nome} desativado por ${chamador.id}; sessões ativas terminadas e escala futura removida.`,
       })
 
       return json({ ok: true })

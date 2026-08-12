@@ -4,6 +4,7 @@ import { useAuth } from '@/auth/AuthContext'
 import { useUsuarios } from '@/data/useUsuarios'
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
+import { formatarDataPT } from '@/lib/datas'
 import type { PerfilUsuario, Usuario } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardTitle } from '@/components/ui/card'
@@ -44,6 +45,7 @@ export function UtilizadoresPage() {
   const [perfil, setPerfil] = useState<PerfilUsuario>('OPERADOR')
   const [empresa, setEmpresa] = useState('Accenture')
   const [limiteH3, setLimiteH3] = useState('')
+  const [turnoFixo, setTurnoFixo] = useState<'H1' | 'H4' | ''>('')
   const [aRegistar, setARegistar] = useState(false)
   const [erroRegistar, setErroRegistar] = useState<string | null>(null)
 
@@ -54,6 +56,11 @@ export function UtilizadoresPage() {
 
   const [aDesativar, setADesativar] = useState<string | null>(null)
   const [erroDesativar, setErroDesativar] = useState<{ id: string; mensagem: string } | null>(null)
+
+  const [agendarAlvo, setAgendarAlvo] = useState<{ id: string; nome: string } | null>(null)
+  const [dataSaida, setDataSaida] = useState('')
+  const [aAgendar, setAAgendar] = useState(false)
+  const [erroAgendar, setErroAgendar] = useState<string | null>(null)
 
   const ehGerenteTitular = usuario?.perfil === 'GERENTE'
   // Um delegado pode registar OPERADOR/OPERADOR_H3, mas nunca outro
@@ -78,6 +85,12 @@ export function UtilizadoresPage() {
   async function registar(e: FormEvent) {
     e.preventDefault()
     setErroRegistar(null)
+    // O <Select> do turno, tal como o de Perfil, não participa na
+    // validação HTML nativa do formulário — repõe-se manualmente.
+    if (perfil === 'OPERADOR' && !turnoFixo) {
+      setErroRegistar('Escolhe o turno fixo (H1 ou H4) deste Operador.')
+      return
+    }
     setARegistar(true)
     const { erro } = await chamarGerirUtilizadores({
       acao: 'criar',
@@ -87,6 +100,7 @@ export function UtilizadoresPage() {
       perfil,
       empresa,
       limite_h3_mensal: perfil === 'OPERADOR_H3' && limiteH3 ? Number(limiteH3) : null,
+      turno_fixo: perfil === 'OPERADOR' ? turnoFixo : null,
     })
     setARegistar(false)
     if (erro) {
@@ -98,9 +112,35 @@ export function UtilizadoresPage() {
       setPerfil('OPERADOR')
       setEmpresa('Accenture')
       setLimiteH3('')
+      setTurnoFixo('')
       setARegistarAberto(false)
       recarregar()
     }
+  }
+
+  async function agendarSaida() {
+    if (!agendarAlvo || !dataSaida) return
+    setErroAgendar(null)
+    setAAgendar(true)
+    const { error } = await supabase.from('usuarios').update({ data_saida: dataSaida }).eq('id', agendarAlvo.id)
+    setAAgendar(false)
+    if (error) {
+      setErroAgendar(error.message)
+    } else {
+      setDataSaida('')
+      setAgendarAlvo(null)
+      recarregar()
+    }
+  }
+
+  async function cancelarSaidaAgendada(alvo: Usuario) {
+    setErroDesativar(null)
+    const { error } = await supabase.from('usuarios').update({ data_saida: null }).eq('id', alvo.id)
+    if (error) {
+      setErroDesativar({ id: alvo.id, mensagem: error.message })
+      return
+    }
+    recarregar()
   }
 
   async function reporPassword() {
@@ -174,14 +214,26 @@ export function UtilizadoresPage() {
                     <Td>{ROTULO_PERFIL[u.perfil]}</Td>
                     <Td>{u.empresa}</Td>
                     <Td>
-                      <span
-                        className={cn(
-                          'inline-flex items-center rounded-md border px-1.5 py-0.5 text-[0.65rem] font-medium',
-                          u.ativo ? 'border-emerald-100 bg-emerald-50 text-emerald-700' : 'border-zinc-200 bg-zinc-100 text-zinc-500'
+                      <div className="flex flex-wrap items-center gap-1">
+                        <span
+                          className={cn(
+                            'inline-flex items-center rounded-md border px-1.5 py-0.5 text-[0.65rem] font-medium',
+                            u.ativo ? 'border-emerald-100 bg-emerald-50 text-emerald-700' : 'border-zinc-200 bg-zinc-100 text-zinc-500'
+                          )}
+                        >
+                          {u.ativo ? 'Ativo' : 'Desativado'}
+                        </span>
+                        {u.ativo && u.data_saida && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex items-center rounded-md border border-amber-100 bg-amber-50 px-1.5 py-0.5 text-[0.65rem] font-medium whitespace-nowrap text-amber-700">
+                                Sai em {formatarDataPT(u.data_saida)}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>Desativação automática agendada — corre todos os dias às 01h00</TooltipContent>
+                          </Tooltip>
                         )}
-                      >
-                        {u.ativo ? 'Ativo' : 'Desativado'}
-                      </span>
+                      </div>
                     </Td>
                     <Td>
                       {podeGerir(u) ? (
@@ -211,6 +263,32 @@ export function UtilizadoresPage() {
                             >
                               {aDesativar === u.id ? '…' : u.ativo ? 'Desativar' : 'Reativar'}
                             </Button>
+                            {u.ativo && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    size="xs"
+                                    variant="ghost"
+                                    onClick={() => {
+                                      if (u.data_saida) {
+                                        cancelarSaidaAgendada(u)
+                                        return
+                                      }
+                                      setAgendarAlvo({ id: u.id, nome: u.nome })
+                                      setDataSaida('')
+                                      setErroAgendar(null)
+                                    }}
+                                  >
+                                    {u.data_saida ? 'Cancelar saída' : 'Agendar saída'}
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  {u.data_saida
+                                    ? 'Remove a data de saída agendada — a conta deixa de ser desativada automaticamente'
+                                    : 'Define uma data a partir da qual esta pessoa é desativada automaticamente, sem precisares de voltar cá nesse dia'}
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
                           </div>
                           {erroDesativar?.id === u.id && <p className="text-xs text-red-600">{erroDesativar.mensagem}</p>}
                         </div>
@@ -251,7 +329,13 @@ export function UtilizadoresPage() {
             </label>
             <label className="flex flex-col gap-1 text-sm">
               <span className="text-xs text-zinc-500">Perfil</span>
-              <Select value={perfil} onValueChange={(v) => setPerfil(v as PerfilUsuario)}>
+              <Select
+                value={perfil}
+                onValueChange={(v) => {
+                  setPerfil(v as PerfilUsuario)
+                  setTurnoFixo('')
+                }}
+              >
                 <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
@@ -268,6 +352,20 @@ export function UtilizadoresPage() {
               <label className="flex flex-col gap-1 text-sm">
                 <span className="text-xs text-zinc-500">Limite de H3 por mês (opcional)</span>
                 <Input type="number" min={0} value={limiteH3} onChange={(e) => setLimiteH3(e.target.value)} />
+              </label>
+            )}
+            {perfil === 'OPERADOR' && (
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="text-xs text-zinc-500">Turno fixo</span>
+                <Select value={turnoFixo} onValueChange={(v) => setTurnoFixo(v as 'H1' | 'H4')}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecionar…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="H1">H1 — 07h00 às 16h00</SelectItem>
+                    <SelectItem value="H4">H4 — 09h00 às 18h00</SelectItem>
+                  </SelectContent>
+                </Select>
               </label>
             )}
             {erroRegistar && <p className="text-sm text-red-600">{erroRegistar}</p>}
@@ -308,6 +406,32 @@ export function UtilizadoresPage() {
             </Button>
             <Button onClick={reporPassword} disabled={aRepor || novaPassword.length < 6}>
               {aRepor ? 'A repor…' : 'Repor password'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={agendarAlvo !== null} onOpenChange={(aberto) => !aberto && !aAgendar && setAgendarAlvo(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Agendar saída</DialogTitle>
+            <DialogDescription>
+              {agendarAlvo?.nome} — a partir desta data, a conta é desativada automaticamente (corre todos os dias às
+              01h00), sem precisares de voltar cá nesse dia. A escala futura desta pessoa é removida no momento da
+              desativação.
+            </DialogDescription>
+          </DialogHeader>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-xs text-zinc-500">Data de saída</span>
+            <Input type="date" autoFocus value={dataSaida} onChange={(e) => setDataSaida(e.target.value)} />
+          </label>
+          {erroAgendar && <p className="text-sm text-red-600">{erroAgendar}</p>}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAgendarAlvo(null)} disabled={aAgendar}>
+              Cancelar
+            </Button>
+            <Button onClick={agendarSaida} disabled={aAgendar || !dataSaida}>
+              {aAgendar ? 'A agendar…' : 'Agendar saída'}
             </Button>
           </DialogFooter>
         </DialogContent>

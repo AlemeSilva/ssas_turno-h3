@@ -39,6 +39,11 @@ Deno.serve(async () => {
     return new Response(JSON.stringify({ erro: erroUpdate.message }), { status: 500 })
   }
 
+  // Remove a escala futura de quem saiu — mesmo comportamento do
+  // caminho manual (ver gerir-utilizadores/index.ts) para não deixar
+  // turnos atribuídos a alguém que já não está na equipa.
+  await supabase.from('escala_semanal').delete().in('usuario_id', ids).gte('semana_ref', hoje)
+
   // Regista na auditoria (um log por utilizador desativado)
   await supabase.from('logs_auditoria').insert(
     saidos.map((u) => ({

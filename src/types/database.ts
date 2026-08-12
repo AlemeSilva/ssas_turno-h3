@@ -24,6 +24,9 @@ export interface Usuario {
   ativo: boolean
   data_saida: string | null
   limite_h3_mensal: number | null
+  /** H1 ou H4 — só para perfil OPERADOR; define a escala composta ao
+   * registar e no preenchimento automático anual (migração 0029). */
+  turno_fixo: 'H1' | 'H4' | null
   criado_em: string
 }
 
