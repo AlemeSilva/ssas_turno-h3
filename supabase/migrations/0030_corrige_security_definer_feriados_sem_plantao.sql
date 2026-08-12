@@ -1,0 +1,26 @@
+-- =====================================================================
+-- Supabase Advisor (SECURITY, CRITICAL): a view feriados_sem_plantao
+-- pertence a postgres e, por omissão, corre com os privilégios do
+-- dono (comportamento equivalente a SECURITY DEFINER) — ignora
+-- completamente a RLS de feriados_portugal, plantao_voluntarios e
+-- escala_semanal, que só a tabelas.
+--
+-- A migração 0011 já tinha identificado este comportamento no seu
+-- próprio comentário, mas só para explicar um bug de acesso bloqueado
+-- (Início/Escala deixaram de conseguir ler as tabelas diretamente) —
+-- nunca tratou a exposição que isto cria por outra via: a view tem
+-- GRANT de SELECT para "anon" (confirmado via
+-- information_schema.role_table_grants), logo a API REST do Supabase
+-- expõe-na sem autenticação nenhuma. Como a view ignora RLS, um "anon"
+-- consegue ler, sem login, dados que as tabelas diretas já lhe negam:
+-- que feriados ainda não têm plantonista, o usuario_id de quem está
+-- de H3 nessa semana, e quem já se voluntariou.
+--
+-- security_invoker (Postgres 15+; produção corre 17.6) faz a view
+-- passar a respeitar as permissões de quem a consulta, em vez das do
+-- dono — "anon" passa a ver 0 linhas (mesma RLS das tabelas),
+-- "authenticated" continua a ver tudo normalmente, sem alteração
+-- nenhuma para a app (só a consulta já autenticada).
+-- =====================================================================
+
+alter view public.feriados_sem_plantao set (security_invoker = true);
