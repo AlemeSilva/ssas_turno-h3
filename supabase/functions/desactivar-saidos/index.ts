@@ -5,13 +5,28 @@
 
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
+// Nunca usar toISOString() para "hoje" — converte para UTC, e com
+// Portugal em UTC+1 no horário de verão isso cria uma janela diária
+// (00h-00h59 hora de Lisboa) em que esta função ainda pensa que é
+// "ontem". Mesmo anti-padrão documentado em src/lib/datas.ts::paraISO().
+// Na prática o cron (01h00 UTC, ver supabase/config.toml) já corre
+// depois da meia-noite de Lisboa ter passado, mas a função também pode
+// ser chamada manualmente (ver comentário acima) — não depender disso.
+function hojeISO(): string {
+  const d = new Date()
+  const ano = d.getFullYear()
+  const mes = String(d.getMonth() + 1).padStart(2, '0')
+  const dia = String(d.getDate()).padStart(2, '0')
+  return `${ano}-${mes}-${dia}`
+}
+
 Deno.serve(async () => {
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   )
 
-  const hoje = new Date().toISOString().slice(0, 10)
+  const hoje = hojeISO()
 
   const { data: saidos, error: erroBusca } = await supabase
     .from('usuarios')

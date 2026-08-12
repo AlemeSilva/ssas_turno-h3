@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { semanasParaNovoOperador } from '../../supabase/functions/gerir-utilizadores/composicaoEscala'
+import { semanasParaNovoOperador as semanasParaNovoOperadorFrontend } from '../../src/lib/composicaoEscala'
 
 function ehSabado(iso: string): boolean {
   return new Date(iso + 'T00:00:00').getDay() === 6
@@ -70,4 +71,17 @@ describe('semanasParaNovoOperador — composição da escala de um operador rec�
     expect(semanas.some((s) => s.startsWith('2026'))).toBe(false)
     expect(semanas.length).toBe(contarSabados('2027-01-01', '2027-12-31'))
   })
+})
+
+// src/lib/composicaoEscala.ts é uma cópia deliberada desta função (usada
+// pela reativação em UtilizadoresPage.tsx — mesmo padrão de duplicação
+// de sugerir-escala/algoritmo.ts, nunca cross-import entre Deno e Vite).
+// Sem isto, as duas cópias podiam divergir silenciosamente com o tempo.
+describe('src/lib/composicaoEscala.ts — cópia usada na reativação mantém-se idêntica ao original', () => {
+  it.each(['2026-03-10', '2026-11-15', '2026-12-01', '2026-10-15', '2026-11-01', '2026-12-31'])(
+    'produz exatamente as mesmas semanas que a cópia da Edge Function para %s',
+    (dataISO) => {
+      expect(semanasParaNovoOperadorFrontend(dataISO)).toEqual(semanasParaNovoOperador(dataISO))
+    }
+  )
 })

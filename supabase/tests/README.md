@@ -6,20 +6,23 @@ imutável, trocas, delegação, catálogo de cadeias) e políticas de RLS —
 tentando escrever diretamente na API como cada perfil tentaria, não só
 através da interface.
 
-## Pré-requisitos (não disponíveis neste ambiente de construção)
+## Como correr
 
-Estes testes **não foram executados** nesta sessão — precisam de um
-Postgres real com a extensão `pgtap`, que por sua vez precisa do
-Supabase CLI + Docker (nenhum dos dois está disponível no ambiente
-onde a aplicação foi construída). Para correr:
+O ambiente onde a aplicação é construída não tem Docker nem o Supabase
+CLI instalados, por isso `supabase test db` (o caminho oficial, descrito
+abaixo) nunca correu aqui. Em vez disso, a suite já foi executada com
+sucesso diretamente contra a base de produção (61/61 em 2026-08-12),
+sempre dentro de `begin; ... rollback;` — nenhum ficheiro depende de
+Docker para correr, só de acesso Postgres direto.
+
+Caminho oficial (Postgres local, recomendado para desenvolvimento):
 
 1. Instalar o [Supabase CLI](https://supabase.com/docs/guides/cli) e o Docker Desktop.
 2. Na raiz do projeto: `supabase init` (se ainda não existir `supabase/config.toml`).
 3. `supabase start` — sobe um Postgres local com pgTAP disponível.
-4. `supabase test db` — aplica as migrações (`0001` a `0003`) e corre
-   todos os ficheiros `supabase/tests/*.sql` por ordem alfabética,
-   cada um dentro de uma transação revertida no fim (não deixa dados
-   de teste na base).
+4. `supabase test db` — aplica as migrações e corre todos os ficheiros
+   `supabase/tests/*.sql` por ordem alfabética, cada um dentro de uma
+   transação revertida no fim (não deixa dados de teste na base).
 
 ## Estrutura
 
@@ -43,10 +46,7 @@ onde a aplicação foi construída). Para correr:
   meio da semana.
 - `08_gestao_cadeias.sql` — adicionar/desativar cadeias; proteção
   contra apagar uma cadeia com histórico.
-
-## Porque não correu nesta sessão
-
-O ambiente onde a aplicação foi construída não tem Docker nem o
-Supabase CLI instalados (confirmado antes de escrever estes ficheiros).
-Os testes estão escritos e prontos, mas a sua correção real fica para
-quando o projeto Supabase (ou um Postgres local) existir.
+- `09_ferias_semanas_turno_fixo_plantao.sql` — substituto de férias por
+  semana civil (RLS + unicidade); `turno_fixo` só H1/H4 e só para
+  OPERADOR; `plantao_voluntarios` — primeira escolha aberta a
+  Gerente/delegado, alterar uma já confirmada exclusiva do titular.

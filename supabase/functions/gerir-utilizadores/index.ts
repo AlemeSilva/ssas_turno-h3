@@ -11,6 +11,18 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { semanasParaNovoOperador } from './composicaoEscala.ts'
 
+// Nunca usar toISOString() para "hoje" — converte para UTC, e com
+// Portugal em UTC+1 no horário de verão isso cria uma janela diária
+// (00h-00h59 hora de Lisboa) em que esta função ainda pensa que é
+// "ontem". Mesmo anti-padrão documentado em src/lib/datas.ts::paraISO().
+function hojeISO(): string {
+  const d = new Date()
+  const ano = d.getFullYear()
+  const mes = String(d.getMonth() + 1).padStart(2, '0')
+  const dia = String(d.getDate()).padStart(2, '0')
+  return `${ano}-${mes}-${dia}`
+}
+
 interface PedidoCriar {
   acao: 'criar'
   nome: string
@@ -167,7 +179,7 @@ Deno.serve(async (req) => {
       // composicaoEscala.ts). Falha aqui não deve desfazer a conta já
       // criada — fica registado em auditoria para correção manual.
       if (perfil === 'OPERADOR' && turno_fixo) {
-        const hoje = new Date().toISOString().slice(0, 10)
+        const hoje = hojeISO()
         const semanas = semanasParaNovoOperador(hoje)
         const { error: erroEscala } = await admin.from('escala_semanal').insert(
           semanas.map((semana_ref) => ({ semana_ref, usuario_id: novoAuth.user.id, turno: turno_fixo, criado_por: userData.user.id }))
@@ -228,7 +240,7 @@ Deno.serve(async (req) => {
         return json({ erro: 'Um delegado não pode desativar o Gerente titular.' }, 403)
       }
 
-      const hoje = new Date().toISOString().slice(0, 10)
+      const hoje = hojeISO()
       // Garante sempre uma data_saida — "quando saiu" tem de ter
       // resposta mesmo quando se usa "Desativar" direto em vez de
       // agendar previamente. Se já tinha uma data (agendada ou

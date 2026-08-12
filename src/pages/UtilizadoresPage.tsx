@@ -4,7 +4,8 @@ import { useAuth } from '@/auth/AuthContext'
 import { useUsuarios } from '@/data/useUsuarios'
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
-import { duracaoEmAnosEMeses, formatarDataPT } from '@/lib/datas'
+import { adicionarDias, agora, duracaoEmAnosEMeses, formatarDataPT, paraISO } from '@/lib/datas'
+import { semanasParaNovoOperador } from '@/lib/composicaoEscala'
 import type { PerfilUsuario, Usuario } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardTitle } from '@/components/ui/card'
@@ -61,6 +62,9 @@ export function UtilizadoresPage() {
   const [dataSaida, setDataSaida] = useState('')
   const [aAgendar, setAAgendar] = useState(false)
   const [erroAgendar, setErroAgendar] = useState<string | null>(null)
+
+  const [aAlterarTurno, setAAlterarTurno] = useState<string | null>(null)
+  const [erroTurno, setErroTurno] = useState<{ id: string; mensagem: string } | null>(null)
 
   const ehGerenteTitular = usuario?.perfil === 'GERENTE'
   // Um delegado pode registar OPERADOR/OPERADOR_H3, mas nunca outro
@@ -143,6 +147,23 @@ export function UtilizadoresPage() {
     recarregar()
   }
 
+  async function alterarTurnoFixo(alvo: Usuario, novoTurno: 'H1' | 'H4') {
+    if (novoTurno === alvo.turno_fixo) return
+    setErroTurno(null)
+    setAAlterarTurno(alvo.id)
+    // Só muda o atributo da pessoa — não mexe na escala já gerada para
+    // este ano (essa continua editável manualmente na página Escala,
+    // como hoje). Passa a valer a partir da próxima composição
+    // automática (reativação ou preenchimento anual de novembro).
+    const { error } = await supabase.from('usuarios').update({ turno_fixo: novoTurno }).eq('id', alvo.id)
+    setAAlterarTurno(null)
+    if (error) {
+      setErroTurno({ id: alvo.id, mensagem: error.message })
+      return
+    }
+    recarregar()
+  }
+
   async function reporPassword() {
     if (!resetAlvo) return
     setErroReset(null)
@@ -163,10 +184,10 @@ export function UtilizadoresPage() {
 
   async function alternarAtivo(alvo: Usuario) {
     setErroDesativar(null)
+    setADesativar(alvo.id)
     if (alvo.ativo) {
       // Desativar precisa da Edge Function — também termina sessões
       // já abertas. Reativar é só um campo, sem esse efeito.
-      setADesativar(alvo.id)
       const { erro } = await chamarGerirUtilizadores({ acao: 'desativar', usuario_id: alvo.id })
       setADesativar(null)
       if (erro) {
@@ -179,9 +200,28 @@ export function UtilizadoresPage() {
       // desfazia esta reativação já no dia seguinte, sem ninguém pedir.
       const { error } = await supabase.from('usuarios').update({ ativo: true, data_saida: null }).eq('id', alvo.id)
       if (error) {
+        setADesativar(null)
         setErroDesativar({ id: alvo.id, mensagem: error.message })
         return
       }
+      // Recompõe a escala desta pessoa até ao fim do ano (mesma lógica
+      // do registo — ver composicaoEscala.ts) — sem isto, ficava sem
+      // nenhum turno atribuído até ao preenchimento automático de
+      // novembro seguinte. GERENTE não entra aqui (placeholder H4 só é
+      // recomposto no preenchimento anual, mesma fronteira que 'criar'
+      // já usa na Edge Function).
+      if (alvo.perfil === 'OPERADOR' && alvo.turno_fixo) {
+        const semanas = semanasParaNovoOperador(paraISO(agora()))
+        const { error: erroEscala } = await supabase.from('escala_semanal').insert(
+          semanas.map((semana_ref) => ({ semana_ref, usuario_id: alvo.id, turno: alvo.turno_fixo, criado_por: usuario?.id }))
+        )
+        if (erroEscala) {
+          setADesativar(null)
+          setErroDesativar({ id: alvo.id, mensagem: `Reativado, mas falhou compor a escala: ${erroEscala.message}` })
+          return
+        }
+      }
+      setADesativar(null)
     }
     recarregar()
   }
@@ -214,7 +254,38 @@ export function UtilizadoresPage() {
                   <tr key={u.id}>
                     <Td>{u.nome}</Td>
                     <Td className="text-zinc-500">{u.email}</Td>
-                    <Td>{ROTULO_PERFIL[u.perfil]}</Td>
+                    <Td>
+                      {u.perfil === 'OPERADOR' && podeGerir(u) ? (
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex items-center gap-1">
+                            <span>{ROTULO_PERFIL[u.perfil]}</span>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Select
+                                  value={u.turno_fixo ?? undefined}
+                                  onValueChange={(v) => alterarTurnoFixo(u, v as 'H1' | 'H4')}
+                                  disabled={aAlterarTurno === u.id}
+                                >
+                                  <SelectTrigger size="sm" className="h-6 w-16 px-1.5 text-xs">
+                                    <SelectValue placeholder="—" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="H1">H1</SelectItem>
+                                    <SelectItem value="H4">H4</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                Turno fixo — só muda a partir da próxima composição automática, não afeta a escala já gerada
+                              </TooltipContent>
+                            </Tooltip>
+                          </div>
+                          {erroTurno?.id === u.id && <p className="text-xs text-red-600">{erroTurno.mensagem}</p>}
+                        </div>
+                      ) : (
+                        ROTULO_PERFIL[u.perfil]
+                      )}
+                    </Td>
                     <Td>{u.empresa}</Td>
                     <Td>
                       <div className="flex flex-wrap items-center gap-1">
@@ -436,7 +507,13 @@ export function UtilizadoresPage() {
           </DialogHeader>
           <label className="flex flex-col gap-1 text-sm">
             <span className="text-xs text-zinc-500">Data de saída</span>
-            <Input type="date" autoFocus value={dataSaida} onChange={(e) => setDataSaida(e.target.value)} />
+            <Input
+              type="date"
+              autoFocus
+              min={paraISO(adicionarDias(agora(), 1))}
+              value={dataSaida}
+              onChange={(e) => setDataSaida(e.target.value)}
+            />
           </label>
           {erroAgendar && <p className="text-sm text-red-600">{erroAgendar}</p>}
           <DialogFooter>
