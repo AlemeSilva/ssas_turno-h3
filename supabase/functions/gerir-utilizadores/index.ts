@@ -220,7 +220,7 @@ Deno.serve(async (req) => {
         return json({ erro: 'Falta usuario_id.' }, 400)
       }
 
-      const { data: alvo } = await admin.from('usuarios').select('nome, perfil').eq('id', usuario_id).single()
+      const { data: alvo } = await admin.from('usuarios').select('nome, perfil, data_saida').eq('id', usuario_id).single()
       if (!alvo) {
         return json({ erro: 'Utilizador não encontrado.' }, 404)
       }
@@ -228,7 +228,15 @@ Deno.serve(async (req) => {
         return json({ erro: 'Um delegado não pode desativar o Gerente titular.' }, 403)
       }
 
-      const { error: erroDesativar } = await admin.from('usuarios').update({ ativo: false }).eq('id', usuario_id)
+      const hoje = new Date().toISOString().slice(0, 10)
+      // Garante sempre uma data_saida — "quando saiu" tem de ter
+      // resposta mesmo quando se usa "Desativar" direto em vez de
+      // agendar previamente. Se já tinha uma data (agendada ou
+      // corrigida manualmente), respeita-a em vez de sobrepor com hoje.
+      const { error: erroDesativar } = await admin
+        .from('usuarios')
+        .update({ ativo: false, data_saida: alvo.data_saida ?? hoje })
+        .eq('id', usuario_id)
       if (erroDesativar) {
         return json({ erro: erroDesativar.message }, 400)
       }
@@ -247,7 +255,6 @@ Deno.serve(async (req) => {
       // gravadas antes da desativação continuariam a atribuí-la a um
       // turno (visível no relatório semanal, que não filtra por ativo)
       // mesmo depois de ter saído da equipa.
-      const hoje = new Date().toISOString().slice(0, 10)
       await admin.from('escala_semanal').delete().eq('usuario_id', usuario_id).gte('semana_ref', hoje)
 
       await admin.from('logs_auditoria').insert({

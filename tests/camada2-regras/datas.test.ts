@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   adicionarDias,
+  duracaoEmAnosEMeses,
   formatarDataPT,
   isoWeekday,
   paraISO,
@@ -118,5 +119,39 @@ describe('semanasTocadas — decompõe um período em semanas civis, para substi
     expect(semanasTocadas('2026-08-19', '2026-08-19')).toEqual([
       { semanaInicio: '2026-08-17', inicio: '2026-08-19', fim: '2026-08-19' },
     ])
+  })
+})
+
+describe('duracaoEmAnosEMeses — tempo de permanência na equipa', () => {
+  it('anos e meses completos', () => {
+    expect(duracaoEmAnosEMeses('2024-01-15', '2026-08-21')).toBe('2 anos e 7 meses')
+  })
+
+  it('só meses, quando ainda não chegou a um ano', () => {
+    expect(duracaoEmAnosEMeses('2026-01-15', '2026-08-10')).toBe('6 meses')
+  })
+
+  it('mês só conta completo ao chegar ao mesmo dia do mês seguinte', () => {
+    // Jan 15 → Ago 15 seriam 7 meses completos; um dia antes (Ago 14) ainda são só 6.
+    expect(duracaoEmAnosEMeses('2026-01-15', '2026-08-15')).toBe('7 meses')
+    expect(duracaoEmAnosEMeses('2026-01-15', '2026-08-14')).toBe('6 meses')
+  })
+
+  it('exatamente um ano, sem meses a mais, não mostra "e 0 meses"', () => {
+    expect(duracaoEmAnosEMeses('2026-08-12', '2027-08-12')).toBe('1 ano')
+  })
+
+  it('mesmo dia — sem tempo nenhum decorrido', () => {
+    expect(duracaoEmAnosEMeses('2026-08-12', '2026-08-12')).toBe('0 meses')
+  })
+
+  it('singular vs plural (1 ano / 1 mês) tratado corretamente', () => {
+    expect(duracaoEmAnosEMeses('2025-07-12', '2026-08-12')).toBe('1 ano e 1 mês')
+  })
+
+  it('aceita timestamps completos (criado_em) e datas simples (data_saida) misturados', () => {
+    // Dia 15 (não 1) de propósito — longe de qualquer fronteira de mês
+    // que um fuso horário diferente do da máquina de teste pudesse afetar.
+    expect(duracaoEmAnosEMeses('2024-03-15T10:15:00.000Z', '2026-03-15')).toBe('2 anos')
   })
 })

@@ -4,7 +4,7 @@ import { useAuth } from '@/auth/AuthContext'
 import { useUsuarios } from '@/data/useUsuarios'
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
-import { formatarDataPT } from '@/lib/datas'
+import { duracaoEmAnosEMeses, formatarDataPT } from '@/lib/datas'
 import type { PerfilUsuario, Usuario } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardTitle } from '@/components/ui/card'
@@ -174,7 +174,10 @@ export function UtilizadoresPage() {
         return
       }
     } else {
-      const { error } = await supabase.from('usuarios').update({ ativo: true }).eq('id', alvo.id)
+      // Limpa data_saida ao reativar — se ficasse uma data no passado,
+      // o desactivar-saidos automático (corre todos os dias às 01h00)
+      // desfazia esta reativação já no dia seguinte, sem ninguém pedir.
+      const { error } = await supabase.from('usuarios').update({ ativo: true, data_saida: null }).eq('id', alvo.id)
       if (error) {
         setErroDesativar({ id: alvo.id, mensagem: error.message })
         return
@@ -231,6 +234,16 @@ export function UtilizadoresPage() {
                               </span>
                             </TooltipTrigger>
                             <TooltipContent>Desativação automática agendada — corre todos os dias às 01h00</TooltipContent>
+                          </Tooltip>
+                        )}
+                        {!u.ativo && u.data_saida && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex items-center rounded-md border border-zinc-200 bg-zinc-100 px-1.5 py-0.5 text-[0.65rem] font-medium whitespace-nowrap text-zinc-500">
+                                Saiu em {formatarDataPT(u.data_saida)} · {duracaoEmAnosEMeses(u.criado_em, u.data_saida)}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>Tempo de permanência na equipa, desde o registo até à saída</TooltipContent>
                           </Tooltip>
                         )}
                       </div>

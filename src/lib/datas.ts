@@ -169,3 +169,26 @@ export function semanasTocadas(inicioISO: string, fimISO: string): SemanaTocada[
   }
   return semanas
 }
+
+/**
+ * Duração entre duas datas (ou timestamps ISO — aceita usuarios.criado_em
+ * e usuarios.data_saida diretamente) em anos e meses, para "tempo de
+ * permanência" na equipa. Arredonda sempre por baixo (um mês só conta
+ * completo ao chegar ao mesmo dia do mês seguinte).
+ */
+export function duracaoEmAnosEMeses(inicioISO: string, fimISO: string): string {
+  const inicio = new Date(inicioISO)
+  const fim = new Date(fimISO)
+
+  let meses = (fim.getFullYear() - inicio.getFullYear()) * 12 + (fim.getMonth() - inicio.getMonth())
+  if (fim.getDate() < inicio.getDate()) meses -= 1
+  meses = Math.max(0, meses)
+
+  const anos = Math.floor(meses / 12)
+  const mesesRestantes = meses % 12
+
+  const parteAnos = anos > 0 ? `${anos} ${anos === 1 ? 'ano' : 'anos'}` : ''
+  const parteMeses = mesesRestantes > 0 || anos === 0 ? `${mesesRestantes} ${mesesRestantes === 1 ? 'mês' : 'meses'}` : ''
+
+  return [parteAnos, parteMeses].filter(Boolean).join(' e ')
+}
