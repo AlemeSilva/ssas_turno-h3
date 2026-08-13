@@ -19,6 +19,32 @@ function saudacao(momentoAtual: Date): string {
 }
 
 /**
+ * Período a mostrar junto ao nome em Férias/Licenças: não o registo
+ * isolado que fez a pessoa atingir os 50%, mas o ciclo ininterrupto de
+ * ausência a que pertence — vários pedidos aprovados do mesmo
+ * utilizador, contíguos ou sobrepostos (sem nenhum dia de intervalo),
+ * contam como um só período para quem lê o relatório.
+ */
+function cicloIninterruptoDe(usuarioId: string, dataDeReferencia: string, todasAsFerias: AusenciaComSemanas[]): { inicio: string; fim: string } {
+  const registos = todasAsFerias
+    .filter((f) => f.usuario_id === usuarioId)
+    .map((f) => ({ inicio: f.data_inicio, fim: f.data_fim }))
+    .sort((a, b) => (a.inicio < b.inicio ? -1 : a.inicio > b.inicio ? 1 : 0))
+
+  const ciclos: { inicio: string; fim: string }[] = []
+  for (const r of registos) {
+    const ultimo = ciclos[ciclos.length - 1]
+    const diaSeguinteAoUltimo = ultimo ? paraISO(adicionarDias(new Date(ultimo.fim + 'T00:00:00'), 1)) : null
+    if (ultimo && r.inicio <= diaSeguinteAoUltimo!) {
+      if (r.fim > ultimo.fim) ultimo.fim = r.fim
+    } else {
+      ciclos.push({ ...r })
+    }
+  }
+  return ciclos.find((c) => c.inicio <= dataDeReferencia && dataDeReferencia <= c.fim) ?? { inicio: dataDeReferencia, fim: dataDeReferencia }
+}
+
+/**
  * Texto do relatório semanal de turnos, pronto a copiar/colar para
  * envio manual por email — mesma estrutura do modelo real usado hoje
  * pelo Gerente. Sempre em português europeu.
@@ -117,7 +143,15 @@ export function gerarTextoRelatorioSemanal(
   if (idsUnicosFerias.length === 0) {
     linhas.push('—')
   } else {
-    for (const id of idsUnicosFerias) linhas.push(nomeDe(id))
+    // Nome sozinho não dizia nada sobre a duração — parecia sempre a
+    // semana inteira. Mostra sempre o ciclo ininterrupto de ausência a
+    // que o registo pertence (ver cicloIninterruptoDe) — não só o
+    // registo isolado que fez a pessoa atingir os 50%.
+    for (const id of idsUnicosFerias) {
+      const registo = emFerias.find((f) => f.usuario_id === id)!
+      const { inicio: inicioCiclo, fim: fimCiclo } = cicloIninterruptoDe(id, registo.data_inicio, ferias)
+      linhas.push(`${nomeDe(id)} - ${formatarDataPT(inicioCiclo)} à ${formatarDataPT(fimCiclo)}`)
+    }
   }
 
   return linhas.join('\n')

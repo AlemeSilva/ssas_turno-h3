@@ -282,4 +282,44 @@ describe('gerarTextoRelatorioSemanal — só conta como férias a partir de 50% 
     expect(texto).toContain('H2 - 14h00 às 23h00 – —')
     expect(texto.split('Férias/Licenças')[1]).toContain('Bruno Diniz')
   })
+
+  it('quem conta como férias (≥50%) aparece com o período concreto, não só o nome — caso real Caique/Kilson', () => {
+    const feriasDoCaique = semDecisao({
+      id: 14, usuario_id: 'caique', data_inicio: '2026-08-20', data_fim: '2026-08-28',
+      status: 'APROVADA', aprovado_por: null, data_aprovacao: null, criado_em: '', tipo: 'FERIAS', eh_operador_h3: true,
+    })
+    // Sexta 21/08 a Quinta 27/08 — os 7 dias inteiros dentro da férias.
+    const texto = gerarTextoRelatorioSemanal('2026-08-21', escalas, [feriasDoCaique], usuarios)
+    expect(texto).toContain('Caique Silva - 20/08/2026 à 28/08/2026')
+  })
+
+  it('dois pedidos aprovados contíguos (sem intervalo) do mesmo utilizador contam como um único ciclo ininterrupto', () => {
+    const primeiroPedido = semDecisao({
+      id: 15, usuario_id: 'caique', data_inicio: '2026-08-15', data_fim: '2026-08-19',
+      status: 'APROVADA', aprovado_por: null, data_aprovacao: null, criado_em: '', tipo: 'FERIAS', eh_operador_h3: true,
+    })
+    // Começa logo no dia seguinte ao fim do primeiro — sem intervalo nenhum.
+    const segundoPedido = semDecisao({
+      id: 16, usuario_id: 'caique', data_inicio: '2026-08-20', data_fim: '2026-08-25',
+      status: 'APROVADA', aprovado_por: null, data_aprovacao: null, criado_em: '', tipo: 'FERIAS', eh_operador_h3: true,
+    })
+    const texto = gerarTextoRelatorioSemanal('2026-08-14', escalas, [primeiroPedido, segundoPedido], usuarios)
+    // Um só ciclo, 15 a 25/08 — nunca aparece a fronteira interna (19 ou 20/08).
+    expect(texto).toContain('Caique Silva - 15/08/2026 à 25/08/2026')
+    expect(texto.match(/Caique Silva/g)?.length).toBe(1)
+  })
+
+  it('um intervalo real entre dois pedidos (a pessoa esteve mesmo cá) quebra o ciclo — cada um conta pelo seu próprio período', () => {
+    const feriasDeJulho = semDecisao({
+      id: 17, usuario_id: 'caique', data_inicio: '2026-07-01', data_fim: '2026-07-10',
+      status: 'APROVADA', aprovado_por: null, data_aprovacao: null, criado_em: '', tipo: 'FERIAS', eh_operador_h3: true,
+    })
+    const feriasDeAgosto = semDecisao({
+      id: 18, usuario_id: 'caique', data_inicio: '2026-08-17', data_fim: '2026-08-24',
+      status: 'APROVADA', aprovado_por: null, data_aprovacao: null, criado_em: '', tipo: 'FERIAS', eh_operador_h3: true,
+    })
+    const texto = gerarTextoRelatorioSemanal('2026-08-14', escalas, [feriasDeJulho, feriasDeAgosto], usuarios)
+    expect(texto).toContain('Caique Silva - 17/08/2026 à 24/08/2026')
+    expect(texto).not.toContain('01/07/2026')
+  })
 })
