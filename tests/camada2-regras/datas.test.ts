@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   adicionarDias,
+  diasSobrepostos,
   duracaoEmAnosEMeses,
   formatarDataPT,
   isoWeekday,
@@ -153,5 +154,36 @@ describe('duracaoEmAnosEMeses — tempo de permanência na equipa', () => {
     // Dia 15 (não 1) de propósito — longe de qualquer fronteira de mês
     // que um fuso horário diferente do da máquina de teste pudesse afetar.
     expect(duracaoEmAnosEMeses('2024-03-15T10:15:00.000Z', '2026-03-15')).toBe('2 anos')
+  })
+})
+
+describe('diasSobrepostos — dias em comum entre dois períodos, para o limiar de 50% do relatório semanal', () => {
+  it('sobreposição parcial conta só os dias em comum', () => {
+    // Período 1: 18-20/08. Período 2 (semana do relatório): 14-20/08.
+    expect(diasSobrepostos('2026-08-18', '2026-08-20', '2026-08-14', '2026-08-20')).toBe(3)
+  })
+
+  it('caso real: Bruno ausente um único dia dentro da semana', () => {
+    expect(diasSobrepostos('2026-08-19', '2026-08-19', '2026-08-14', '2026-08-20')).toBe(1)
+  })
+
+  it('caso real: Caique inicia férias no último dia do período reportado', () => {
+    expect(diasSobrepostos('2026-08-20', '2026-08-28', '2026-08-14', '2026-08-20')).toBe(1)
+  })
+
+  it('período totalmente dentro do outro conta os seus próprios dias inteiros', () => {
+    expect(diasSobrepostos('2026-08-15', '2026-08-17', '2026-08-14', '2026-08-20')).toBe(3)
+  })
+
+  it('sem sobreposição nenhuma devolve 0, nunca um número negativo', () => {
+    expect(diasSobrepostos('2026-08-01', '2026-08-05', '2026-08-14', '2026-08-20')).toBe(0)
+  })
+
+  it('período inteiro dentro da semana conta os 7 dias', () => {
+    expect(diasSobrepostos('2026-08-10', '2026-08-25', '2026-08-14', '2026-08-20')).toBe(7)
+  })
+
+  it('é simétrica — a ordem dos dois períodos não altera o resultado', () => {
+    expect(diasSobrepostos('2026-08-14', '2026-08-20', '2026-08-18', '2026-08-20')).toBe(3)
   })
 })

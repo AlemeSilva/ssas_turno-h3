@@ -1,5 +1,8 @@
 import type { AusenciaComSemanas, EscalaSemanal, TurnoTipo, Usuario } from '../types/database'
-import { adicionarDias, agora, formatarDataPT, paraISO, segundaDaSemanaDe } from './datas'
+import { adicionarDias, agora, diasSobrepostos, formatarDataPT, paraISO, segundaDaSemanaDe } from './datas'
+
+// O período reportado é sempre Sexta a Quinta seguinte — 7 dias.
+const DIAS_NO_PERIODO = 7
 
 export const HORARIO_TURNO: Record<TurnoTipo, string> = {
   H1: '07h00 às 16h00',
@@ -49,7 +52,18 @@ export function gerarTextoRelatorioSemanal(
   // nova (por isso data_fim > semanaRef, não >=): testado com o caso
   // real do Sérgio, cuja férias terminava na sexta que rotula a semana
   // seguinte e continuava a "roubar-lhe" o turno indevidamente.
-  const emFerias = ferias.filter((f) => f.data_inicio <= paraISO(fim) && f.data_fim > semanaRef)
+  //
+  // Só conta como "férias" para este relatório quando cobre 50% ou
+  // mais dos 7 dias do período — decisão do Gerente de 2026-08-13.
+  // Uma ausência de 1 ou 2 dias não justifica tirar a pessoa da sua
+  // linha de turno nem listá-la em Férias/Licenças: caso real que
+  // motivou isto — Bruno ausente 1 dia e Caique a iniciar férias no
+  // último dia do período, nenhum dos dois devia aparecer.
+  const fimISO = paraISO(fim)
+  const emFerias = ferias.filter((f) => {
+    if (!(f.data_inicio <= fimISO && f.data_fim > semanaRef)) return false
+    return diasSobrepostos(f.data_inicio, f.data_fim, semanaRef, fimISO) / DIAS_NO_PERIODO >= 0.5
+  })
   const idsEmFerias = new Set(emFerias.map((f) => f.usuario_id))
 
   // Mapa id -> turno efetivo (não listas por turno independentes).
@@ -90,7 +104,7 @@ export function gerarTextoRelatorioSemanal(
     linhas.push(`${turno} – ${HORARIO_TURNO[turno].toUpperCase()}`)
   }
   linhas.push('')
-  linhas.push(`Segue escala e turnos referentes aos dias ${formatarDataPT(semanaRef)} a ${formatarDataPT(paraISO(adicionarDias(inicio, 6)))}.`)
+  linhas.push(`Segue escala e turnos referentes aos dias ${formatarDataPT(semanaRef)} a ${formatarDataPT(fimISO)}.`)
   linhas.push('')
   linhas.push('Operação SAS')
   for (const turno of ['H1', 'H2', 'H3', 'H4'] as TurnoTipo[]) {

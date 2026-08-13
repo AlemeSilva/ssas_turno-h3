@@ -66,6 +66,26 @@ export function diasUteis(inicioISO: string, fimISO: string): number {
   return contagem
 }
 
+/**
+ * Número de dias em que dois períodos ISO (ambos inclusive) se
+ * sobrepõem — 0 se não houver sobreposição nenhuma. Usada para decidir
+ * se uma ausência cobre uma fração suficiente de uma semana reportada
+ * para valer a pena assinalar (ver gerarRelatorioSemanal.ts).
+ */
+export function diasSobrepostos(inicio1ISO: string, fim1ISO: string, inicio2ISO: string, fim2ISO: string): number {
+  const inicioISO = inicio1ISO > inicio2ISO ? inicio1ISO : inicio2ISO
+  const fimISO = fim1ISO < fim2ISO ? fim1ISO : fim2ISO
+  if (inicioISO > fimISO) return 0
+  let d = new Date(inicioISO + 'T00:00:00')
+  const fim = new Date(fimISO + 'T00:00:00')
+  let contagem = 0
+  while (d <= fim) {
+    contagem++
+    d = adicionarDias(d, 1)
+  }
+  return contagem
+}
+
 export function formatarDataPT(iso: string): string {
   return new Date(iso + 'T00:00:00').toLocaleDateString('pt-PT', {
     day: '2-digit',
