@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { Pencil } from 'lucide-react'
 import { usePlanoCiclo } from '@/data/usePlanoCiclo'
 import { useAuth } from '@/auth/AuthContext'
 import { useUsuarios } from '@/data/useUsuarios'
@@ -6,8 +7,10 @@ import { supabase } from '@/lib/supabase'
 import { semanaRefDe, adicionarDias, paraISO, formatarDataPT } from '@/lib/datas'
 import { gerarTextoPlano } from '@/lib/exportarPlano'
 import { cn } from '@/lib/utils'
+import type { TarefaPlano } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardTitle } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
@@ -54,6 +57,14 @@ export function PlanoPage() {
   const [novaEquipa, setNovaEquipa] = useState('DEOS - Operações')
   const [erroNovaTarefa, setErroNovaTarefa] = useState<string | null>(null)
   const [erro, setErro] = useState<string | null>(null)
+
+  const [tarefaEditar, setTarefaEditar] = useState<TarefaPlano | null>(null)
+  const [editData, setEditData] = useState('')
+  const [editHora, setEditHora] = useState('')
+  const [editEquipa, setEditEquipa] = useState('')
+  const [editDescricao, setEditDescricao] = useState('')
+  const [aEditar, setAEditar] = useState(false)
+  const [erroEditar, setErroEditar] = useState<string | null>(null)
 
   // undefined = ainda a carregar; null = ninguém escalado de H3 para
   // este ciclo. Só o Gerente/delegado ou esta pessoa podem criar o
@@ -130,6 +141,54 @@ export function PlanoPage() {
     setNovaTarefa('')
     setNovaData('')
     setNovaHora('')
+    recarregar()
+  }
+
+  function abrirEdicao(t: TarefaPlano) {
+    setTarefaEditar(t)
+    setEditData(t.data_execucao)
+    setEditHora(t.hora_arranque ?? '')
+    setEditEquipa(t.equipa_responsavel)
+    setEditDescricao(t.descricao_tarefa)
+    setErroEditar(null)
+  }
+
+  async function guardarEdicao(e: FormEvent) {
+    e.preventDefault()
+    if (!tarefaEditar) return
+    if (!editData) {
+      setErroEditar('Escolhe o dia da tarefa.')
+      return
+    }
+    if (!editHora) {
+      setErroEditar('Escolhe a hora de arranque.')
+      return
+    }
+    if (!editEquipa.trim()) {
+      setErroEditar('Indica a equipa responsável.')
+      return
+    }
+    if (!editDescricao.trim()) {
+      setErroEditar('Indica a descrição da tarefa.')
+      return
+    }
+    setErroEditar(null)
+    setAEditar(true)
+    const { error } = await supabase
+      .from('tarefas_plano')
+      .update({
+        data_execucao: editData,
+        hora_arranque: editHora,
+        equipa_responsavel: editEquipa.trim(),
+        descricao_tarefa: editDescricao.trim(),
+      })
+      .eq('id', tarefaEditar.id)
+    setAEditar(false)
+    if (error) {
+      setErroEditar(error.message)
+      return
+    }
+    setTarefaEditar(null)
     recarregar()
   }
 
@@ -255,24 +314,92 @@ export function PlanoPage() {
           <CardContent className="flex flex-col gap-2 pt-6">
             <CardTitle>{formatarDataPT(dia)}</CardTitle>
             {lista.map((t) => (
-              <div key={t.id} className="border-b border-zinc-100 pb-2 text-sm last:border-b-0">
-                <strong className="font-semibold text-zinc-900">{t.hora_arranque ?? '—'}</strong> · {t.descricao_tarefa}
-                <div className="text-xs text-zinc-400">
-                  {t.equipa_responsavel}
-                  {t.hr_limite ? ` · HR. LIMITE: ${t.hr_limite}` : ''}
+              <div key={t.id} className="flex items-start justify-between gap-2 border-b border-zinc-100 pb-2 text-sm last:border-b-0">
+                <div>
+                  <strong className="font-semibold text-zinc-900">{t.hora_arranque ?? '—'}</strong> · {t.descricao_tarefa}
+                  <div className="text-xs text-zinc-400">
+                    {t.equipa_responsavel}
+                    {t.hr_limite ? ` · HR. LIMITE: ${t.hr_limite}` : ''}
+                  </div>
                 </div>
+                {podeCriarPlano && t.origem === 'EXCECIONAL' && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button size="icon-xs" variant="ghost" aria-label="Editar tarefa excecional" onClick={() => abrirEdicao(t)}>
+                        <Pencil className="size-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Corrigir dia, hora, equipa ou descrição desta tarefa avulsa</TooltipContent>
+                  </Tooltip>
+                )}
               </div>
             ))}
           </CardContent>
         </Card>
       ))}
 
-      <Card>
-        <CardContent className="pt-6">
-          <form onSubmit={adicionarTarefaExcecional} className="flex flex-col gap-2">
-            <div className="flex gap-2">
-              <Select value={novaData} onValueChange={setNovaData}>
-                <SelectTrigger className="w-44">
+      {podeCriarPlano && (
+        <Card>
+          <CardContent className="pt-6">
+            <form onSubmit={adicionarTarefaExcecional} className="flex flex-col gap-2">
+              <div className="flex gap-2">
+                <Select value={novaData} onValueChange={setNovaData}>
+                  <SelectTrigger className="w-44">
+                    <SelectValue placeholder="Dia…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {diasCiclo.map((d) => (
+                      <SelectItem key={d.iso} value={d.iso}>
+                        {d.rotulo}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  type="time"
+                  aria-label="Hora de arranque"
+                  value={novaHora}
+                  onChange={(e) => setNovaHora(e.target.value)}
+                  className="w-28"
+                />
+                <Input
+                  placeholder="Equipa responsável"
+                  value={novaEquipa}
+                  onChange={(e) => setNovaEquipa(e.target.value)}
+                  className="w-44"
+                />
+                <Input
+                  placeholder="Descrição da tarefa excecional"
+                  value={novaTarefa}
+                  onChange={(e) => setNovaTarefa(e.target.value)}
+                  className="flex-1"
+                />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button type="submit" variant="secondary">
+                      Adicionar tarefa excecional
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Junta uma tarefa avulsa a um dos dias do ciclo, fora das tarefas fixas que já vêm no modelo do plano</TooltipContent>
+                </Tooltip>
+              </div>
+              {erroNovaTarefa && <p className="text-xs text-red-600">{erroNovaTarefa}</p>}
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
+      <Dialog open={tarefaEditar !== null} onOpenChange={(aberto) => !aberto && !aEditar && setTarefaEditar(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar tarefa excecional</DialogTitle>
+            <DialogDescription>Corrige o dia, hora, equipa ou descrição — a tarefa mantém-se a mesma, só os dados mudam.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={guardarEdicao} className="flex flex-col gap-3">
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-xs text-zinc-500">Dia</span>
+              <Select value={editData} onValueChange={setEditData}>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Dia…" />
                 </SelectTrigger>
                 <SelectContent>
@@ -283,38 +410,31 @@ export function PlanoPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <Input
-                type="time"
-                aria-label="Hora de arranque"
-                value={novaHora}
-                onChange={(e) => setNovaHora(e.target.value)}
-                className="w-28"
-              />
-              <Input
-                placeholder="Equipa responsável"
-                value={novaEquipa}
-                onChange={(e) => setNovaEquipa(e.target.value)}
-                className="w-44"
-              />
-              <Input
-                placeholder="Descrição da tarefa excecional"
-                value={novaTarefa}
-                onChange={(e) => setNovaTarefa(e.target.value)}
-                className="flex-1"
-              />
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button type="submit" variant="secondary">
-                    Adicionar tarefa excecional
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Junta uma tarefa avulsa a um dos dias do ciclo, fora das tarefas fixas que já vêm no modelo do plano</TooltipContent>
-              </Tooltip>
-            </div>
-            {erroNovaTarefa && <p className="text-xs text-red-600">{erroNovaTarefa}</p>}
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-xs text-zinc-500">Hora de arranque</span>
+              <Input type="time" value={editHora} onChange={(e) => setEditHora(e.target.value)} />
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-xs text-zinc-500">Equipa responsável</span>
+              <Input value={editEquipa} onChange={(e) => setEditEquipa(e.target.value)} />
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-xs text-zinc-500">Descrição</span>
+              <Input value={editDescricao} onChange={(e) => setEditDescricao(e.target.value)} />
+            </label>
+            {erroEditar && <p className="text-sm text-red-600">{erroEditar}</p>}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setTarefaEditar(null)} disabled={aEditar}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={aEditar}>
+                {aEditar ? 'A guardar…' : 'Guardar'}
+              </Button>
+            </DialogFooter>
           </form>
-        </CardContent>
-      </Card>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
