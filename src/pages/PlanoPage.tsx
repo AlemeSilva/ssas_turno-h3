@@ -32,6 +32,15 @@ function Badge({ className, children }: { className: string; children: React.Rea
   )
 }
 
+// Partilhada entre adicionar e editar tarefa excecional — os 3 campos
+// em comum têm exatamente a mesma regra e mensagem nos dois formulários.
+function erroDeCamposTarefa(data: string, hora: string, equipa: string): string | null {
+  if (!data) return 'Escolhe o dia da tarefa.'
+  if (!hora) return 'Escolhe a hora de arranque.'
+  if (!equipa.trim()) return 'Indica a equipa responsável.'
+  return null
+}
+
 export function PlanoPage() {
   const { usuario, ehGerenteOuDelegado } = useAuth()
   const { usuarios } = useUsuarios()
@@ -63,8 +72,15 @@ export function PlanoPage() {
   const [editHora, setEditHora] = useState('')
   const [editEquipa, setEditEquipa] = useState('')
   const [editDescricao, setEditDescricao] = useState('')
+  const [editAtualizadoEm, setEditAtualizadoEm] = useState('')
   const [aEditar, setAEditar] = useState(false)
   const [erroEditar, setErroEditar] = useState<string | null>(null)
+
+  // Aviso não bloqueante — ex.: quando editar/adicionar uma tarefa reabre
+  // um plano já aprovado para nova aprovação do Gerente (ver trigger
+  // trg_tarefas_plano_reabre), para não parecer que a alteração ficou
+  // perdida quando na verdade voltou a Pendente de aprovação.
+  const [aviso, setAviso] = useState<string | null>(null)
 
   // undefined = ainda a carregar; null = ninguém escalado de H3 para
   // este ciclo. Só o Gerente/delegado ou esta pessoa podem criar o
@@ -92,6 +108,10 @@ export function PlanoPage() {
 
   const nomeOperadorCiclo = usuarios.find((u) => u.id === operadorCicloId)?.nome ?? null
   const podeCriarPlano = ehGerenteOuDelegado || (usuario && usuario.id === operadorCicloId)
+  // Enquanto operadorCicloId ainda está a carregar (undefined), um
+  // operador H3 legítimo deste ciclo ainda não sabe se pode editar — sem
+  // isto, o botão de editar tarefa pisca escondido→visível a cada carga.
+  const permissoesResolvidas = ehGerenteOuDelegado || operadorCicloId !== undefined
 
   async function handleCriarPlano() {
     if (!usuario) return
@@ -117,19 +137,13 @@ export function PlanoPage() {
   async function adicionarTarefaExcecional(e: FormEvent) {
     e.preventDefault()
     if (!plano || !novaTarefa.trim()) return
-    if (!novaData) {
-      setErroNovaTarefa('Escolhe o dia da tarefa.')
-      return
-    }
-    if (!novaHora) {
-      setErroNovaTarefa('Escolhe a hora de arranque.')
-      return
-    }
-    if (!novaEquipa.trim()) {
-      setErroNovaTarefa('Indica a equipa responsável.')
+    const erroCampos = erroDeCamposTarefa(novaData, novaHora, novaEquipa)
+    if (erroCampos) {
+      setErroNovaTarefa(erroCampos)
       return
     }
     setErroNovaTarefa(null)
+    const reabre = plano.status === 'APROVADO' || plano.status === 'EM_EXECUCAO'
     await supabase.from('tarefas_plano').insert({
       id_plano: plano.id,
       data_execucao: novaData,
@@ -141,31 +155,31 @@ export function PlanoPage() {
     setNovaTarefa('')
     setNovaData('')
     setNovaHora('')
+    setTextoExportado(null)
+    if (reabre && !ehGerenteOuDelegado) {
+      setAviso('Esta tarefa reabriu o plano para nova aprovação do Gerente, porque já estava aprovado.')
+    }
     recarregar()
   }
 
   function abrirEdicao(t: TarefaPlano) {
     setTarefaEditar(t)
     setEditData(t.data_execucao)
-    setEditHora(t.hora_arranque ?? '')
+    // O Postgres devolve `time` como HH:MM:SS — o <input type="time">
+    // sem step="1" espera HH:MM, por isso corta os segundos.
+    setEditHora((t.hora_arranque ?? '').slice(0, 5))
     setEditEquipa(t.equipa_responsavel)
     setEditDescricao(t.descricao_tarefa)
+    setEditAtualizadoEm(t.atualizado_em)
     setErroEditar(null)
   }
 
   async function guardarEdicao(e: FormEvent) {
     e.preventDefault()
     if (!tarefaEditar) return
-    if (!editData) {
-      setErroEditar('Escolhe o dia da tarefa.')
-      return
-    }
-    if (!editHora) {
-      setErroEditar('Escolhe a hora de arranque.')
-      return
-    }
-    if (!editEquipa.trim()) {
-      setErroEditar('Indica a equipa responsável.')
+    const erroCampos = erroDeCamposTarefa(editData, editHora, editEquipa)
+    if (erroCampos) {
+      setErroEditar(erroCampos)
       return
     }
     if (!editDescricao.trim()) {
@@ -174,7 +188,13 @@ export function PlanoPage() {
     }
     setErroEditar(null)
     setAEditar(true)
-    const { error } = await supabase
+    const reabre = plano?.status === 'APROVADO' || plano?.status === 'EM_EXECUCAO'
+    // Bloqueio otimista via atualizado_em: só grava se ninguém mexeu na
+    // tarefa desde que abriste o diálogo — sem isto, esta gravação
+    // apagaria em silêncio a alteração de outra pessoa (última escrita
+    // ganha, sem aviso). Sem linha devolvida: ou já não existe, ou
+    // mudou entretanto.
+    const { data, error } = await supabase
       .from('tarefas_plano')
       .update({
         data_execucao: editData,
@@ -183,10 +203,22 @@ export function PlanoPage() {
         descricao_tarefa: editDescricao.trim(),
       })
       .eq('id', tarefaEditar.id)
+      .eq('atualizado_em', editAtualizadoEm)
+      .select()
+      .maybeSingle()
     setAEditar(false)
     if (error) {
       setErroEditar(error.message)
       return
+    }
+    if (!data) {
+      setErroEditar('Não foi possível guardar — a tarefa foi alterada ou removida por outra pessoa entretanto. Fecha e tenta novamente.')
+      recarregar()
+      return
+    }
+    setTextoExportado(null)
+    if (reabre && !ehGerenteOuDelegado) {
+      setAviso('Esta alteração reabriu o plano para nova aprovação do Gerente, porque já estava aprovado.')
     }
     setTarefaEditar(null)
     recarregar()
@@ -295,6 +327,15 @@ export function PlanoPage() {
         </CardContent>
       </Card>
 
+      {aviso && (
+        <div className="flex items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          <span>{aviso}</span>
+          <Button variant="ghost" size="sm" onClick={() => setAviso(null)}>
+            Fechar
+          </Button>
+        </div>
+      )}
+
       {textoExportado && (
         <Card>
           <CardContent className="flex flex-col gap-3 pt-6">
@@ -322,7 +363,7 @@ export function PlanoPage() {
                     {t.hr_limite ? ` · HR. LIMITE: ${t.hr_limite}` : ''}
                   </div>
                 </div>
-                {podeCriarPlano && t.origem === 'EXCECIONAL' && (
+                {permissoesResolvidas && podeCriarPlano && t.origem === 'EXCECIONAL' && (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button size="icon-xs" variant="ghost" aria-label="Editar tarefa excecional" onClick={() => abrirEdicao(t)}>
@@ -338,56 +379,54 @@ export function PlanoPage() {
         </Card>
       ))}
 
-      {podeCriarPlano && (
-        <Card>
-          <CardContent className="pt-6">
-            <form onSubmit={adicionarTarefaExcecional} className="flex flex-col gap-2">
-              <div className="flex gap-2">
-                <Select value={novaData} onValueChange={setNovaData}>
-                  <SelectTrigger className="w-44">
-                    <SelectValue placeholder="Dia…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {diasCiclo.map((d) => (
-                      <SelectItem key={d.iso} value={d.iso}>
-                        {d.rotulo}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Input
-                  type="time"
-                  aria-label="Hora de arranque"
-                  value={novaHora}
-                  onChange={(e) => setNovaHora(e.target.value)}
-                  className="w-28"
-                />
-                <Input
-                  placeholder="Equipa responsável"
-                  value={novaEquipa}
-                  onChange={(e) => setNovaEquipa(e.target.value)}
-                  className="w-44"
-                />
-                <Input
-                  placeholder="Descrição da tarefa excecional"
-                  value={novaTarefa}
-                  onChange={(e) => setNovaTarefa(e.target.value)}
-                  className="flex-1"
-                />
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button type="submit" variant="secondary">
-                      Adicionar tarefa excecional
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Junta uma tarefa avulsa a um dos dias do ciclo, fora das tarefas fixas que já vêm no modelo do plano</TooltipContent>
-                </Tooltip>
-              </div>
-              {erroNovaTarefa && <p className="text-xs text-red-600">{erroNovaTarefa}</p>}
-            </form>
-          </CardContent>
-        </Card>
-      )}
+      <Card>
+        <CardContent className="pt-6">
+          <form onSubmit={adicionarTarefaExcecional} className="flex flex-col gap-2">
+            <div className="flex gap-2">
+              <Select value={novaData} onValueChange={setNovaData}>
+                <SelectTrigger className="w-44">
+                  <SelectValue placeholder="Dia…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {diasCiclo.map((d) => (
+                    <SelectItem key={d.iso} value={d.iso}>
+                      {d.rotulo}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                type="time"
+                aria-label="Hora de arranque"
+                value={novaHora}
+                onChange={(e) => setNovaHora(e.target.value)}
+                className="w-28"
+              />
+              <Input
+                placeholder="Equipa responsável"
+                value={novaEquipa}
+                onChange={(e) => setNovaEquipa(e.target.value)}
+                className="w-44"
+              />
+              <Input
+                placeholder="Descrição da tarefa excecional"
+                value={novaTarefa}
+                onChange={(e) => setNovaTarefa(e.target.value)}
+                className="flex-1"
+              />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button type="submit" variant="secondary">
+                    Adicionar tarefa excecional
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Junta uma tarefa avulsa a um dos dias do ciclo, fora das tarefas fixas que já vêm no modelo do plano</TooltipContent>
+              </Tooltip>
+            </div>
+            {erroNovaTarefa && <p className="text-xs text-red-600">{erroNovaTarefa}</p>}
+          </form>
+        </CardContent>
+      </Card>
 
       <Dialog open={tarefaEditar !== null} onOpenChange={(aberto) => !aberto && !aEditar && setTarefaEditar(null)}>
         <DialogContent>

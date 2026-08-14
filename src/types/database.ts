@@ -141,6 +141,7 @@ export interface TarefaPlano {
   origem: OrigemTarefa
   executado_por: string | null
   dt_hr_conclusao_real: string | null
+  atualizado_em: string
 }
 
 export interface ChecklistItem {

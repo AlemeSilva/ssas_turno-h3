@@ -11,7 +11,7 @@ através da interface.
 O ambiente onde a aplicação é construída não tem Docker nem o Supabase
 CLI instalados, por isso `supabase test db` (o caminho oficial, descrito
 abaixo) nunca correu aqui. Em vez disso, a suite já foi executada com
-sucesso diretamente contra a base de produção (61/61 em 2026-08-12),
+sucesso diretamente contra a base de produção (69/69 em 2026-08-14),
 sempre dentro de `begin; ... rollback;` — nenhum ficheiro depende de
 Docker para correr, só de acesso Postgres direto.
 
@@ -50,3 +50,9 @@ Caminho oficial (Postgres local, recomendado para desenvolvimento):
   semana civil (RLS + unicidade); `turno_fixo` só H1/H4 e só para
   OPERADOR; `plantao_voluntarios` — primeira escolha aberta a
   Gerente/delegado, alterar uma já confirmada exclusiva do titular.
+- `10_tarefas_plano_edicao.sql` — RLS de `tarefas_plano` distingue
+  origem: o operador do ciclo insere tarefas TEMPLATE (criarPlano) mas
+  só edita/apaga as suas EXCECIONAL, nunca TEMPLATE/MANUTENCAO;
+  `atualizado_em` avança em cada UPDATE (bloqueio otimista do
+  frontend); edição normal fica em `logs_auditoria` mesmo sem reabrir
+  aprovação.
