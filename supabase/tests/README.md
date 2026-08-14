@@ -11,9 +11,11 @@ através da interface.
 O ambiente onde a aplicação é construída não tem Docker nem o Supabase
 CLI instalados, por isso `supabase test db` (o caminho oficial, descrito
 abaixo) nunca correu aqui. Em vez disso, a suite já foi executada com
-sucesso diretamente contra a base de produção (69/69 em 2026-08-14),
+sucesso diretamente contra a base de produção (80/80 em 2026-08-14),
 sempre dentro de `begin; ... rollback;` — nenhum ficheiro depende de
-Docker para correr, só de acesso Postgres direto.
+Docker para correr, só de acesso Postgres direto (via `psql` — instalado
+neste ambiente através de `brew install libpq`, keg-only, binário em
+`/opt/homebrew/opt/libpq/bin/psql`).
 
 Caminho oficial (Postgres local, recomendado para desenvolvimento):
 
@@ -56,3 +58,9 @@ Caminho oficial (Postgres local, recomendado para desenvolvimento):
   `atualizado_em` avança em cada UPDATE (bloqueio otimista do
   frontend); edição normal fica em `logs_auditoria` mesmo sem reabrir
   aprovação.
+- `11_tarefas_excecionais_conclusao.sql` — concluir uma tarefa
+  excecional (bloco próprio no Checklist Ativo) não reabre a aprovação
+  do plano, ao contrário de uma edição de conteúdo real (regressão);
+  fica imutável depois de concluída, só `destravar_tarefa_plano`
+  reverte, reservado a Gerente/delegado; destravar não duplica o
+  registo de auditoria da conclusão.

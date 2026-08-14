@@ -63,6 +63,7 @@ export function PlanoPage() {
   const [novaTarefa, setNovaTarefa] = useState('')
   const [novaData, setNovaData] = useState('')
   const [novaHora, setNovaHora] = useState('')
+  const [novaHrLimite, setNovaHrLimite] = useState('')
   const [novaEquipa, setNovaEquipa] = useState('DEOS - Operações')
   const [erroNovaTarefa, setErroNovaTarefa] = useState<string | null>(null)
   const [erro, setErro] = useState<string | null>(null)
@@ -70,6 +71,7 @@ export function PlanoPage() {
   const [tarefaEditar, setTarefaEditar] = useState<TarefaPlano | null>(null)
   const [editData, setEditData] = useState('')
   const [editHora, setEditHora] = useState('')
+  const [editHrLimite, setEditHrLimite] = useState('')
   const [editEquipa, setEditEquipa] = useState('')
   const [editDescricao, setEditDescricao] = useState('')
   const [editAtualizadoEm, setEditAtualizadoEm] = useState('')
@@ -148,6 +150,7 @@ export function PlanoPage() {
       id_plano: plano.id,
       data_execucao: novaData,
       hora_arranque: novaHora,
+      hr_limite: novaHrLimite || null,
       descricao_tarefa: novaTarefa.trim(),
       equipa_responsavel: novaEquipa.trim(),
       origem: 'EXCECIONAL',
@@ -155,6 +158,7 @@ export function PlanoPage() {
     setNovaTarefa('')
     setNovaData('')
     setNovaHora('')
+    setNovaHrLimite('')
     setTextoExportado(null)
     if (reabre && !ehGerenteOuDelegado) {
       setAviso('Esta tarefa reabriu o plano para nova aprovação do Gerente, porque já estava aprovado.')
@@ -168,6 +172,7 @@ export function PlanoPage() {
     // O Postgres devolve `time` como HH:MM:SS — o <input type="time">
     // sem step="1" espera HH:MM, por isso corta os segundos.
     setEditHora((t.hora_arranque ?? '').slice(0, 5))
+    setEditHrLimite((t.hr_limite ?? '').slice(0, 5))
     setEditEquipa(t.equipa_responsavel)
     setEditDescricao(t.descricao_tarefa)
     setEditAtualizadoEm(t.atualizado_em)
@@ -199,6 +204,7 @@ export function PlanoPage() {
       .update({
         data_execucao: editData,
         hora_arranque: editHora,
+        hr_limite: editHrLimite || null,
         equipa_responsavel: editEquipa.trim(),
         descricao_tarefa: editDescricao.trim(),
       })
@@ -423,6 +429,23 @@ export function PlanoPage() {
                 <TooltipContent>Junta uma tarefa avulsa a um dos dias do ciclo, fora das tarefas fixas que já vêm no modelo do plano</TooltipContent>
               </Tooltip>
             </div>
+            <div className="flex items-center gap-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <label className="flex items-center gap-1.5 text-xs text-zinc-500">
+                    Hora-limite (opcional)
+                    <Input
+                      type="time"
+                      aria-label="Hora-limite"
+                      value={novaHrLimite}
+                      onChange={(e) => setNovaHrLimite(e.target.value)}
+                      className="w-28"
+                    />
+                  </label>
+                </TooltipTrigger>
+                <TooltipContent>Se definida, esta tarefa passa a entrar nos alertas de atraso quando a hora-limite for ultrapassada sem estar concluída</TooltipContent>
+              </Tooltip>
+            </div>
             {erroNovaTarefa && <p className="text-xs text-red-600">{erroNovaTarefa}</p>}
           </form>
         </CardContent>
@@ -453,6 +476,10 @@ export function PlanoPage() {
             <label className="flex flex-col gap-1 text-sm">
               <span className="text-xs text-zinc-500">Hora de arranque</span>
               <Input type="time" value={editHora} onChange={(e) => setEditHora(e.target.value)} />
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-xs text-zinc-500">Hora-limite (opcional)</span>
+              <Input type="time" value={editHrLimite} onChange={(e) => setEditHrLimite(e.target.value)} />
             </label>
             <label className="flex flex-col gap-1 text-sm">
               <span className="text-xs text-zinc-500">Equipa responsável</span>

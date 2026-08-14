@@ -7,12 +7,13 @@ import { semanaRefDe, paraISO, formatarDataPT } from '@/lib/datas'
 import { ItemChecklistLinha } from '@/components/checklist/ItemChecklistLinha'
 import { CadeiaLinha } from '@/components/checklist/CadeiaLinha'
 import { PainelAlertas } from '@/components/checklist/PainelAlertas'
+import { TarefaExcecionalLinha } from '@/components/checklist/TarefaExcecionalLinha'
 import { SECOES_CHECKLIST } from '@/lib/templateTarefas'
 import { Card, CardContent, CardTitle } from '@/components/ui/card'
 
 export function ChecklistPage() {
   const dataInicioCiclo = useMemo(() => paraISO(semanaRefDe(new Date())), [])
-  const { plano, tarefas, aCarregar: aCarregarPlano } = usePlanoCiclo(dataInicioCiclo)
+  const { plano, tarefas, aCarregar: aCarregarPlano, recarregar: recarregarPlano } = usePlanoCiclo(dataInicioCiclo)
   const { itens, cadeias, aCarregar: aCarregarChecklist, recarregar } = useChecklistCiclo(plano?.id)
   const { catalogo, dependenciasGirFl } = useCadeiasCatalogo()
   const { usuarios } = useUsuarios()
@@ -43,6 +44,11 @@ export function ChecklistPage() {
   const cadeiasPendentes = cadeias.filter((c) => c.status === 'PENDENTE').length
   const mostrarResumoFimDeCiclo = new Date().getDay() === 1 && (itensPendentes > 0 || cadeiasPendentes > 0) // Segunda-feira
 
+  // Bloco à parte das 5 secções fixas — tarefas excecionais não têm
+  // secção do checklist, só existem quando alguém as adiciona no Plano
+  // de Fim de Semana.
+  const tarefasExcecionais = tarefas.filter((t) => t.origem === 'EXCECIONAL')
+
   return (
     <div className="flex flex-col gap-5">
       <PainelAlertas
@@ -59,6 +65,17 @@ export function ChecklistPage() {
             <p className="text-sm text-zinc-700">
               {itensPendentes} item(ns) de checklist e {cadeiasPendentes} cadeia(s) ficaram por marcar neste ciclo.
             </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {tarefasExcecionais.length > 0 && (
+        <Card>
+          <CardContent className="flex flex-col pt-6">
+            <CardTitle className="mb-2">Tarefas excecionais</CardTitle>
+            {tarefasExcecionais.map((t) => (
+              <TarefaExcecionalLinha key={t.id} tarefa={t} usuarios={usuarios} recarregar={recarregarPlano} />
+            ))}
           </CardContent>
         </Card>
       )}

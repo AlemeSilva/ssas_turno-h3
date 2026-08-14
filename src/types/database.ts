@@ -142,6 +142,9 @@ export interface TarefaPlano {
   executado_por: string | null
   dt_hr_conclusao_real: string | null
   atualizado_em: string
+  destravado_por: string | null
+  destravado_em: string | null
+  destravado_motivo: string | null
 }
 
 export interface ChecklistItem {
