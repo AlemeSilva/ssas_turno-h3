@@ -60,6 +60,8 @@ export function PlanoPage() {
   }, [dataInicioCiclo])
 
   const [textoExportado, setTextoExportado] = useState<string | null>(null)
+  const [copiado, setCopiado] = useState(false)
+  const [erroCopia, setErroCopia] = useState(false)
   const [novaTarefa, setNovaTarefa] = useState('')
   const [novaData, setNovaData] = useState('')
   const [novaHora, setNovaHora] = useState('')
@@ -109,7 +111,10 @@ export function PlanoPage() {
   }, [dataInicioCiclo])
 
   const nomeOperadorCiclo = usuarios.find((u) => u.id === operadorCicloId)?.nome ?? null
-  const podeCriarPlano = ehGerenteOuDelegado || (usuario && usuario.id === operadorCicloId)
+  // Nome amplo de propósito — cobre criar, aprovar e editar tarefas
+  // excecionais: Gerente/delegado, ou o operador H3 escalado para este
+  // ciclo (mesma regra que pode_editar_plano já aplica na RLS).
+  const podeGerirPlano = ehGerenteOuDelegado || (usuario && usuario.id === operadorCicloId)
   // Enquanto operadorCicloId ainda está a carregar (undefined), um
   // operador H3 legítimo deste ciclo ainda não sabe se pode editar — sem
   // isto, o botão de editar tarefa pisca escondido→visível a cada carga.
@@ -232,7 +237,24 @@ export function PlanoPage() {
 
   function exportar(versao: 'DRAFT' | 'DEFINITIVO') {
     if (!plano) return
+    setCopiado(false)
+    setErroCopia(false)
     setTextoExportado(gerarTextoPlano(plano, tarefas, versao))
+  }
+
+  async function copiarTexto() {
+    if (!textoExportado) return
+    try {
+      await navigator.clipboard.writeText(textoExportado)
+      setErroCopia(false)
+      setCopiado(true)
+      setTimeout(() => setCopiado(false), 2000)
+    } catch {
+      // Permissão de área de transferência negada pelo browser, ou API
+      // indisponível — o texto continua selecionável à mão na caixa.
+      setCopiado(false)
+      setErroCopia(true)
+    }
   }
 
   if (aCarregar) {
@@ -253,7 +275,7 @@ export function PlanoPage() {
           </p>
           {operadorCicloId === undefined ? (
             <p className="text-sm text-zinc-400">A verificar permissões…</p>
-          ) : podeCriarPlano ? (
+          ) : podeGerirPlano ? (
             <>
               {erro && <Badge className="border-red-100 bg-red-50 text-red-700">{erro}</Badge>}
               <Button onClick={handleCriarPlano} className="self-start">
@@ -285,7 +307,9 @@ export function PlanoPage() {
         <CardContent className="flex items-center justify-between pt-6">
           <div>
             <CardTitle className="flex items-center gap-2">
-              Plano de {formatarDataPT(dataInicioCiclo)}
+              {plano.status === 'RASCUNHO' || plano.status === 'PENDENTE_APROVACAO'
+                ? `Plano Prévio · ${formatarDataPT(dataInicioCiclo)}`
+                : `Plano Definitivo · ${formatarDataPT(plano.data_aprovacao ? paraISO(new Date(plano.data_aprovacao)) : dataInicioCiclo)}`}
               {plano.tipo_fim_semana === 'MANUTENCAO' && (
                 <Badge className="border-amber-100 bg-amber-50 text-amber-700">MANUTENÇÃO</Badge>
               )}
@@ -305,11 +329,15 @@ export function PlanoPage() {
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" onClick={() => exportar('DEFINITIVO')} disabled={plano.status === 'RASCUNHO'}>
+                <Button
+                  variant="ghost"
+                  onClick={() => exportar('DEFINITIVO')}
+                  disabled={plano.status === 'RASCUNHO' || plano.status === 'PENDENTE_APROVACAO'}
+                >
                   Exportar Definitivo
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Texto final pronto a partilhar — só disponível depois do plano sair do rascunho</TooltipContent>
+              <TooltipContent>Texto final pronto a partilhar — só disponível depois de o plano estar aprovado</TooltipContent>
             </Tooltip>
             {plano.status === 'RASCUNHO' && (
               <Tooltip>
@@ -321,12 +349,12 @@ export function PlanoPage() {
                 <TooltipContent>Passa o plano de Rascunho para Pendente de aprovação, visível ao Gerente</TooltipContent>
               </Tooltip>
             )}
-            {plano.status === 'PENDENTE_APROVACAO' && ehGerenteOuDelegado && (
+            {plano.status === 'PENDENTE_APROVACAO' && podeGerirPlano && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button onClick={aprovar}>Aprovar</Button>
                 </TooltipTrigger>
-                <TooltipContent>Aprova o plano — fica pronto para exportação definitiva e execução</TooltipContent>
+                <TooltipContent>Aprova o plano — fica pronto para exportação definitiva e execução. Gerente/delegado ou o operador H3 deste ciclo podem aprovar</TooltipContent>
               </Tooltip>
             )}
           </div>
@@ -347,9 +375,14 @@ export function PlanoPage() {
           <CardContent className="flex flex-col gap-3 pt-6">
             <div className="flex items-center justify-between">
               <CardTitle>Texto pronto a copiar</CardTitle>
-              <Button variant="ghost" onClick={() => setTextoExportado(null)}>
-                Fechar
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="secondary" onClick={copiarTexto}>
+                  {copiado ? 'Copiado!' : erroCopia ? 'Falhou — copia à mão' : 'Copiar'}
+                </Button>
+                <Button variant="ghost" onClick={() => setTextoExportado(null)}>
+                  Fechar
+                </Button>
+              </div>
             </div>
             <Textarea readOnly value={textoExportado} className="h-64 font-mono text-xs" />
           </CardContent>
@@ -369,7 +402,7 @@ export function PlanoPage() {
                     {t.hr_limite ? ` · HR. LIMITE: ${t.hr_limite}` : ''}
                   </div>
                 </div>
-                {permissoesResolvidas && podeCriarPlano && t.origem === 'EXCECIONAL' && (
+                {permissoesResolvidas && podeGerirPlano && t.origem === 'EXCECIONAL' && (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button size="icon-xs" variant="ghost" aria-label="Editar tarefa excecional" onClick={() => abrirEdicao(t)}>

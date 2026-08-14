@@ -11,7 +11,7 @@ através da interface.
 O ambiente onde a aplicação é construída não tem Docker nem o Supabase
 CLI instalados, por isso `supabase test db` (o caminho oficial, descrito
 abaixo) nunca correu aqui. Em vez disso, a suite já foi executada com
-sucesso diretamente contra a base de produção (80/80 em 2026-08-14),
+sucesso diretamente contra a base de produção (89/89 em 2026-08-14),
 sempre dentro de `begin; ... rollback;` — nenhum ficheiro depende de
 Docker para correr, só de acesso Postgres direto (via `psql` — instalado
 neste ambiente através de `brew install libpq`, keg-only, binário em
@@ -64,3 +64,11 @@ Caminho oficial (Postgres local, recomendado para desenvolvimento):
   fica imutável depois de concluída, só `destravar_tarefa_plano`
   reverte, reservado a Gerente/delegado; destravar não duplica o
   registo de auditoria da conclusão.
+- `12_aprovacao_operador_h3.sql` — o operador do ciclo aprova o seu
+  próprio plano (não só Gerente/delegado), mas nunca o de outro ciclo;
+  não se pode creditar outra pessoa como aprovador (RLS `with check`);
+  ninguém salta Rascunho→Aprovado direto, nem o Gerente (trigger
+  `trg_planos_transicao_aprovacao`) — nota no ficheiro da migração
+  0033 sobre porque isto não dá para fazer só com duas políticas RLS
+  separadas (Postgres combina os `with check` de políticas permissivas
+  por OR, não só o da política cujo `using` admitiu a linha).
