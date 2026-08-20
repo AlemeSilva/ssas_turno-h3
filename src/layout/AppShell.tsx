@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
 import { AlertBar } from './AlertBar'
+import { AlterarSenhaDialog } from './AlterarSenhaDialog'
 import { useAuth } from '@/auth/AuthContext'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -61,7 +62,8 @@ export function AppShell({ children }: { children: ReactNode }) {
               {ehGerenteOuDelegado && usuario?.perfil !== 'GERENTE' ? ' · substituto do Gerente' : ''}
             </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => signOut()}>
+          <AlterarSenhaDialog />
+          <Button variant="default" size="sm" onClick={() => signOut()}>
             Sair
           </Button>
         </div>
