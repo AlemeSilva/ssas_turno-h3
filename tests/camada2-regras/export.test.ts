@@ -116,6 +116,27 @@ describe('gerarTextoRelatorioSemanal — mesmo formato do email real usado pelo 
   })
 })
 
+describe('gerarTextoRelatorioSemanal — utilizador inativo não aparece a ocupar turno (caso real: Pedro, 2026-08-21)', () => {
+  const usuarios: Usuario[] = [
+    { id: 'bruno', nome: 'Bruno Diniz', email: 'b@x.pt', perfil: 'OPERADOR_H3', empresa: 'Accenture', ativo: true, data_saida: null, limite_h3_mensal: null, criado_em: '' },
+    { id: 'pedro', nome: 'Pedro Saiu', email: 'p@x.pt', perfil: 'OPERADOR', empresa: 'Accenture', ativo: false, data_saida: '2026-08-21', limite_h3_mensal: null, criado_em: '' },
+  ]
+
+  const escalas: EscalaSemanal[] = [
+    { id: 1, semana_ref: '2026-07-30', usuario_id: 'bruno', turno: 'H1', criado_por: null, atualizado_em: '' },
+    // Linha da semana em curso, ainda não apagada pela desativação (que só
+    // remove semana_ref >= hoje) — cenário real que motivou este teste.
+    { id: 2, semana_ref: '2026-07-30', usuario_id: 'pedro', turno: 'H2', criado_por: null, atualizado_em: '' },
+  ]
+
+  it('não conta o turno de quem está inativo, mesmo que a linha ainda exista em escala_semanal', () => {
+    const texto = gerarTextoRelatorioSemanal('2026-07-30', escalas, [], usuarios)
+    expect(texto).toContain('H1 - 07h00 às 16h00 – Bruno Diniz')
+    expect(texto).toContain('H2 - 14h00 às 23h00 – —')
+    expect(texto).not.toContain('Pedro Saiu')
+  })
+})
+
 describe('gerarTextoRelatorioSemanal — substituto real (ferias.substituto_id) cobre o turno de quem está ausente', () => {
   const usuarios: Usuario[] = [
     { id: 'sergio', nome: 'Sérgio Real', email: 's@x.pt', perfil: 'OPERADOR', empresa: 'Accenture', ativo: true, data_saida: null, limite_h3_mensal: null, criado_em: '' },

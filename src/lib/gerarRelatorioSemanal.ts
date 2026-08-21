@@ -99,9 +99,10 @@ export function gerarTextoRelatorioSemanal(
   // Quem está de férias/licença esta semana também não aparece a
   // "trabalhar" nenhum turno.
   const idsGerentes = new Set(usuarios.filter((u) => u.perfil === 'GERENTE').map((u) => u.id))
+  const idsInativos = new Set(usuarios.filter((u) => !u.ativo).map((u) => u.id))
   const turnoEfetivo = new Map<string, TurnoTipo>()
   for (const e of escalas) {
-    if (!idsEmFerias.has(e.usuario_id) && !idsGerentes.has(e.usuario_id)) {
+    if (!idsEmFerias.has(e.usuario_id) && !idsGerentes.has(e.usuario_id) && !idsInativos.has(e.usuario_id)) {
       turnoEfetivo.set(e.usuario_id, e.turno)
     }
   }

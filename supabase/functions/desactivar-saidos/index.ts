@@ -33,7 +33,7 @@ Deno.serve(async () => {
     .select('id, nome')
     .eq('ativo', true)
     .not('data_saida', 'is', null)
-    .lt('data_saida', hoje)
+    .lte('data_saida', hoje)
 
   if (erroBusca) {
     return new Response(JSON.stringify({ erro: erroBusca.message }), { status: 500 })
