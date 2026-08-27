@@ -72,3 +72,8 @@ Caminho oficial (Postgres local, recomendado para desenvolvimento):
   0033 sobre porque isto não dá para fazer só com duas políticas RLS
   separadas (Postgres combina os `with check` de políticas permissivas
   por OR, não só o da política cujo `using` admitiu a linha).
+- `13_trigger_escala_ferias_parcial.sql` — atribuir turno a uma semana
+  só é bloqueado quando férias/licença aprovadas cobrem os 7 dias
+  inteiros (um só registo ou vários não contíguos somados); havendo
+  pelo menos 1 dia livre, a mudança de turno é sempre aceite (migração
+  0034, caso real: Caique, 2026-08-27).

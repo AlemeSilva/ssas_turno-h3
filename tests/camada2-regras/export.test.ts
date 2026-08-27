@@ -137,6 +137,35 @@ describe('gerarTextoRelatorioSemanal — utilizador inativo não aparece a ocupa
   })
 })
 
+describe('gerarTextoRelatorioSemanal — férias parciais na semana aparecem como nota junto ao turno (caso real: Caique, 2026-08-27)', () => {
+  const usuarios: Usuario[] = [
+    { id: 'caique', nome: 'Caique Silva', email: 'c@x.pt', perfil: 'OPERADOR_H3', empresa: 'Accenture', ativo: true, data_saida: null, limite_h3_mensal: null, turno_fixo: null, criado_em: '' },
+  ]
+
+  const escalas: EscalaSemanal[] = [
+    { id: 1, semana_ref: '2026-08-31', usuario_id: 'caique', turno: 'H2', criado_por: null, atualizado_em: '' },
+  ]
+
+  const ferias: AusenciaComSemanas[] = [
+    semDecisao({
+      id: 1, usuario_id: 'caique', data_inicio: '2026-09-02', data_fim: '2026-09-04',
+      status: 'APROVADA', aprovado_por: null, data_aprovacao: null, criado_em: '', tipo: 'FERIAS', eh_operador_h3: true,
+    }),
+  ]
+
+  it('mantém Caique na linha H2 (3/7 dias, abaixo dos 50%) e acrescenta uma nota com os dias concretos de ausência', () => {
+    const texto = gerarTextoRelatorioSemanal('2026-08-31', escalas, ferias, usuarios)
+    expect(texto).toContain('H2 - 14h00 às 23h00 – Caique Silva (ausente por férias em 02/09/2026 a 04/09/2026)')
+    expect(texto.split('Férias/Licenças')[1].trim()).toBe('—')
+  })
+
+  it('sem férias nenhuma essa semana, o nome aparece sem qualquer nota (não regressão)', () => {
+    const texto = gerarTextoRelatorioSemanal('2026-08-31', escalas, [], usuarios)
+    expect(texto).toContain('H2 - 14h00 às 23h00 – Caique Silva')
+    expect(texto).not.toContain('ausente por férias')
+  })
+})
+
 describe('gerarTextoRelatorioSemanal — substituto real (ferias.substituto_id) cobre o turno de quem está ausente', () => {
   const usuarios: Usuario[] = [
     { id: 'sergio', nome: 'Sérgio Real', email: 's@x.pt', perfil: 'OPERADOR', empresa: 'Accenture', ativo: true, data_saida: null, limite_h3_mensal: null, criado_em: '' },

@@ -45,6 +45,43 @@ function cicloIninterruptoDe(usuarioId: string, dataDeReferencia: string, todasA
 }
 
 /**
+ * Dias (ISO) dentro da janela do relatório em que a pessoa tem férias
+ * aprovadas — usado para a nota inline junto ao turno quando a
+ * ausência não chega aos 50% da semana (por isso a pessoa não sai da
+ * linha do turno, ver idsEmFerias), mas ainda assim tem alguns dias de
+ * férias nessa semana. Caso real: Caique, férias 02-04/09/2026 dentro
+ * de uma semana em que continua a trabalhar 31/08 e 01/09.
+ */
+function diasDeFeriasNaSemana(usuarioId: string, semanaRef: string, fimISO: string, ferias: AusenciaComSemanas[]): string[] {
+  const dias: string[] = []
+  let cursor = semanaRef
+  while (cursor <= fimISO) {
+    if (ferias.some((f) => f.usuario_id === usuarioId && f.data_inicio <= cursor && f.data_fim >= cursor)) {
+      dias.push(cursor)
+    }
+    cursor = paraISO(adicionarDias(new Date(cursor + 'T00:00:00'), 1))
+  }
+  return dias
+}
+
+/** Agrupa dias consecutivos em intervalos, para não listar cada dia
+ * separadamente quando formam um único bloco (caso comum). */
+function formatarDiasFerias(dias: string[]): string {
+  const blocos: { inicio: string; fim: string }[] = []
+  for (const d of dias) {
+    const ultimo = blocos[blocos.length - 1]
+    if (ultimo && paraISO(adicionarDias(new Date(ultimo.fim + 'T00:00:00'), 1)) === d) {
+      ultimo.fim = d
+    } else {
+      blocos.push({ inicio: d, fim: d })
+    }
+  }
+  return blocos
+    .map((b) => (b.inicio === b.fim ? formatarDataPT(b.inicio) : `${formatarDataPT(b.inicio)} a ${formatarDataPT(b.fim)}`))
+    .join(' e ')
+}
+
+/**
  * Texto do relatório semanal de turnos, pronto a copiar/colar para
  * envio manual por email — mesma estrutura do modelo real usado hoje
  * pelo Gerente. Sempre em português europeu.
@@ -135,7 +172,14 @@ export function gerarTextoRelatorioSemanal(
   linhas.push('')
   linhas.push('Operação SAS')
   for (const turno of ['H1', 'H2', 'H3', 'H4'] as TurnoTipo[]) {
-    const pessoas = [...turnoEfetivo.entries()].filter(([, t]) => t === turno).map(([id]) => nomeDe(id))
+    const pessoas = [...turnoEfetivo.entries()]
+      .filter(([, t]) => t === turno)
+      .map(([id]) => {
+        const diasFerias = diasDeFeriasNaSemana(id, semanaRef, fimISO, ferias)
+        return diasFerias.length > 0
+          ? `${nomeDe(id)} (ausente por férias em ${formatarDiasFerias(diasFerias)})`
+          : nomeDe(id)
+      })
     linhas.push(`${turno} - ${HORARIO_TURNO[turno]} – ${pessoas.length > 0 ? pessoas.join(' / ') : '—'}`)
   }
   linhas.push('')
