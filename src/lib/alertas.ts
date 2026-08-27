@@ -98,3 +98,26 @@ export function calcularProximoAlerta(agora: Date, ehFimDeSemanaManutencao: bool
   if (candidatos.length === 0) return null
   return candidatos.sort((a, b) => a.minutosRestantes - b.minutosRestantes)[0]
 }
+
+/**
+ * O preenchimento automático anual de escala/feriados (cron 1 Nov)
+ * corre sozinho, sem ninguém a ver — se falhar, só fica registado em
+ * logs_auditoria, sem alerta nenhum (achado real, 2026-08-27).
+ * Decide se há algo por resolver olhando só para a ação mais recente
+ * desse tipo: uma falha ou erro ainda não foi seguida de um sucesso.
+ * Deliberadamente sem filtrar por ano — assim que alguém corrigir a
+ * causa e voltar a correr com sucesso, o aviso desaparece sozinho.
+ */
+export function avaliarSaudeAutomacaoAnual(ultimaAcao: string | null): boolean {
+  return ultimaAcao === 'PREENCHIMENTO_AUTOMATICO_FALHOU' || ultimaAcao === 'PREENCHIMENTO_AUTOMATICO_ERRO'
+}
+
+/**
+ * Distinto de avaliarSaudeAutomacaoAnual: um turno com o pool de
+ * candidatos vazio (ex.: ninguém com turno_fixo=H1) é um estado
+ * válido, não uma falha — a escala é gerada na mesma, só "vale a pena
+ * confirmar" (âmbar), não "algo partiu" (vermelho).
+ */
+export function avaliarAvisoAutomacaoAnual(ultimaAcao: string | null): boolean {
+  return ultimaAcao === 'PREENCHIMENTO_AUTOMATICO_AVISO'
+}

@@ -47,6 +47,7 @@ export function UtilizadoresPage() {
   const [empresa, setEmpresa] = useState('Accenture')
   const [limiteH3, setLimiteH3] = useState('')
   const [turnoFixo, setTurnoFixo] = useState<'H1' | 'H4' | ''>('')
+  const [elegivelH2, setElegivelH2] = useState(false)
   const [aRegistar, setARegistar] = useState(false)
   const [erroRegistar, setErroRegistar] = useState<string | null>(null)
 
@@ -65,6 +66,9 @@ export function UtilizadoresPage() {
 
   const [aAlterarTurno, setAAlterarTurno] = useState<string | null>(null)
   const [erroTurno, setErroTurno] = useState<{ id: string; mensagem: string } | null>(null)
+
+  const [aAlterarH2, setAAlterarH2] = useState<string | null>(null)
+  const [erroH2, setErroH2] = useState<{ id: string; mensagem: string } | null>(null)
 
   const ehGerenteTitular = usuario?.perfil === 'GERENTE'
   // Um delegado pode registar OPERADOR/OPERADOR_H3, mas nunca outro
@@ -105,6 +109,7 @@ export function UtilizadoresPage() {
       empresa,
       limite_h3_mensal: perfil === 'OPERADOR_H3' && limiteH3 ? Number(limiteH3) : null,
       turno_fixo: perfil === 'OPERADOR' ? turnoFixo : null,
+      elegivel_h2: perfil === 'OPERADOR_H3' ? elegivelH2 : false,
     })
     setARegistar(false)
     if (erro) {
@@ -117,6 +122,7 @@ export function UtilizadoresPage() {
       setEmpresa('Accenture')
       setLimiteH3('')
       setTurnoFixo('')
+      setElegivelH2(false)
       setARegistarAberto(false)
       recarregar()
     }
@@ -159,6 +165,22 @@ export function UtilizadoresPage() {
     setAAlterarTurno(null)
     if (error) {
       setErroTurno({ id: alvo.id, mensagem: error.message })
+      return
+    }
+    recarregar()
+  }
+
+  async function alterarElegibilidadeH2(alvo: Usuario, novoValor: boolean) {
+    if (novoValor === alvo.elegivel_h2) return
+    setErroH2(null)
+    setAAlterarH2(alvo.id)
+    // Só muda o atributo da pessoa — não mexe na escala já gerada,
+    // mesma fronteira de turno_fixo acima. Passa a valer a partir da
+    // próxima composição automática (preenchimento anual de novembro).
+    const { error } = await supabase.from('usuarios').update({ elegivel_h2: novoValor }).eq('id', alvo.id)
+    setAAlterarH2(null)
+    if (error) {
+      setErroH2({ id: alvo.id, mensagem: error.message })
       return
     }
     recarregar()
@@ -281,6 +303,33 @@ export function UtilizadoresPage() {
                             </Tooltip>
                           </div>
                           {erroTurno?.id === u.id && <p className="text-xs text-red-600">{erroTurno.mensagem}</p>}
+                        </div>
+                      ) : u.perfil === 'OPERADOR_H3' && podeGerir(u) ? (
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex items-center gap-1">
+                            <span>{ROTULO_PERFIL[u.perfil]}</span>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Select
+                                  value={u.elegivel_h2 ? 'sim' : 'nao'}
+                                  onValueChange={(v) => alterarElegibilidadeH2(u, v === 'sim')}
+                                  disabled={aAlterarH2 === u.id}
+                                >
+                                  <SelectTrigger size="sm" className="h-6 w-24 px-1.5 text-xs">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="sim">H2: sim</SelectItem>
+                                    <SelectItem value="nao">H2: não</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                Elegível para H2 na rotação automática — só afeta composições futuras, não a escala já gerada
+                              </TooltipContent>
+                            </Tooltip>
+                          </div>
+                          {erroH2?.id === u.id && <p className="text-xs text-red-600">{erroH2.mensagem}</p>}
                         </div>
                       ) : (
                         ROTULO_PERFIL[u.perfil]
@@ -418,6 +467,7 @@ export function UtilizadoresPage() {
                 onValueChange={(v) => {
                   setPerfil(v as PerfilUsuario)
                   setTurnoFixo('')
+                  setElegivelH2(false)
                 }}
               >
                 <SelectTrigger className="w-full">
@@ -433,10 +483,24 @@ export function UtilizadoresPage() {
               </Select>
             </label>
             {perfil === 'OPERADOR_H3' && (
-              <label className="flex flex-col gap-1 text-sm">
-                <span className="text-xs text-zinc-500">Limite de H3 por mês (opcional)</span>
-                <Input type="number" min={0} value={limiteH3} onChange={(e) => setLimiteH3(e.target.value)} />
-              </label>
+              <>
+                <label className="flex flex-col gap-1 text-sm">
+                  <span className="text-xs text-zinc-500">Limite de H3 por mês (opcional)</span>
+                  <Input type="number" min={0} value={limiteH3} onChange={(e) => setLimiteH3(e.target.value)} />
+                </label>
+                <label className="flex flex-col gap-1 text-sm">
+                  <span className="text-xs text-zinc-500">Elegível para H2 na rotação automática?</span>
+                  <Select value={elegivelH2 ? 'sim' : 'nao'} onValueChange={(v) => setElegivelH2(v === 'sim')}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="nao">Não</SelectItem>
+                      <SelectItem value="sim">Sim</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </label>
+              </>
             )}
             {perfil === 'OPERADOR' && (
               <label className="flex flex-col gap-1 text-sm">

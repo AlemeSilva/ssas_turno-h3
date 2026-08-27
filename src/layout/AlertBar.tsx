@@ -3,10 +3,14 @@ import { supabase } from '@/lib/supabase'
 import { calcularProximoAlerta, estaHrLimiteEstourado } from '@/lib/alertas'
 import { semanaRefDe, paraISO, agora as getNow } from '@/lib/datas'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/auth/AuthContext'
+import { useSaudeAutomacaoAnual } from '@/data/useSaudeAutomacaoAnual'
 import type { TarefaPlano } from '@/types/database'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 export function AlertBar() {
+  const { ehGerenteOuDelegado } = useAuth()
+  const { escalaFalhou, escalaDetalhe, escalaAviso, feriadosFalhou, feriadosDetalhe } = useSaudeAutomacaoAnual()
   const [agora, setAgora] = useState(getNow())
   const [ehManutencao, setEhManutencao] = useState(false)
   const [tarefasExcecionais, setTarefasExcecionais] = useState<TarefaPlano[]>([])
@@ -75,6 +79,36 @@ export function AlertBar() {
               </span>
             </TooltipTrigger>
             <TooltipContent>Tarefa(s) excecional(is) do Plano de Fim de Semana com a hora-limite ultrapassada, ainda por concluir</TooltipContent>
+          </Tooltip>
+        )}
+        {ehGerenteOuDelegado && escalaFalhou && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex items-center rounded-md border border-red-100 bg-red-50 px-1.5 py-0.5 text-[0.65rem] font-medium text-red-700">
+                Preenchimento automático de escala falhou
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>{escalaDetalhe ?? 'Ver separador Auditoria para o detalhe.'}</TooltipContent>
+          </Tooltip>
+        )}
+        {ehGerenteOuDelegado && !escalaFalhou && escalaAviso && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex items-center rounded-md border border-amber-100 bg-amber-50 px-1.5 py-0.5 text-[0.65rem] font-medium whitespace-nowrap text-amber-700">
+                Preenchimento automático de escala com aviso
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>{escalaDetalhe ?? 'Ver separador Auditoria para o detalhe.'}</TooltipContent>
+          </Tooltip>
+        )}
+        {ehGerenteOuDelegado && feriadosFalhou && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex items-center rounded-md border border-red-100 bg-red-50 px-1.5 py-0.5 text-[0.65rem] font-medium text-red-700">
+                Preenchimento automático de feriados falhou
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>{feriadosDetalhe ?? 'Ver separador Auditoria para o detalhe.'}</TooltipContent>
           </Tooltip>
         )}
       </div>

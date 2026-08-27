@@ -35,6 +35,9 @@ interface PedidoCriar {
   // compõe a escala dessa pessoa, ver preencher_escala_anual() e
   // composicaoEscala.ts); tem de vir nulo para os outros perfis.
   turno_fixo: 'H1' | 'H4' | null
+  // Só relevante para perfil === 'OPERADOR_H3' — define se entra na
+  // rotação de H2 no preenchimento automático anual (migração 0035).
+  elegivel_h2: boolean | null
 }
 
 interface PedidoResetPassword {
@@ -115,7 +118,7 @@ Deno.serve(async (req) => {
 
   try {
     if (pedido.acao === 'criar') {
-      const { nome, email, password, perfil, empresa, limite_h3_mensal, turno_fixo } = pedido
+      const { nome, email, password, perfil, empresa, limite_h3_mensal, turno_fixo, elegivel_h2 } = pedido
       if (!nome || !email || !password || !perfil || !empresa) {
         return json({ erro: 'Faltam campos obrigatórios.' }, 400)
       }
@@ -127,6 +130,9 @@ Deno.serve(async (req) => {
       }
       if (perfil !== 'OPERADOR' && turno_fixo != null) {
         return json({ erro: 'Turno fixo só se aplica a perfil Operador.' }, 400)
+      }
+      if (perfil !== 'OPERADOR_H3' && elegivel_h2) {
+        return json({ erro: 'Elegibilidade para H2 só se aplica a perfil Operador H3.' }, 400)
       }
 
       const { data: novoAuth, error: erroCriar } = await admin.auth.admin.createUser({
@@ -147,6 +153,7 @@ Deno.serve(async (req) => {
         ativo: true,
         limite_h3_mensal: perfil === 'OPERADOR_H3' ? limite_h3_mensal : null,
         turno_fixo: perfil === 'OPERADOR' ? turno_fixo : null,
+        elegivel_h2: perfil === 'OPERADOR_H3' ? (elegivel_h2 ?? false) : false,
         data_saida: null,
       })
       if (erroPerfil) {

@@ -77,3 +77,26 @@ Caminho oficial (Postgres local, recomendado para desenvolvimento):
   inteiros (um só registo ou vários não contíguos somados); havendo
   pelo menos 1 dia livre, a mudança de turno é sempre aceite (migração
   0034, caso real: Caique, 2026-08-27).
+- `14_preencher_escala_anual_trio_generico.sql` — o preenchimento
+  automático anual (cron 1 Nov) deixa de depender de 3 nomes fixos:
+  qualquer conjunto de OPERADOR_H3 ativos, mínimo 3 (falha controlada
+  e específica por contagem se houver menos), sem máximo; H2 respeita
+  `elegivel_h2` por pessoa em vez de nomes hardcoded (migração 0035).
+- `15_preencher_escala_anual_falha_isolada.sql` — uma semana com
+  conflito (ex.: férias a cobrir a semana toda) já não deita fora o
+  ano inteiro; savepoint por semana isola a falha, as restantes 51 são
+  geradas com sucesso, e a entrada de auditoria fica classificada
+  ERRO — não sucesso — para não esconder o aviso do Achado #1
+  (migração 0036).
+- `16_preencher_escala_anual_avisos.sql` — um pool de candidatos vazio
+  (ninguém com turno_fixo=H1, nem H4, nem elegivel_h2) já não é
+  silencioso: a escala é gerada na mesma, mas a auditoria fica
+  classificada AVISO (âmbar no AlertBar, não vermelho — é um estado
+  válido, não uma falha) e menciona qual turno ficou sem ninguém
+  (migração 0037).
+- `17_preencher_escala_anual_gerente_titular.sql` — com 2+ Gerentes
+  ativos em simultâneo (handover/transição), só o mais antigo
+  (`criado_em`) recebe H4 automaticamente — antes, todos recebiam;
+  aviso (mesma classificação do Achado #3) menciona quantos Gerentes
+  estão ativos, para atribuição manual dos restantes se for o caso
+  (migração 0038).

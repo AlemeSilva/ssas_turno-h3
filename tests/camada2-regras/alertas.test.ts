@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import {
   avaliarAlertaPreditivo,
   avaliarAlertaReativo,
+  avaliarAvisoAutomacaoAnual,
   avaliarRiscoGirFl,
+  avaliarSaudeAutomacaoAnual,
   calcularProximoAlerta,
   estaHrLimiteEstourado,
   isoWeekdayDe,
@@ -128,5 +130,39 @@ describe('calcularProximoAlerta — regressão dos dois bugs encontrados na extr
   it('não sugere nenhum alerta a meio da tarde de uma segunda-feira normal', () => {
     const segundaFeira = new Date(2026, 7, 3, 15, 0)
     expect(calcularProximoAlerta(segundaFeira, false)).toBeNull()
+  })
+})
+
+describe('avaliarSaudeAutomacaoAnual — preenchimento automático anual (cron 1 Nov) falhar em silêncio, achado real 2026-08-27', () => {
+  it('sinaliza falha quando a ação mais recente é FALHOU (ex.: trio de H3 incompleto)', () => {
+    expect(avaliarSaudeAutomacaoAnual('PREENCHIMENTO_AUTOMATICO_FALHOU')).toBe(true)
+  })
+  it('sinaliza falha quando a ação mais recente é ERRO (ex.: uma semana bloqueada por trigger)', () => {
+    expect(avaliarSaudeAutomacaoAnual('PREENCHIMENTO_AUTOMATICO_ERRO')).toBe(true)
+  })
+  it('não sinaliza nada quando a ação mais recente foi um sucesso', () => {
+    expect(avaliarSaudeAutomacaoAnual('PREENCHIMENTO_AUTOMATICO')).toBe(false)
+  })
+  it('não sinaliza nada quando a ação mais recente foi ignorada (já existiam dados)', () => {
+    expect(avaliarSaudeAutomacaoAnual('PREENCHIMENTO_AUTOMATICO_IGNORADO')).toBe(false)
+  })
+  it('não sinaliza nada sem nenhum histórico ainda', () => {
+    expect(avaliarSaudeAutomacaoAnual(null)).toBe(false)
+  })
+})
+
+describe('avaliarAvisoAutomacaoAnual — pool de candidatos vazio (ex.: ninguém com turno_fixo=H1) é aviso, não falha', () => {
+  it('sinaliza aviso quando a ação mais recente é AVISO', () => {
+    expect(avaliarAvisoAutomacaoAnual('PREENCHIMENTO_AUTOMATICO_AVISO')).toBe(true)
+  })
+  it('não sinaliza aviso para uma falha real (é vermelho, não âmbar — ver avaliarSaudeAutomacaoAnual)', () => {
+    expect(avaliarAvisoAutomacaoAnual('PREENCHIMENTO_AUTOMATICO_FALHOU')).toBe(false)
+    expect(avaliarAvisoAutomacaoAnual('PREENCHIMENTO_AUTOMATICO_ERRO')).toBe(false)
+  })
+  it('não sinaliza aviso para um sucesso limpo', () => {
+    expect(avaliarAvisoAutomacaoAnual('PREENCHIMENTO_AUTOMATICO')).toBe(false)
+  })
+  it('não sinaliza nada sem nenhum histórico ainda', () => {
+    expect(avaliarAvisoAutomacaoAnual(null)).toBe(false)
   })
 })

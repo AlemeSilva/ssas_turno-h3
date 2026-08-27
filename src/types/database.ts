@@ -27,6 +27,9 @@ export interface Usuario {
   /** H1 ou H4 — só para perfil OPERADOR; define a escala composta ao
    * registar e no preenchimento automático anual (migração 0029). */
   turno_fixo: 'H1' | 'H4' | null
+  /** Só para perfil OPERADOR_H3 — define quem pode ocupar H2 na
+   * rotação anual (migração 0035). */
+  elegivel_h2: boolean
   criado_em: string
 }
 
