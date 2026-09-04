@@ -199,3 +199,56 @@ export interface CadeiaCatalogo {
 // gir_fl_dependencias na base de dados, lido via useCadeiasCatalogo().
 // Isto permite ao Gerente adicionar ou desativar uma cadeia sem
 // depender de uma alteração de código.
+
+/** Singleton (id é sempre true) — parâmetros da calculadora de
+ * Headcount Ideal, editáveis só pelo Gerente titular (migração 0039). */
+export interface HeadcountParametros {
+  id: boolean
+  capacidade_base_horas: number
+  taxa_eficiencia: number
+  batch_horas_dia: number
+  olho_vivo_minutos_dia: number
+  prep_fim_semana_horas_semana: number
+  tempo_medio_pedido_minutos: number
+  imparidade_calendario_horas: number
+  imparidade_execucao_horas_semana: number
+  imparidade_reportes_minutos_dia: number
+  imparidade_reportes_dias_mes: number
+  banda_tolerancia_pessoas: number
+  janela_tendencia_meses: number
+  atualizado_por: string | null
+  atualizado_em: string
+}
+
+/** Uma linha por mês. Enquanto fechado=false é um rascunho editável
+ * (titular ou delegado); as colunas de snapshot e resultado só ficam
+ * preenchidas no fecho (fechar_mes_headcount), e a partir daí a linha
+ * é imutável — sem caminho de reabertura. */
+export interface HeadcountMensal {
+  id: number
+  mes_referencia: string
+  volume_pedidos: number | null
+  dias_recuperacao_cadeia: number
+  capacidade_base_horas: number | null
+  taxa_eficiencia: number | null
+  batch_horas_dia: number | null
+  olho_vivo_minutos_dia: number | null
+  prep_fim_semana_horas_semana: number | null
+  tempo_medio_pedido_minutos: number | null
+  imparidade_calendario_horas: number | null
+  imparidade_execucao_horas_semana: number | null
+  imparidade_reportes_minutos_dia: number | null
+  imparidade_reportes_dias_mes: number | null
+  carga_horas: number | null
+  capacidade_plena_horas_pessoa: number | null
+  capacidade_plena_horas_equipa: number | null
+  capacidade_presente_horas_equipa: number | null
+  headcount_real_snapshot: number | null
+  operador_h3_ativo_snapshot: number | null
+  fechado: boolean
+  fechado_por: string | null
+  fechado_em: string | null
+  atualizado_por: string | null
+  atualizado_em: string
+  criado_em: string
+}

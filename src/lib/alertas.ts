@@ -1,4 +1,6 @@
 // Lógica pura dos alertas — sem DOM, sem Supabase, 100% testável.
+import { paraISO } from './datas'
+
 // Dois padrões de alerta, deliberadamente diferentes (fechado no
 // levantamento de requisitos):
 //  - REATIVO (HR.LIMITE, checagens 20h/15h): o alerta dispara NA hora
@@ -120,4 +122,32 @@ export function avaliarSaudeAutomacaoAnual(ultimaAcao: string | null): boolean {
  */
 export function avaliarAvisoAutomacaoAnual(ultimaAcao: string | null): boolean {
   return ultimaAcao === 'PREENCHIMENTO_AUTOMATICO_AVISO'
+}
+
+export interface AlertaHeadcountMensal {
+  avisoAmbar: boolean
+  avisoVermelho: boolean
+  mesesPendentes: string[]
+}
+
+/**
+ * O volume de pedidos de um mês só é conhecido depois de ele acabar —
+ * por isso o Gerente tem até ao dia 5 do mês seguinte para preencher e
+ * fechar o mês anterior. mesesAbertos: mes_referencia (YYYY-MM-DD, 1º
+ * dia do mês) de cada mês de headcount ainda não fechado — nunca inclui
+ * o mês atual (esse não chega a existir como rascunho antes de acabar).
+ * Âmbar = só o mês anterior está pendente, a partir do dia 5. Vermelho
+ * = há algum mês mais antigo que isso ainda por fechar.
+ */
+export function avaliarAlertaHeadcountMensal(mesesAbertos: string[], hoje: Date): AlertaHeadcountMensal {
+  const mesAtualISO = paraISO(new Date(hoje.getFullYear(), hoje.getMonth(), 1))
+  const mesAnteriorISO = paraISO(new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1))
+
+  const pendentes = mesesAbertos.filter((m) => m < mesAtualISO).sort()
+
+  return {
+    avisoAmbar: hoje.getDate() >= 5 && pendentes.includes(mesAnteriorISO),
+    avisoVermelho: pendentes.some((m) => m < mesAnteriorISO),
+    mesesPendentes: pendentes,
+  }
 }

@@ -5,12 +5,16 @@ import { semanaRefDe, paraISO, agora as getNow } from '@/lib/datas'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/auth/AuthContext'
 import { useSaudeAutomacaoAnual } from '@/data/useSaudeAutomacaoAnual'
+import { useAlertaHeadcountMensal } from '@/data/useAlertaHeadcountMensal'
 import type { TarefaPlano } from '@/types/database'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 export function AlertBar() {
   const { ehGerenteOuDelegado } = useAuth()
   const { escalaFalhou, escalaDetalhe, escalaAviso, feriadosFalhou, feriadosDetalhe } = useSaudeAutomacaoAnual()
+  const { avisoAmbar: headcountAmbar, avisoVermelho: headcountVermelho, mesesPendentes: headcountMesesPendentes } = useAlertaHeadcountMensal(
+    ehGerenteOuDelegado
+  )
   const [agora, setAgora] = useState(getNow())
   const [ehManutencao, setEhManutencao] = useState(false)
   const [tarefasExcecionais, setTarefasExcecionais] = useState<TarefaPlano[]>([])
@@ -109,6 +113,26 @@ export function AlertBar() {
               </span>
             </TooltipTrigger>
             <TooltipContent>{feriadosDetalhe ?? 'Ver separador Auditoria para o detalhe.'}</TooltipContent>
+          </Tooltip>
+        )}
+        {ehGerenteOuDelegado && headcountVermelho && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex items-center rounded-md border border-red-100 bg-red-50 px-1.5 py-0.5 text-[0.65rem] font-medium whitespace-nowrap text-red-700">
+                Headcount: meses por fechar em atraso
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>{`Por fechar: ${headcountMesesPendentes.join(', ')} — separador Headcount.`}</TooltipContent>
+          </Tooltip>
+        )}
+        {ehGerenteOuDelegado && !headcountVermelho && headcountAmbar && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex items-center rounded-md border border-amber-100 bg-amber-50 px-1.5 py-0.5 text-[0.65rem] font-medium whitespace-nowrap text-amber-700">
+                Headcount: mês anterior por fechar
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>Preenche e fecha o mês anterior no separador Headcount.</TooltipContent>
           </Tooltip>
         )}
       </div>

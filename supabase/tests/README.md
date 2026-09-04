@@ -100,3 +100,15 @@ Caminho oficial (Postgres local, recomendado para desenvolvimento):
   aviso (mesma classificação do Achado #3) menciona quantos Gerentes
   estão ativos, para atribuição manual dos restantes se for o caso
   (migração 0038).
+- `18_headcount_ideal.sql` — calculadora de headcount ideal (migração
+  0039): dois níveis de acesso (titular+delegado só leem e preenchem o
+  rascunho do mês; só titular edita parâmetros e fecha o mês), cada um
+  imposto por RLS e reforçado dentro das próprias funções `security
+  definer`; capacidade presente conta dias de calendário distintos
+  (nunca soma a duração de férias e licença sobrepostas na mesma
+  pessoa); recorte de férias às fronteiras do mês; capacidade plena
+  por pessoa não depende do headcount; mês fechado fica imutável mesmo
+  em bypass de RLS; guardas do fecho (sem rascunho, mês por terminar,
+  pedidos por preencher, já fechado); alteração de parâmetro fica em
+  auditoria; `garantir_rascunho_headcount_mensal` recupera atraso de
+  vários meses a partir do último fechado, não só o mais recente.

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  avaliarAlertaHeadcountMensal,
   avaliarAlertaPreditivo,
   avaliarAlertaReativo,
   avaliarAvisoAutomacaoAnual,
@@ -164,5 +165,40 @@ describe('avaliarAvisoAutomacaoAnual — pool de candidatos vazio (ex.: ninguém
   })
   it('não sinaliza nada sem nenhum histórico ainda', () => {
     expect(avaliarAvisoAutomacaoAnual(null)).toBe(false)
+  })
+})
+
+describe('avaliarAlertaHeadcountMensal — o mês anterior fica pendente até ao dia 5', () => {
+  it('não dispara antes do dia 5, mesmo com o mês anterior pendente', () => {
+    const hoje = new Date(2026, 8, 4) // 2026-09-04, dia 4
+    const r = avaliarAlertaHeadcountMensal(['2026-08-01'], hoje)
+    expect(r.avisoAmbar).toBe(false)
+  })
+  it('dispara âmbar exatamente a partir do dia 5 se o mês anterior ainda está pendente', () => {
+    const hoje = new Date(2026, 8, 5) // 2026-09-05
+    const r = avaliarAlertaHeadcountMensal(['2026-08-01'], hoje)
+    expect(r.avisoAmbar).toBe(true)
+    expect(r.avisoVermelho).toBe(false)
+  })
+  it('não dispara nada se o mês anterior já não está na lista de pendentes (já foi fechado)', () => {
+    const hoje = new Date(2026, 8, 10)
+    const r = avaliarAlertaHeadcountMensal([], hoje)
+    expect(r.avisoAmbar).toBe(false)
+    expect(r.avisoVermelho).toBe(false)
+  })
+  it('dispara vermelho quando há um mês mais antigo que o anterior ainda por fechar', () => {
+    const hoje = new Date(2026, 8, 10)
+    const r = avaliarAlertaHeadcountMensal(['2026-07-01', '2026-08-01'], hoje)
+    expect(r.avisoVermelho).toBe(true)
+  })
+  it('não dispara vermelho só com o mês anterior pendente (isso é só âmbar)', () => {
+    const hoje = new Date(2026, 8, 10)
+    const r = avaliarAlertaHeadcountMensal(['2026-08-01'], hoje)
+    expect(r.avisoVermelho).toBe(false)
+  })
+  it('mesesPendentes nunca inclui o mês corrente, mesmo que apareça na lista de entrada', () => {
+    const hoje = new Date(2026, 8, 10)
+    const r = avaliarAlertaHeadcountMensal(['2026-07-01', '2026-09-01'], hoje)
+    expect(r.mesesPendentes).toEqual(['2026-07-01'])
   })
 })

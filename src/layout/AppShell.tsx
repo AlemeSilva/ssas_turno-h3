@@ -18,6 +18,7 @@ const ABAS_GERENTE = [
   { to: '/historico', label: 'Histórico' },
   { to: '/definicoes', label: 'Definições' },
   { to: '/utilizadores', label: 'Utilizadores' },
+  { to: '/headcount', label: 'Headcount' },
 ]
 
 export function AppShell({ children }: { children: ReactNode }) {

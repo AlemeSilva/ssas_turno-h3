@@ -10,6 +10,7 @@ import { RelatoriosPage } from './pages/RelatoriosPage'
 import { HistoricoPage } from './pages/HistoricoPage'
 import { DefinicoesPage } from './pages/DefinicoesPage'
 import { UtilizadoresPage } from './pages/UtilizadoresPage'
+import { HeadcountPage } from './pages/HeadcountPage'
 import { TooltipProvider } from '@/components/ui/tooltip'
 
 function App() {
@@ -29,6 +30,7 @@ function App() {
                 <Route path="/historico" element={<HistoricoPage />} />
                 <Route path="/definicoes" element={<DefinicoesPage />} />
                 <Route path="/utilizadores" element={<UtilizadoresPage />} />
+                <Route path="/headcount" element={<HeadcountPage />} />
                 <Route path="*" element={<Navigate to="/inicio" replace />} />
               </Routes>
             </AppShell>
