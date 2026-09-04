@@ -44,19 +44,87 @@ const ROTULO_CLASSIFICACAO = {
   SUB_DIMENSIONADO: { texto: 'Sub-dimensionado', cor: 'border-red-100 bg-red-50 text-red-700' },
 } as const
 
-const CAMPOS_PARAMETROS: { chave: keyof HeadcountParametros; rotulo: string; passo?: string }[] = [
-  { chave: 'capacidade_base_horas', rotulo: 'Capacidade-base (h/dia)' },
-  { chave: 'taxa_eficiencia', rotulo: 'Taxa de eficiência (0-1)', passo: '0.01' },
-  { chave: 'batch_horas_dia', rotulo: 'Batch (h/dia)' },
-  { chave: 'olho_vivo_minutos_dia', rotulo: 'Olho Vivo (min/dia)' },
-  { chave: 'prep_fim_semana_horas_semana', rotulo: 'Prep. fim de semana (h/semana)' },
-  { chave: 'tempo_medio_pedido_minutos', rotulo: 'Tempo médio / pedido (min)' },
-  { chave: 'imparidade_calendario_horas', rotulo: 'Imparidade — calendário (h/mês)' },
-  { chave: 'imparidade_execucao_horas_semana', rotulo: 'Imparidade — execução (h/semana)' },
-  { chave: 'imparidade_reportes_minutos_dia', rotulo: 'Imparidade — reportes (min/dia)' },
-  { chave: 'imparidade_reportes_dias_mes', rotulo: 'Imparidade — reportes (dias/mês)' },
-  { chave: 'banda_tolerancia_pessoas', rotulo: 'Banda de tolerância (pessoas)' },
-  { chave: 'janela_tendencia_meses', rotulo: 'Janela de tendência (meses)' },
+const CAMPOS_PARAMETROS: { chave: keyof HeadcountParametros; rotulo: string; descricao: string; passo?: string }[] = [
+  {
+    chave: 'capacidade_base_horas',
+    rotulo: 'Capacidade-base (h/dia)',
+    descricao:
+      'Horas de trabalho nominais de uma pessoa por dia — o ponto de partida da capacidade plena, antes de qualquer desconto de eficiência ou de reserva de férias.',
+  },
+  {
+    chave: 'taxa_eficiencia',
+    rotulo: 'Taxa de eficiência (0-1)',
+    passo: '0.01',
+    descricao:
+      'Fração do dia de trabalho presente que é efetivamente produtiva, descontando pausas, formação e pequenos atrasos do dia a dia. Aplica-se como multiplicador direto na capacidade plena por pessoa (ex.: 0,85 = 85% do dia é produtivo).',
+  },
+  {
+    chave: 'taxa_cobertura_ferias',
+    rotulo: 'Taxa de cobertura de férias (0-1)',
+    passo: '0.01',
+    descricao:
+      'Fração da capacidade nominal que sobra depois de reservar estruturalmente para a rotação de férias da equipa ao longo do ano. Não é a ausência real de um mês específico (essa já está refletida na capacidade presente) — é uma margem fixa para que o Headcount Ideal já venha dimensionado para absorver férias sem entrar em rutura (ex.: 0,90 = reserva-se 10% da capacidade para cobertura de férias).',
+  },
+  {
+    chave: 'batch_horas_dia',
+    rotulo: 'Batch (h/dia)',
+    descricao:
+      'Horas de processamento em lote (batch) que a equipa tem de garantir todos os dias do mês, independentemente do volume de pedidos. Entra na carga total multiplicada pelos dias corridos do mês.',
+  },
+  {
+    chave: 'olho_vivo_minutos_dia',
+    rotulo: 'Olho Vivo (min/dia)',
+    descricao:
+      'Minutos por dia dedicados à tarefa Olho Vivo — uma carga fixa diária da equipa. Entra na carga total (convertida para horas) multiplicada pelos dias corridos do mês.',
+  },
+  {
+    chave: 'prep_fim_semana_horas_semana',
+    rotulo: 'Prep. fim de semana (h/semana)',
+    descricao:
+      'Horas por semana dedicadas à preparação do Plano de Fim de Semana. Entra na carga total multiplicada pelo número de semanas do mês.',
+  },
+  {
+    chave: 'tempo_medio_pedido_minutos',
+    rotulo: 'Tempo médio / pedido (min)',
+    descricao:
+      'Tempo médio, em minutos, para tratar um pedido. Multiplicado pelo volume de pedidos do mês (convertido para horas) dá a parcela da carga relativa a pedidos.',
+  },
+  {
+    chave: 'imparidade_calendario_horas',
+    rotulo: 'Imparidade — calendário (h/mês)',
+    descricao:
+      'Horas fixas por mês dedicadas à parte de calendário do Cálculo de Imparidade — um valor único que se soma uma vez à carga total, sem escalar com dias ou semanas do mês.',
+  },
+  {
+    chave: 'imparidade_execucao_horas_semana',
+    rotulo: 'Imparidade — execução (h/semana)',
+    descricao:
+      'Horas por semana dedicadas à execução do Cálculo de Imparidade. Entra na carga total multiplicada pelo número de semanas do mês.',
+  },
+  {
+    chave: 'imparidade_reportes_minutos_dia',
+    rotulo: 'Imparidade — reportes (min/dia)',
+    descricao:
+      'Minutos por dia dedicados aos reportes do Cálculo de Imparidade, nos dias em que há reportes. Combina-se com "Imparidade — reportes (dias/mês)" para dar a carga total de reportes do mês.',
+  },
+  {
+    chave: 'imparidade_reportes_dias_mes',
+    rotulo: 'Imparidade — reportes (dias/mês)',
+    descricao:
+      'Número de dias por mês em que há reportes do Cálculo de Imparidade. Multiplicado pelos minutos por dia de reportes dá a carga total de reportes do mês.',
+  },
+  {
+    chave: 'banda_tolerancia_pessoas',
+    rotulo: 'Banda de tolerância (pessoas)',
+    descricao:
+      'Margem de tolerância, em número de pessoas, à volta do Headcount Ideal. Dentro desta margem (ideal ± banda) a equipa é classificada como Aceitável; fora dela, Sobre-dimensionada ou Sub-dimensionada.',
+  },
+  {
+    chave: 'janela_tendencia_meses',
+    rotulo: 'Janela de tendência (meses)',
+    descricao:
+      'Número de meses fechados mais recentes usados para calcular a média móvel que dá o Headcount Ideal. Suaviza picos e vales pontuais de carga e de capacidade em vez de reagir a um único mês atípico.',
+  },
 ]
 
 function PainelParametros({
@@ -98,16 +166,21 @@ function PainelParametros({
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {CAMPOS_PARAMETROS.map((c) => (
-            <label key={c.chave} className="flex flex-col gap-1 text-xs text-zinc-500">
-              {c.rotulo}
-              <Input
-                type="number"
-                step={c.passo ?? '1'}
-                value={valores[c.chave]}
-                disabled={!ehGerenteTitular}
-                onChange={(e) => setValores((v) => ({ ...v, [c.chave]: e.target.value }))}
-              />
-            </label>
+            <Tooltip key={c.chave}>
+              <TooltipTrigger asChild>
+                <label className="flex flex-col gap-1 text-xs text-zinc-500">
+                  {c.rotulo}
+                  <Input
+                    type="number"
+                    step={c.passo ?? '1'}
+                    value={valores[c.chave]}
+                    disabled={!ehGerenteTitular}
+                    onChange={(e) => setValores((v) => ({ ...v, [c.chave]: e.target.value }))}
+                  />
+                </label>
+              </TooltipTrigger>
+              <TooltipContent>{c.descricao}</TooltipContent>
+            </Tooltip>
           ))}
         </div>
         {erro && <p className="text-sm text-red-600">{erro}</p>}

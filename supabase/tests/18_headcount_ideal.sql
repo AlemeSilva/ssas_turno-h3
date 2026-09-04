@@ -3,7 +3,7 @@
 -- testes). Para correr manualmente contra produção sem Docker (ver
 -- README), concatenar migração + este ficheiro antes do `begin;`.
 begin;
-select plan(23);
+select plan(26);
 
 -- =====================================================================
 -- Fase 1 — preparação (ainda como o role de ligação, que faz bypass de
@@ -175,7 +175,37 @@ select is(
 );
 
 -- =====================================================================
--- Fase 6 — equipa vazia
+-- Fase 6 — fórmula: taxa_cobertura_ferias (reserva estrutural)
+-- =====================================================================
+
+-- O fator só entra em capacidade_plena_horas_pessoa (nominal). Nunca
+-- em capacidade_presente_horas_equipa — essa já desconta a ausência
+-- REAL do mês via dias_ausente; aplicar as duas seria duplo desconto.
+select capacidade_plena_horas_pessoa as plena_defeito, capacidade_presente_horas_equipa as presente_defeito
+from calcular_headcount('2026-06-01', 0, 0) \gset
+
+update headcount_parametros set taxa_cobertura_ferias = 0.5 where id = true;
+
+select capacidade_plena_horas_pessoa as plena_alterado, capacidade_presente_horas_equipa as presente_alterado
+from calcular_headcount('2026-06-01', 0, 0) \gset
+
+select is(
+    :'plena_alterado'::numeric, 102::numeric,
+    'capacidade_plena_horas_pessoa aplica taxa_cobertura_ferias (30 dias × 8h × 0,85 × 0,5 = 102h)'
+);
+select isnt(
+    :'plena_alterado'::numeric, :'plena_defeito'::numeric,
+    'alterar taxa_cobertura_ferias muda a capacidade plena'
+);
+select is(
+    :'presente_alterado'::numeric, :'presente_defeito'::numeric,
+    'capacidade_presente_horas_equipa não é afetada por taxa_cobertura_ferias — evita duplo desconto de férias'
+);
+
+update headcount_parametros set taxa_cobertura_ferias = 0.9 where id = true;
+
+-- =====================================================================
+-- Fase 7 — equipa vazia
 -- =====================================================================
 
 update usuarios set ativo = false where id in (:'overlap_id', :'crossmonth_id', :'delegado_id');
@@ -185,7 +215,7 @@ select is(:'hr_vazio'::int, 0, 'equipa sem ninguém ativo: headcount_real = 0, s
 select is(:'cap_vazio'::numeric, 0::numeric, 'equipa sem ninguém ativo: capacidade_presente_horas_equipa = 0, sem erro');
 
 -- =====================================================================
--- Fase 7 — guardas e ciclo de vida do fecho
+-- Fase 8 — guardas e ciclo de vida do fecho
 -- =====================================================================
 
 select throws_ok(
@@ -224,11 +254,11 @@ select is(
 );
 
 -- =====================================================================
--- Fase 8 — backfill de rascunhos em atraso
+-- Fase 9 — backfill de rascunhos em atraso
 -- =====================================================================
 
 -- Nesta altura o mês fechado mais recente já não é o 2025-01 semeado
--- na Fase 1 — a Fase 7 fechou 2025-07 de verdade a meio do caminho,
+-- na Fase 1 — a Fase 8 fechou 2025-07 de verdade a meio do caminho,
 -- que é posterior. O backfill conta a partir do fechado mais recente,
 -- por isso o teste tem de verificar a partir de 2025-08, não 2025-02.
 select garantir_rascunho_headcount_mensal();

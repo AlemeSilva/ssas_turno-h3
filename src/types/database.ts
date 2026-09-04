@@ -206,6 +206,7 @@ export interface HeadcountParametros {
   id: boolean
   capacidade_base_horas: number
   taxa_eficiencia: number
+  taxa_cobertura_ferias: number
   batch_horas_dia: number
   olho_vivo_minutos_dia: number
   prep_fim_semana_horas_semana: number
@@ -231,6 +232,7 @@ export interface HeadcountMensal {
   dias_recuperacao_cadeia: number
   capacidade_base_horas: number | null
   taxa_eficiencia: number | null
+  taxa_cobertura_ferias: number | null
   batch_horas_dia: number | null
   olho_vivo_minutos_dia: number | null
   prep_fim_semana_horas_semana: number | null
