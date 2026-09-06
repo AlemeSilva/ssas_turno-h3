@@ -17,6 +17,7 @@ import { Card, CardContent, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { HeadcountCenariosDialog } from '@/components/HeadcountCenariosDialog'
 
 function formatarMesReferencia(mesISO: string): string {
   const [ano, mes] = mesISO.split('-').map(Number)
@@ -290,6 +291,7 @@ export function HeadcountPage() {
   const { usuarios, aCarregar: aCarregarUsuarios } = useUsuarios()
 
   const ehGerenteTitular = usuario?.perfil === 'GERENTE'
+  const [dialogCenariosAberto, setDialogCenariosAberto] = useState(false)
 
   useEffect(() => {
     if (!ehGerenteOuDelegado) return
@@ -316,6 +318,7 @@ export function HeadcountPage() {
   const equipa = usuarios.filter((u) => u.ativo && (u.perfil === 'OPERADOR' || u.perfil === 'OPERADOR_H3'))
   const headcountRealHoje = equipa.length
   const operadorH3AtivoHoje = usuariosH3Ativos(usuarios).length
+  const operadoresNaoH3Hoje = headcountRealHoje - operadorH3AtivoHoje
   const riscoH3 = avaliarRiscoEscalaH3(operadorH3AtivoHoje)
 
   const mesesFechados = meses.filter((m) => m.fechado)
@@ -333,12 +336,28 @@ export function HeadcountPage() {
     <div className="flex flex-col gap-5">
       <Card>
         <CardContent className="flex flex-col gap-4 pt-6">
-          <div>
-            <CardTitle>Headcount Ideal</CardTitle>
-            <p className="mt-2 text-sm text-zinc-500">
-              Média da carga dos últimos {janela} meses fechados, a dividir pela capacidade plena por pessoa — comparada com o
-              headcount real de hoje.
-            </p>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <CardTitle>Headcount Ideal</CardTitle>
+              <p className="mt-2 text-sm text-zinc-500">
+                Média da carga dos últimos {janela} meses fechados, a dividir pela capacidade plena por pessoa — comparada com o
+                headcount real de hoje.
+              </p>
+            </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <Button variant="secondary" size="sm" disabled={idealExato === null} onClick={() => setDialogCenariosAberto(true)}>
+                    Estudo de Cenários
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                {idealExato === null
+                  ? 'Só disponível depois de haver um veredito de Headcount Ideal'
+                  : 'Explora hipóteses de headcount e de carga, sem gravar nada'}
+              </TooltipContent>
+            </Tooltip>
           </div>
 
           {idealExato === null || classificacao === null ? (
@@ -427,6 +446,16 @@ export function HeadcountPage() {
           )}
         </CardContent>
       </Card>
+
+      {dialogCenariosAberto && parametros && (
+        <HeadcountCenariosDialog
+          mesesJanela={mesesJanela}
+          parametros={parametros}
+          operadoresHoje={operadoresNaoH3Hoje}
+          operadoresH3Hoje={operadorH3AtivoHoje}
+          aoFechar={() => setDialogCenariosAberto(false)}
+        />
+      )}
     </div>
   )
 }
