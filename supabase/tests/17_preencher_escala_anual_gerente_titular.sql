@@ -1,5 +1,5 @@
 begin;
-select plan(6);
+select plan(4);
 
 -- Isto corre contra uma base com dados reais — limpa temporariamente,
 -- só dentro desta transação (revertida no fim), qualquer escala já
@@ -27,32 +27,32 @@ select is(
 
 rollback to savepoint antes_caso_a;
 
--- CASO B: 2 Gerentes ativos em simultâneo (o real, mais antigo, e um
--- sintético criado agora) — só o mais antigo (o real) deve receber
--- H4; o sintético não deve aparecer nenhuma vez em H4; log AVISO a
--- mencionar 2 Gerentes.
+-- CASO B: 2 Gerentes ativos em simultâneo deixou de ser um estado
+-- alcançável — a migração 0042 (dossiê de segurança) impede a própria
+-- criação/ativação de um segundo titular na origem, por isso o cenário
+-- de desambiguação por criado_em que este caso testava (só o mais
+-- antigo recebe H4) já não é construível. preencher_escala_anual()
+-- mantém essa lógica de desempate (código defensivo inofensivo, nunca
+-- mais alcançado na prática) — este caso passa a validar a proibição
+-- em si, não o desempate.
+--
+-- Não usa tests.criar_usuario aqui de propósito: desde 0043, esse
+-- helper desativa automaticamente o titular existente antes de ativar
+-- um novo Gerente sintético (correção necessária para não colidir em
+-- ~13 outros ficheiros que só querem UM ator com poderes de Gerente,
+-- sem querer saber se coexiste com o real) — isso resolveria o conflito
+-- em vez de o exercer. Insere diretamente para provar o índice único
+-- em si, sem passar pela conveniência do helper.
 savepoint antes_caso_b;
 
-select id as gerente_real_id from usuarios where perfil = 'GERENTE' and ativo order by criado_em asc limit 1 \gset
-select tests.criar_usuario('Gerente Sintético', 'gerente.sintetico@x.pt', 'GERENTE') as gerente_novo_id \gset
-
-select lives_ok(
-    $$ select preencher_escala_anual() $$,
-    'com 2 Gerentes ativos em simultâneo, não rebenta'
-);
-select is(
-    (select count(*)::int from escala_semanal
-      where extract(year from semana_ref) = 2027
-        and usuario_id = :'gerente_real_id' and turno = 'H4'),
-    52,
-    'o Gerente mais antigo (o real) recebe H4 nas 52 semanas, como sempre'
-);
-select is(
-    (select count(*)::int from escala_semanal
-      where extract(year from semana_ref) = 2027
-        and usuario_id = :'gerente_novo_id' and turno = 'H4'),
-    0,
-    'o Gerente sintético (mais recente) nunca recebe H4 — só o titular é automático'
+insert into auth.users (id, email) values ('11111111-1111-1111-1111-111111111117', 'gerente.sintetico17@teste.pt')
+on conflict (id) do nothing;
+select throws_ok(
+    $$ insert into usuarios (id, nome, email, perfil, ativo)
+       values ('11111111-1111-1111-1111-111111111117', 'Gerente Sintético', 'gerente.sintetico17@teste.pt', 'GERENTE', true) $$,
+    '23505',
+    'duplicate key value violates unique constraint "ux_usuarios_gerente_titular_unico"',
+    'já não é possível ativar um segundo Gerente titular em simultâneo (0042)'
 );
 
 rollback to savepoint antes_caso_b;

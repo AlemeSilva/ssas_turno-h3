@@ -1,5 +1,5 @@
 begin;
-select plan(6);
+select plan(8);
 
 select tests.criar_usuario('Kilson Júnior', 'kilson3@teste.pt', 'OPERADOR_H3') as kilson_id \gset
 select tests.criar_usuario('Gerente Teste', 'gerente3@teste.pt', 'GERENTE') as gerente_id \gset
@@ -39,6 +39,25 @@ select is((select concluido from checklist_itens where id = :'item_id'), false,
 
 select is((select destravado_motivo from checklist_itens where id = :'item_id'), 'Marcado por engano durante o turno',
     'justificativa do destravar fica registada no próprio item');
+
+-- DELETE de um item de checklist é exclusivo de Gerente/delegado (0043,
+-- dossiê de segurança) — não há caminho na app para o operador do ciclo
+-- apagar um item, só inserir/atualizar (criação do plano e conclusão).
+insert into checklist_itens (id_plano, secao, item_descricao) values (:'plano_id', 'REUNIAO', 'Item para testar DELETE') returning id as item_delete_id \gset
+
+select tests.autenticar_como(:'kilson_id');
+delete from checklist_itens where id = :'item_delete_id';
+select is(
+    (select count(*)::int from checklist_itens where id = :'item_delete_id'), 1,
+    'o operador do ciclo não consegue apagar um item de checklist — RLS filtra a linha, DELETE afeta 0 registos'
+);
+
+select tests.autenticar_como(:'gerente_id');
+delete from checklist_itens where id = :'item_delete_id';
+select is(
+    (select count(*)::int from checklist_itens where id = :'item_delete_id'), 0,
+    'o Gerente/delegado continua a poder apagar um item de checklist'
+);
 
 select * from finish();
 rollback;

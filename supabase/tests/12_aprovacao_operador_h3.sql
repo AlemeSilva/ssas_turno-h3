@@ -7,7 +7,7 @@
 -- porque isto não pode ser feito só com duas políticas RLS separadas.
 -- =====================================================================
 begin;
-select plan(9);
+select plan(12);
 
 select tests.criar_usuario('Operador Doze A', 'operador12a@teste.pt', 'OPERADOR_H3') as operador_a_id \gset
 select tests.criar_usuario('Operador Doze B', 'operador12b@teste.pt', 'OPERADOR_H3') as operador_b_id \gset
@@ -93,6 +93,33 @@ update planos set status = 'APROVADO', aprovado_por = :'gerente_id', data_aprova
 select is(
     (select status from planos where id = :'plano_c_id'), 'APROVADO',
     'o Gerente continua a submeter e aprovar normalmente, de ponta a ponta'
+);
+
+-- 9) Achado do dossiê de segurança (0041): data_aprovacao deixa de vir
+-- do relógio do browser — o trigger carimba sempre clock_timestamp()
+-- no momento real da transição, mesmo que o cliente envie outra coisa.
+select tests.autenticar_como(:'gerente_id');
+insert into planos (data_inicio_ciclo, criado_por) values ('2099-11-26', :'gerente_id') returning id as plano_d_id \gset
+update planos set status = 'PENDENTE_APROVACAO' where id = :'plano_d_id';
+update planos set status = 'APROVADO', aprovado_por = :'gerente_id', data_aprovacao = '2000-01-01' where id = :'plano_d_id';
+select ok(
+    (select data_aprovacao from planos where id = :'plano_d_id') > now() - interval '1 minute',
+    'data_aprovacao é sempre carimbada pelo servidor no momento da aprovação, ignorando o valor enviado pelo cliente'
+);
+
+-- 10) ...e só nesse exato momento — uma edição normal a um plano já
+-- aprovado (aqui, observações gerais) não pode voltar a mexer no
+-- carimbo de quem/quando aprovou, ou o histórico de aprovação corrompe-se.
+select (select aprovado_por from planos where id = :'plano_d_id') as aprovador_original \gset
+select (select data_aprovacao from planos where id = :'plano_d_id') as data_aprovacao_original \gset
+update planos set observacoes_gerais = 'nota qualquer, sem relação com aprovação' where id = :'plano_d_id';
+select is(
+    (select aprovado_por from planos where id = :'plano_d_id')::text, :'aprovador_original',
+    'uma edição não relacionada ao plano já aprovado não volta a carimbar aprovado_por'
+);
+select is(
+    (select data_aprovacao from planos where id = :'plano_d_id')::text, :'data_aprovacao_original',
+    'nem a carimbar de novo data_aprovacao'
 );
 
 select * from finish();

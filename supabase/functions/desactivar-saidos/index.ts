@@ -54,6 +54,16 @@ Deno.serve(async () => {
     return new Response(JSON.stringify({ erro: erroUpdate.message }), { status: 500 })
   }
 
+  // Invalida sessões já abertas — mesma chamada do caminho manual (ver
+  // gerir-utilizadores/index.ts). Antes desta correção só a desativação
+  // manual fazia isto; a automática por data_saida deixava a sessão do
+  // browser tecnicamente válida até expirar por si (achado do dossiê
+  // de segurança de 2026-09-05). Erro aqui não aborta o lote — a conta
+  // já ficou ativo=false, que é a proteção primária.
+  for (const id of ids) {
+    await supabase.rpc('revogar_sessoes_utilizador', { p_usuario_id: id })
+  }
+
   // Remove a escala futura de quem saiu — mesmo comportamento do
   // caminho manual (ver gerir-utilizadores/index.ts) para não deixar
   // turnos atribuídos a alguém que já não está na equipa.

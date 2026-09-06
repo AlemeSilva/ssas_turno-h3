@@ -20,6 +20,20 @@ create or replace function tests.criar_usuario(
 declare
     v_id uuid := gen_random_uuid();
 begin
+    -- Só pode haver um Gerente titular ativo de cada vez (migração 0042,
+    -- dossiê de segurança — ux_usuarios_gerente_titular_unico). A
+    -- maioria dos ficheiros que cria um Gerente sintético só quer um
+    -- ator com poderes de Gerente para o seu próprio cenário — não lhes
+    -- interessa nem dependem de coexistir com o Gerente real (o único
+    -- caso que testa essa interação a sério,
+    -- 19_gerente_titular_unico.sql, gere a ativação/desativação
+    -- explicitamente, sem depender deste comportamento). Desativar o
+    -- titular real aqui é seguro: corre sempre dentro da transação
+    -- revertida no fim de cada ficheiro de teste.
+    if p_perfil = 'GERENTE' and p_ativo then
+        update usuarios set ativo = false where perfil = 'GERENTE' and ativo = true;
+    end if;
+
     insert into auth.users (id, email) values (v_id, p_email)
     on conflict (id) do nothing;
 

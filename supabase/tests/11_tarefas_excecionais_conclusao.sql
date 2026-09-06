@@ -28,6 +28,14 @@ insert into tarefas_plano (id_plano, data_execucao, descricao_tarefa, equipa_res
 values (:'plano_id', '2100-01-02', 'Tarefa a editar', 'DEOS - Operações', 'EXCECIONAL') returning id as tarefa_b_id \gset
 
 select tests.autenticar_como(:'gerente_id');
+-- Achado à parte, sem relação com o dossiê de segurança: esta linha
+-- saltava RASCUNHO→APROVADO direto — a migração 0033 (posterior a este
+-- ficheiro) passou a bloquear isso com trg_planos_transicao_aprovacao,
+-- e este ficheiro nunca tinha sido atualizado para o novo caminho
+-- obrigatório. Confirmado com um teste de controlo (mesmo ficheiro,
+-- zero migrações aplicadas) que isto já falhava antes de qualquer
+-- alteração desta sessão.
+update planos set status = 'PENDENTE_APROVACAO' where id = :'plano_id';
 update planos set status = 'APROVADO', aprovado_por = :'gerente_id', data_aprovacao = now() where id = :'plano_id';
 
 -- 1) Regressão: editar conteúdo de uma tarefa excecional continua a

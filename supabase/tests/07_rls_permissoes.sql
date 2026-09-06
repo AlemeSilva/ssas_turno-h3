@@ -17,7 +17,7 @@
 -- com format(...,%L) — a substituição de :'variavel' acontece na
 -- posição de argumento do format(), fora do dollar-quote interno.
 begin;
-select plan(11);
+select plan(12);
 
 select tests.criar_usuario('Kilson Júnior', 'kilson5@teste.pt', 'OPERADOR_H3') as kilson_id \gset
 select tests.criar_usuario('Bruno Diniz', 'bruno5@teste.pt', 'OPERADOR_H3') as bruno_id \gset
@@ -94,10 +94,15 @@ select is(
 
 -- Auditoria: só se insere em nome próprio (violação de WITH CHECK num
 -- INSERT lança mesmo exceção — diferente dos casos de UPDATE acima).
+-- acao tem de vir da lista fechada (0042, achado do dossiê de segurança:
+-- antes disto, qualquer utilizador autenticado podia inserir uma
+-- entrada de auditoria com uma acao arbitrária, auto-atribuída) — usa-se
+-- aqui um valor real (o único caso hoje de escrita direta do cliente
+-- fora de RPCs/triggers, AlterarSenhaDialog.tsx), não um valor de teste.
 select tests.autenticar_como(:'sergio_id');
 select lives_ok(
-    format($f$ insert into logs_auditoria (referencia_tipo, id_usuario, acao) values ('PLANO', %L, 'TESTE') $f$, :'sergio_id'),
-    'qualquer utilizador pode inserir um log em seu próprio nome'
+    format($f$ insert into logs_auditoria (referencia_tipo, id_usuario, acao) values ('PLANO', %L, 'PASSWORD_ALTERADA_PROPRIA') $f$, :'sergio_id'),
+    'qualquer utilizador pode inserir um log em seu próprio nome, com uma ação da lista fechada'
 );
 select throws_ok(
     format($f$ insert into logs_auditoria (referencia_tipo, id_usuario, acao) values ('PLANO', %L, 'TESTE_FORJADO') $f$, :'kilson_id'),
@@ -105,12 +110,18 @@ select throws_ok(
     'new row violates row-level security policy for table "logs_auditoria"',
     'não é possível inserir um log de auditoria em nome de outra pessoa (violação de WITH CHECK)'
 );
+select throws_ok(
+    format($f$ insert into logs_auditoria (referencia_tipo, id_usuario, acao) values ('PLANO', %L, 'ACAO_INVENTADA') $f$, :'sergio_id'),
+    '42501',
+    'new row violates row-level security policy for table "logs_auditoria"',
+    'não é possível fabricar uma ação fora da lista fechada, mesmo em nome próprio (achado do dossiê de segurança)'
+);
 
 -- Sem política de UPDATE nenhuma em logs_auditoria: a tentativa afeta
 -- silenciosamente 0 linhas, o conteúdo original mantém-se intacto.
 update logs_auditoria set descricao_detalhada = 'alterado' where id_usuario = :'sergio_id';
 select is(
-    (select descricao_detalhada from logs_auditoria where id_usuario = :'sergio_id' and acao = 'TESTE'), null,
+    (select descricao_detalhada from logs_auditoria where id_usuario = :'sergio_id' and acao = 'PASSWORD_ALTERADA_PROPRIA'), null,
     'logs de auditoria são imutáveis — sem política de UPDATE, RLS nega tudo por omissão'
 );
 
