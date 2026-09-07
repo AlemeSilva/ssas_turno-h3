@@ -8,11 +8,15 @@ select plan(5);
 delete from ferias where data_inicio <= '2026-12-31' and data_fim >= '2026-01-01';
 delete from escala_semanal where semana_ref between '2026-01-01' and '2026-12-31';
 
--- Todos os utilizadores de teste como OPERADOR simples — deliberado,
--- para isolar esta trigger (trg_valida_escala_sobre_ferias, não olha a
--- perfil nenhum) de trg_valida_ferias, cuja validação de sobreposição
--- entre colegas só se aplica a OPERADOR_H3 e interferiria com os
--- cenários de múltiplas férias abaixo.
+-- Todos os utilizadores de teste como OPERADOR simples — só para não
+-- interagir com nenhuma outra regra de perfil.
+--
+-- Desde a migração 0044, trg_valida_ferias bloqueia sobreposição entre
+-- QUALQUER par de colegas (deixou de ser só entre OPERADOR_H3) — por
+-- isso cada um dos 5 casos abaixo usa a sua própria semana (espaçadas
+-- de propósito), para não colidirem entre si; o padrão de dias dentro
+-- de cada semana é o que importa para trg_valida_escala_sobre_ferias,
+-- não a semana em si.
 select tests.criar_usuario('Caique Teste', 'caique.teste@x.pt', 'OPERADOR') as caique_id \gset
 select tests.criar_usuario('Bruno Teste', 'bruno.teste@x.pt', 'OPERADOR') as bruno_id \gset
 select tests.criar_usuario('Kilson Teste', 'kilson.teste@x.pt', 'OPERADOR') as kilson_id \gset
@@ -32,20 +36,22 @@ select lives_ok(
 );
 
 -- (b) um único dia de férias na semana também não bloqueia os
--- restantes dias.
-insert into escala_semanal (semana_ref, usuario_id, turno) values ('2026-08-29', :'bruno_id', 'H1');
-insert into ferias (usuario_id, data_inicio, data_fim, status) values (:'bruno_id', '2026-08-31', '2026-08-31', 'APROVADA');
+-- restantes dias. Semana própria (2026-08-08) para não sobrepor com o
+-- caso (a).
+insert into escala_semanal (semana_ref, usuario_id, turno) values ('2026-08-08', :'bruno_id', 'H1');
+insert into ferias (usuario_id, data_inicio, data_fim, status) values (:'bruno_id', '2026-08-10', '2026-08-10', 'APROVADA');
 select lives_ok(
-    format($f$ update escala_semanal set turno = 'H2' where usuario_id = %L and semana_ref = '2026-08-29' $f$, :'bruno_id'),
+    format($f$ update escala_semanal set turno = 'H2' where usuario_id = %L and semana_ref = '2026-08-08' $f$, :'bruno_id'),
     '1 único dia de férias na semana não bloqueia a mudança de turno dos restantes dias'
 );
 
 -- (c) férias a cobrir a semana inteira (um só registo) continua a
 -- bloquear — não sobra nenhum dia de trabalho para atribuir turno.
-insert into escala_semanal (semana_ref, usuario_id, turno) values ('2026-08-29', :'kilson_id', 'H4');
-insert into ferias (usuario_id, data_inicio, data_fim, status) values (:'kilson_id', '2026-08-29', '2026-09-04', 'APROVADA');
+-- Semana própria (2026-07-18).
+insert into escala_semanal (semana_ref, usuario_id, turno) values ('2026-07-18', :'kilson_id', 'H4');
+insert into ferias (usuario_id, data_inicio, data_fim, status) values (:'kilson_id', '2026-07-18', '2026-07-24', 'APROVADA');
 select throws_ok(
-    format($f$ update escala_semanal set turno = 'H2' where usuario_id = %L and semana_ref = '2026-08-29' $f$, :'kilson_id'),
+    format($f$ update escala_semanal set turno = 'H2' where usuario_id = %L and semana_ref = '2026-07-18' $f$, :'kilson_id'),
     'P0001',
     'Não é possível atribuir turno: operador está de férias/licença aprovadas a semana inteira.',
     'férias a cobrir os 7 dias da semana (um só registo) continua a bloquear a mudança de turno'
@@ -54,22 +60,24 @@ select throws_ok(
 -- (d) férias a cobrir a semana inteira através de DOIS registos não
 -- contíguos (nenhum sozinho cobre a semana, mas juntos cobrem os 7
 -- dias) também bloqueia — confirma que a validação é dia a dia
--- (união), não olha só para um registo de férias de cada vez.
-insert into escala_semanal (semana_ref, usuario_id, turno) values ('2026-08-29', :'sergio_id', 'H4');
-insert into ferias (usuario_id, data_inicio, data_fim, status) values (:'sergio_id', '2026-08-29', '2026-09-01', 'APROVADA');
-insert into ferias (usuario_id, data_inicio, data_fim, status) values (:'sergio_id', '2026-09-02', '2026-09-04', 'APROVADA');
+-- (união), não olha só para um registo de férias de cada vez. Semana
+-- própria (2026-06-27).
+insert into escala_semanal (semana_ref, usuario_id, turno) values ('2026-06-27', :'sergio_id', 'H4');
+insert into ferias (usuario_id, data_inicio, data_fim, status) values (:'sergio_id', '2026-06-27', '2026-06-30', 'APROVADA');
+insert into ferias (usuario_id, data_inicio, data_fim, status) values (:'sergio_id', '2026-07-01', '2026-07-03', 'APROVADA');
 select throws_ok(
-    format($f$ update escala_semanal set turno = 'H2' where usuario_id = %L and semana_ref = '2026-08-29' $f$, :'sergio_id'),
+    format($f$ update escala_semanal set turno = 'H2' where usuario_id = %L and semana_ref = '2026-06-27' $f$, :'sergio_id'),
     'P0001',
     'Não é possível atribuir turno: operador está de férias/licença aprovadas a semana inteira.',
     'dois registos de férias não contíguos que juntos cobrem os 7 dias também bloqueiam (validação dia a dia, não por registo)'
 );
 
 -- (e) sem qualquer férias, a mudança de turno continua a funcionar
--- normalmente — não-regressão do caminho mais comum.
-insert into escala_semanal (semana_ref, usuario_id, turno) values ('2026-08-29', :'leonardo_id', 'H4');
+-- normalmente — não-regressão do caminho mais comum. Semana própria
+-- (2026-06-06).
+insert into escala_semanal (semana_ref, usuario_id, turno) values ('2026-06-06', :'leonardo_id', 'H4');
 select lives_ok(
-    format($f$ update escala_semanal set turno = 'H1' where usuario_id = %L and semana_ref = '2026-08-29' $f$, :'leonardo_id'),
+    format($f$ update escala_semanal set turno = 'H1' where usuario_id = %L and semana_ref = '2026-06-06' $f$, :'leonardo_id'),
     'sem férias nenhuma, a mudança de turno continua a funcionar sem qualquer bloqueio (não-regressão)'
 );
 

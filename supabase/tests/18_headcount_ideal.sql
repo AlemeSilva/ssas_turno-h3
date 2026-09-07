@@ -15,30 +15,33 @@ select plan(26);
 -- somam sobre TODOS os ativos, não só os sintéticos desta suite.
 update usuarios set ativo = false where perfil in ('OPERADOR', 'OPERADOR_H3') and ativo;
 
+-- Desde a migração 0044, trg_valida_ferias bloqueia sobreposição entre
+-- QUALQUER par de colegas (não só OPERADOR_H3) — limpa férias reais de
+-- maio/junho de 2026 só dentro desta transação (revertida no fim),
+-- para os cenários sintéticos abaixo não colidirem com dados reais.
+delete from ferias where data_inicio <= '2026-12-31' and data_fim >= '2026-01-01';
+
 select tests.criar_usuario('Titular HC Teste', 'titular.hc@x.pt', 'GERENTE') as titular_id \gset
 select tests.criar_usuario('Operador Simples HC Teste', 'operador.hc@x.pt', 'OPERADOR', false) as operador_id \gset
 select tests.criar_usuario('Delegado HC Teste', 'delegado.hc@x.pt', 'OPERADOR_H3') as delegado_id \gset
--- OPERADOR, não OPERADOR_H3: trg_valida_ferias bloqueia sobreposição
--- de datas entre OPERADOR_H3 diferentes mesmo sem relação nenhuma com
--- este cenário (que é sobre sobreposição DENTRO da mesma pessoa) — o
--- mesmo contorno já usado em 13_trigger_escala_ferias_parcial.sql.
+-- O perfil (OPERADOR, não OPERADOR_H3) não afeta este teste —
+-- calcular_headcount conta OPERADOR e OPERADOR_H3 da mesma forma.
 select tests.criar_usuario('Sobreposicao HC Teste', 'sobreposicao.hc@x.pt', 'OPERADOR', false) as overlap_id \gset
--- OPERADOR, não OPERADOR_H3: a validação de sobreposição de férias
--- "entre colegas" (trg_valida_ferias) só se aplica a OPERADOR_H3, e as
--- datas deste cenário cruzam-se de propósito com as do overlap_id
--- (ambos em junho/2026) — calcular_headcount conta OPERADOR e
--- OPERADOR_H3 da mesma forma, por isso o perfil não afeta o teste.
 select tests.criar_usuario('Recorte Mes HC Teste', 'recorte.hc@x.pt', 'OPERADOR', false) as crossmonth_id \gset
 
 insert into delegacoes_aprovacao (gerente_titular, substituto, data_inicio, data_fim)
 values (:'titular_id', :'delegado_id', current_date - 1, current_date + 1);
 
 -- Férias + licença sobrepostas na mesma pessoa (junho/2026): a app não
--- tem trigger nenhum que impeça isto consigo própria.
+-- tem trigger nenhum que impeça isto consigo própria (a verificação
+-- "entre colegas" de trg_valida_ferias exclui sempre f.usuario_id =
+-- new.usuario_id). Datas escolhidas para não colidir com crossmonth_id
+-- (28/maio a 6/junho) — desde 0044 essa sobreposição, entre pessoas
+-- diferentes, já bloquearia.
 insert into ferias (usuario_id, data_inicio, data_fim, status, tipo)
-values (:'overlap_id', '2026-06-01', '2026-06-10', 'APROVADA', 'FERIAS');
+values (:'overlap_id', '2026-06-10', '2026-06-19', 'APROVADA', 'FERIAS');
 insert into ferias (usuario_id, data_inicio, data_fim, status, tipo)
-values (:'overlap_id', '2026-06-05', '2026-06-08', 'APROVADA', 'LICENCA');
+values (:'overlap_id', '2026-06-14', '2026-06-17', 'APROVADA', 'LICENCA');
 
 -- Férias a cavalo entre dois meses (28/maio a 6/junho de 2026).
 insert into ferias (usuario_id, data_inicio, data_fim, status, tipo)
