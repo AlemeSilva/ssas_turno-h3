@@ -5,7 +5,7 @@
 -- sem alterar nenhuma das funções que já escrevem em logs_auditoria.
 -- =====================================================================
 begin;
-select plan(3);
+select plan(4);
 
 select tests.criar_usuario('Gerente Vinte', 'gerente20@teste.pt', 'GERENTE') as gerente_id \gset
 select tests.criar_usuario('Bruno Vinte', 'bruno20@teste.pt', 'OPERADOR_H3') as bruno_id \gset
@@ -45,6 +45,19 @@ insert into logs_auditoria (referencia_tipo, id_usuario, acao) values ('USUARIO'
 select is(
     (select delegacao_id from logs_auditoria where id = :'log_sem_delegacao_id'), null,
     'alguém que nunca foi substituto de nenhuma delegação escreve um log sem delegacao_id'
+);
+
+-- 4) Migração 0046 (achado do stress-test de 2026-09-07): Leonardo, sem
+-- qualquer delegação ativa, fornece explicitamente o delegacao_id real
+-- de Bruno no próprio insert — tem de ser ignorado, não honrado. O
+-- valor gravado tem de ser o mesmo do caso 3 (null, calculado no
+-- servidor), nunca o valor falsificado pelo cliente.
+select tests.autenticar_como(:'leonardo_id');
+insert into logs_auditoria (referencia_tipo, id_usuario, acao, delegacao_id)
+values ('USUARIO', :'leonardo_id', 'PASSWORD_ALTERADA_PROPRIA', :'delegacao_id') returning id as log_falsificado_id \gset
+select is(
+    (select delegacao_id from logs_auditoria where id = :'log_falsificado_id'), null,
+    'um delegacao_id fornecido pelo próprio cliente é ignorado — o servidor recalcula sempre, nunca aceita o valor enviado'
 );
 
 select * from finish();
