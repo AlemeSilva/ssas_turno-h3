@@ -74,7 +74,10 @@ export function PainelFerias({ usuarios }: { usuarios: Usuario[] }) {
     }
   }
 
-  // Debounce para prevenir múltiplas submissões acidentais em clicks rápidos de Aprovar/Rejeitar
+  // Debounce para prevenir múltiplas submissões acidentais em clicks
+  // rápidos de Aprovar/Rejeitar — travado por id do pedido, não pela
+  // lista inteira, para decidir o pedido A não bloquear decidir o
+  // pedido B logo a seguir.
   const decidirDebounced = useDebounce(
     async (id: number, status: 'APROVADA' | 'REJEITADA') => {
       if (!usuario) return
@@ -85,7 +88,8 @@ export function PainelFerias({ usuarios }: { usuarios: Usuario[] }) {
         .eq('id', id)
       if (error) setErroDecisao({ id, mensagem: traduzirErro(error.message) })
     },
-    500
+    500,
+    (id) => id
   )
 
   // Dois cliques em vez de window.confirm() — mantém o estilo shadcn
@@ -198,6 +202,7 @@ export function PainelFerias({ usuarios }: { usuarios: Usuario[] }) {
 }
 
 function traduzirErro(mensagem: string): string {
+  if (mensagem.includes('teu sobreposto')) return 'Já tens outro pedido teu (pendente ou aprovado) sobreposto a este período — cancela-o primeiro se quiseres ajustar as datas.'
   if (mensagem.includes('sobrepostas')) return 'Já existem férias pedidas/aprovadas de outro colega neste período.'
   if (mensagem.includes('saldo anual')) return 'Este pedido ultrapassa o saldo anual de 22 dias úteis de férias.'
   if (mensagem.includes('pedido pendente')) return 'Já existe um pedido pendente para esta pessoa — tem de ser decidido primeiro.'

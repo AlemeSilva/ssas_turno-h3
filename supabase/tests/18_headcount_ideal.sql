@@ -32,16 +32,22 @@ select tests.criar_usuario('Recorte Mes HC Teste', 'recorte.hc@x.pt', 'OPERADOR'
 insert into delegacoes_aprovacao (gerente_titular, substituto, data_inicio, data_fim)
 values (:'titular_id', :'delegado_id', current_date - 1, current_date + 1);
 
--- Férias + licença sobrepostas na mesma pessoa (junho/2026): a app não
--- tem trigger nenhum que impeça isto consigo própria (a verificação
--- "entre colegas" de trg_valida_ferias exclui sempre f.usuario_id =
--- new.usuario_id). Datas escolhidas para não colidir com crossmonth_id
--- (28/maio a 6/junho) — desde 0044 essa sobreposição, entre pessoas
--- diferentes, já bloquearia.
+-- Férias + licença sobrepostas na mesma pessoa (junho/2026) — desde a
+-- migração 0045, trg_valida_ferias já bloqueia isto consigo própria
+-- (peer-review de sobreposição, 2026-09-07), por isso a segunda linha
+-- semeia-se com session_replication_role a saltar a trigger: o ponto
+-- deste caso é justamente confirmar que calcular_headcount deduplica
+-- por união mesmo que este estado (hoje irrealizável por submissão
+-- normal) alguma vez exista, ex. em dados históricos anteriores à
+-- 0045. Datas escolhidas para não colidir com crossmonth_id (28/maio a
+-- 6/junho) — desde 0044 essa sobreposição, entre pessoas diferentes,
+-- já bloquearia.
 insert into ferias (usuario_id, data_inicio, data_fim, status, tipo)
 values (:'overlap_id', '2026-06-10', '2026-06-19', 'APROVADA', 'FERIAS');
+set session_replication_role = replica;
 insert into ferias (usuario_id, data_inicio, data_fim, status, tipo)
 values (:'overlap_id', '2026-06-14', '2026-06-17', 'APROVADA', 'LICENCA');
+set session_replication_role = default;
 
 -- Férias a cavalo entre dois meses (28/maio a 6/junho de 2026).
 insert into ferias (usuario_id, data_inicio, data_fim, status, tipo)

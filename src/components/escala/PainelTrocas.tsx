@@ -73,7 +73,10 @@ export function PainelTrocas({ usuarios }: { usuarios: Usuario[] }) {
     }
   }
 
-  // Debounce para prevenir múltiplas submissões acidentais em clicks rápidos de Aprovar/Rejeitar
+  // Debounce para prevenir múltiplas submissões acidentais em clicks
+  // rápidos de Aprovar/Rejeitar — travado por id da troca, não pela
+  // lista inteira, para decidir a troca A não bloquear decidir a troca
+  // B logo a seguir.
   const decidirDebounced = useDebounce(
     async (id: number, status: 'APROVADA' | 'REJEITADA') => {
       if (!usuario) return
@@ -84,7 +87,8 @@ export function PainelTrocas({ usuarios }: { usuarios: Usuario[] }) {
         .eq('id', id)
       if (error) setErroDecisao({ id, mensagem: error.message })
     },
-    500
+    500,
+    (id) => id
   )
 
   function nomeDe(id: string) {

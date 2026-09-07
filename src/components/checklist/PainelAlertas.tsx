@@ -55,8 +55,11 @@ export function PainelAlertas({ tarefas, cadeias, dependenciasGirFl: nomesDepend
   const agora = agoraHHMM()
   const diaSemanaIso = isoWeekdayDe(getNow())
 
-  // Debounce para prevenir múltiplos clics acidentais em "Registar acionamento"
-  // RLS na BD já protege duplicação de dados críticos; isto é proteção UX adicional
+  // Debounce para prevenir múltiplos clics acidentais em "Registar
+  // acionamento" — travado por `chave` (identifica o alerta concreto,
+  // não o tipo), para registar um alerta não bloquear registar outro
+  // tipo diferente logo a seguir. RLS na BD já protege duplicação de
+  // dados críticos; isto é proteção UX adicional.
   const registarAcionamentoDebounced = useDebounce(
     async (tipo: string, chave: string, referenciaTipo: string, referenciaId: number | null, descricao: string) => {
       if (!usuario) return
@@ -69,7 +72,8 @@ export function PainelAlertas({ tarefas, cadeias, dependenciasGirFl: nomesDepend
         descricao_detalhada: descricao,
       })
     },
-    500
+    500,
+    (_tipo, chave) => chave
   )
 
   const tarefasComHrLimiteEstourado = tarefas.filter((t) => estaHrLimiteEstourado(t.hr_limite, t.status, agora))
