@@ -29,6 +29,13 @@ select tests.criar_usuario('Delegado HC Teste', 'delegado.hc@x.pt', 'OPERADOR_H3
 select tests.criar_usuario('Sobreposicao HC Teste', 'sobreposicao.hc@x.pt', 'OPERADOR', false) as overlap_id \gset
 select tests.criar_usuario('Recorte Mes HC Teste', 'recorte.hc@x.pt', 'OPERADOR', false) as crossmonth_id \gset
 
+-- Migração 0047: calcular_headcount() agora exige criado_em <= fim do
+-- mês a calcular. tests.criar_usuario() não aceita criado_em — sem
+-- isto, estes dois ficariam de fora de qualquer cálculo para
+-- maio/junho de 2026 (criado_em ficaria "hoje", bem depois desses
+-- meses).
+update usuarios set criado_em = '2026-01-01T00:00:00Z' where id in (:'overlap_id', :'crossmonth_id');
+
 insert into delegacoes_aprovacao (gerente_titular, substituto, data_inicio, data_fim)
 values (:'titular_id', :'delegado_id', current_date - 1, current_date + 1);
 
