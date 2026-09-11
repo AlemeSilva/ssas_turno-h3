@@ -167,7 +167,7 @@ export function HeadcountCenariosDialog({
         if (!aberto) tentarFechar()
       }}
     >
-      <DialogContent className="sm:max-w-[60rem]">
+      <DialogContent className="sm:max-w-[78rem]">
         {mostrarConfirmacaoFecho ? (
           <>
             <DialogHeader>
@@ -221,7 +221,7 @@ export function HeadcountCenariosDialog({
                 <GraficoCenario resultado={resultado} />
               </div>
 
-              <div className="flex max-h-[30rem] flex-col gap-3 overflow-y-auto sm:border-l sm:border-zinc-100 sm:pl-4">
+              <div className="flex max-h-[39rem] flex-col gap-3 overflow-y-auto sm:border-l sm:border-zinc-100 sm:pl-4">
                 {SLIDERS_TAREFA.map((s) => (
                   <SliderTarefa key={s.campo} config={s} valor={estado[s.campo]} baseline={baselines[s.campo]} aoMudar={(v) => ajustar(s.campo, v)} />
                 ))}
