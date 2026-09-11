@@ -352,7 +352,7 @@ export function PlanoPage() {
             {plano.status === 'PENDENTE_APROVACAO' && podeGerirPlano && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button onClick={aprovar}>Aprovar</Button>
+                  <Button onClick={aprovar}>Aprovar Plano</Button>
                 </TooltipTrigger>
                 <TooltipContent>Aprova o plano — fica pronto para exportação definitiva e execução. Gerente/delegado ou o operador H3 deste ciclo podem aprovar</TooltipContent>
               </Tooltip>
