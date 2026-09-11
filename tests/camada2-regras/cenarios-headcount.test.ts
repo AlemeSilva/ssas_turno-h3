@@ -27,6 +27,7 @@ function mesFechado(mesReferencia: string, overrides: Partial<HeadcountMensal> =
     imparidade_reportes_minutos_dia: 30,
     imparidade_reportes_dias_mes: 15,
     carga_horas: 600,
+    dias_uteis: 21,
     capacidade_plena_horas_pessoa: 200,
     capacidade_plena_horas_equipa: 1400,
     capacidade_presente_horas_equipa: 1300,

@@ -5,6 +5,8 @@ import {
   calcularHeadcountIdeal,
   calcularPercentagemCapacidadePresente,
   classificarHeadcount,
+  decomporCalculoMes,
+  mediasJanela,
 } from '../../src/lib/headcount'
 import type { HeadcountMensal } from '../../src/types/database'
 
@@ -25,6 +27,7 @@ function mesFechado(overrides: Partial<HeadcountMensal>): HeadcountMensal {
     imparidade_reportes_minutos_dia: 30,
     imparidade_reportes_dias_mes: 15,
     carga_horas: 600,
+    dias_uteis: 21,
     capacidade_plena_horas_pessoa: 200,
     capacidade_plena_horas_equipa: 1000,
     capacidade_presente_horas_equipa: 900,
@@ -39,6 +42,20 @@ function mesFechado(overrides: Partial<HeadcountMensal>): HeadcountMensal {
     ...overrides,
   }
 }
+
+describe('mediasJanela — médias de carga e capacidade separadas, reaproveitadas por calcularHeadcountIdeal e pelo ecrã "Ver Cálculo"', () => {
+  it('devolve null sem nenhum mês fechado', () => {
+    expect(mediasJanela([])).toBeNull()
+  })
+  it('faz a média da carga e da capacidade separadamente, cada uma com o seu próprio valor', () => {
+    const medias = mediasJanela([
+      mesFechado({ carga_horas: 600, capacidade_plena_horas_pessoa: 200 }),
+      mesFechado({ carga_horas: 900, capacidade_plena_horas_pessoa: 180 }),
+    ])
+    expect(medias?.cargaMedia).toBe(750)
+    expect(medias?.capacidadeMedia).toBe(190)
+  })
+})
 
 describe('calcularHeadcountIdeal — média da janela de tendência, lida de valores já congelados', () => {
   it('devolve null sem nenhum mês fechado (ainda sem histórico suficiente)', () => {
@@ -120,5 +137,108 @@ describe('avaliarRiscoEscalaH3 — a escala anual precisa de um mínimo de 3 Ope
   })
   it('não sinaliza risco com margem acima do limiar', () => {
     expect(avaliarRiscoEscalaH3(4)).toBe(false)
+  })
+})
+
+describe('decomporCalculoMes — espelha termo a termo a fórmula de calcular_headcount() (SQL), para o ecrã "Ver Cálculo"', () => {
+  // Fevereiro de um ano não-bissexto: 28 dias, 4 semanas exatas — evita
+  // dízima periódica nas asserções (só o termo de pedidos tem uma, por
+  // causa de 40/60, comum a qualquer mês). diasUteisFev é o valor real
+  // (validado contra a BD: Fevereiro/2026 tem 19 dias úteis sem
+  // feriado) — deliberadamente diferente de diasFev, para o teste
+  // provar que a capacidade usa dias úteis e não dias corridos.
+  const diasFev = 28
+  const semanasFev = 4
+  const diasUteisFev = 19
+  const volumePedidos = 200
+  const tempoMedioPedidoMinutos = 40
+  const batchHorasDia = 15
+  const olhoVivoMinutosDia = 30
+  const prepFimSemanaHorasSemana = 2
+  const imparidadeCalendarioHoras = 8
+  const imparidadeExecucaoHorasSemana = 1
+  const imparidadeReportesMinutosDia = 30
+  const imparidadeReportesDiasMes = 15
+  const capacidadeBaseHoras = 8
+  const taxaEficiencia = 0.85
+  const taxaCoberturaFerias = 0.9
+
+  // Carga e capacidade calculadas exatamente como calcular_headcount()
+  // (SQL) — não valores redondos arbitrários — para que o mês seja
+  // internamente consistente, como um mês fechado de verdade.
+  const cargaEsperada =
+    volumePedidos * (tempoMedioPedidoMinutos / 60) +
+    batchHorasDia * diasFev +
+    (olhoVivoMinutosDia / 60) * diasFev +
+    prepFimSemanaHorasSemana * semanasFev +
+    imparidadeCalendarioHoras +
+    imparidadeExecucaoHorasSemana * semanasFev +
+    (imparidadeReportesMinutosDia / 60) * imparidadeReportesDiasMes
+  // + recuperação de cadeia × 24h — fixture usa 0 dias, por isso não entra na soma.
+  const capacidadeEsperada = diasUteisFev * capacidadeBaseHoras * taxaEficiencia * taxaCoberturaFerias
+
+  const mes = mesFechado({
+    mes_referencia: '2026-02-01',
+    volume_pedidos: volumePedidos,
+    tempo_medio_pedido_minutos: tempoMedioPedidoMinutos,
+    batch_horas_dia: batchHorasDia,
+    olho_vivo_minutos_dia: olhoVivoMinutosDia,
+    prep_fim_semana_horas_semana: prepFimSemanaHorasSemana,
+    imparidade_calendario_horas: imparidadeCalendarioHoras,
+    imparidade_execucao_horas_semana: imparidadeExecucaoHorasSemana,
+    imparidade_reportes_minutos_dia: imparidadeReportesMinutosDia,
+    imparidade_reportes_dias_mes: imparidadeReportesDiasMes,
+    dias_recuperacao_cadeia: 0,
+    capacidade_base_horas: capacidadeBaseHoras,
+    taxa_eficiencia: taxaEficiencia,
+    taxa_cobertura_ferias: taxaCoberturaFerias,
+    carga_horas: cargaEsperada,
+    dias_uteis: diasUteisFev,
+    capacidade_plena_horas_pessoa: capacidadeEsperada,
+  })
+
+  it('dias corridos e semanas vêm do calendário do próprio mês (Fevereiro, não-bissexto) — dias úteis vêm do valor já congelado', () => {
+    const dec = decomporCalculoMes(mes)
+    expect(dec.diasCorridos).toBe(28)
+    expect(dec.semanas).toBe(4)
+    expect(dec.diasUteis).toBe(19)
+  })
+
+  it('cada parcela bate com a fórmula de calcular_headcount()', () => {
+    const dec = decomporCalculoMes(mes)
+    const porChave = Object.fromEntries(dec.parcelasCarga.map((p) => [p.chave, p.valor]))
+    expect(porChave.pedidos).toBeCloseTo(200 * (40 / 60), 10)
+    expect(porChave.batch).toBe(15 * 28)
+    expect(porChave.olho_vivo).toBe((30 / 60) * 28)
+    expect(porChave.prep_fim_semana).toBe(2 * 4)
+    expect(porChave.imparidade_calendario).toBe(8)
+    expect(porChave.imparidade_execucao).toBe(1 * 4)
+    expect(porChave.imparidade_reportes).toBe((30 / 60) * 15)
+    expect(porChave.recuperacao_cadeia).toBe(0)
+  })
+
+  it('a soma das 8 parcelas reproduz a carga registada de um mês internamente consistente', () => {
+    const dec = decomporCalculoMes(mes)
+    expect(dec.somaParcelasCarga).toBeCloseTo(dec.cargaRegistada, 10)
+    expect(dec.somaParcelasCarga).toBeCloseTo(cargaEsperada, 10)
+  })
+
+  it('a capacidade calculada reproduz a capacidade registada — usa dias úteis (19), não dias corridos (28)', () => {
+    const dec = decomporCalculoMes(mes)
+    expect(dec.capacidadeCalculada).toBeCloseTo(dec.capacidadeRegistada, 10)
+    expect(dec.capacidadeCalculada).toBe(19 * 8 * 0.85 * 0.9)
+    expect(dec.capacidadeCalculada).not.toBeCloseTo(28 * 8 * 0.85 * 0.9, 1)
+  })
+
+  it('mês sem dias_uteis congelado (linha antiga) dá capacidade 0 em vez de usar dias corridos por engano', () => {
+    const dec = decomporCalculoMes({ ...mes, dias_uteis: null })
+    expect(dec.diasUteis).toBe(0)
+    expect(dec.capacidadeCalculada).toBe(0)
+  })
+
+  it('recuperação de cadeia usa sempre 24h por dia', () => {
+    const dec = decomporCalculoMes({ ...mes, dias_recuperacao_cadeia: 3 })
+    const porChave = Object.fromEntries(dec.parcelasCarga.map((p) => [p.chave, p.valor]))
+    expect(porChave.recuperacao_cadeia).toBe(3 * 24)
   })
 })

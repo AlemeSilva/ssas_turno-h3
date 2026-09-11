@@ -244,6 +244,7 @@ export interface HeadcountMensal {
   imparidade_reportes_minutos_dia: number | null
   imparidade_reportes_dias_mes: number | null
   carga_horas: number | null
+  dias_uteis: number | null
   capacidade_plena_horas_pessoa: number | null
   capacidade_plena_horas_equipa: number | null
   capacidade_presente_horas_equipa: number | null

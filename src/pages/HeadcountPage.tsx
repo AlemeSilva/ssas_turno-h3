@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { HeadcountCenariosDialog } from '@/components/HeadcountCenariosDialog'
+import { HeadcountExplicacaoDialog } from '@/components/HeadcountExplicacaoDialog'
 
 function formatarMesReferencia(mesISO: string): string {
   const [ano, mes] = mesISO.split('-').map(Number)
@@ -306,6 +307,7 @@ export function HeadcountPage() {
 
   const ehGerenteTitular = usuario?.perfil === 'GERENTE'
   const [dialogCenariosAberto, setDialogCenariosAberto] = useState(false)
+  const [dialogExplicacaoAberto, setDialogExplicacaoAberto] = useState(false)
 
   useEffect(() => {
     if (!ehGerenteOuDelegado) return
@@ -362,20 +364,36 @@ export function HeadcountPage() {
                 headcount real de hoje.
               </p>
             </div>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span>
-                  <Button variant="secondary" size="sm" disabled={idealExato === null} onClick={() => setDialogCenariosAberto(true)}>
-                    Estudo de Cenários
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>
-                {idealExato === null
-                  ? 'Só disponível depois de haver um veredito de Headcount Ideal'
-                  : 'Explora hipóteses de headcount e de carga, sem gravar nada'}
-              </TooltipContent>
-            </Tooltip>
+            <div className="flex shrink-0 gap-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>
+                    <Button variant="secondary" size="sm" disabled={idealExato === null} onClick={() => setDialogExplicacaoAberto(true)}>
+                      Ver Cálculo
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {idealExato === null
+                    ? 'Só disponível depois de haver um veredito de Headcount Ideal'
+                    : 'Mostra o racional completo do cálculo, num ecrã de alto contraste'}
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>
+                    <Button variant="secondary" size="sm" disabled={idealExato === null} onClick={() => setDialogCenariosAberto(true)}>
+                      Estudo de Cenários
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {idealExato === null
+                    ? 'Só disponível depois de haver um veredito de Headcount Ideal'
+                    : 'Explora hipóteses de headcount e de carga, sem gravar nada'}
+                </TooltipContent>
+              </Tooltip>
+            </div>
           </div>
 
           {idealExato === null || classificacao === null ? (
@@ -472,6 +490,18 @@ export function HeadcountPage() {
           operadoresHoje={operadoresNaoH3Hoje}
           operadoresH3Hoje={operadorH3AtivoHoje}
           aoFechar={() => setDialogCenariosAberto(false)}
+        />
+      )}
+
+      {dialogExplicacaoAberto && parametros && idealPorHoras !== null && idealExato !== null && classificacao !== null && (
+        <HeadcountExplicacaoDialog
+          mesesJanela={mesesJanela}
+          parametros={parametros}
+          headcountRealHoje={headcountRealHoje}
+          idealPorHoras={idealPorHoras}
+          idealExato={idealExato}
+          classificacao={classificacao}
+          aoFechar={() => setDialogExplicacaoAberto(false)}
         />
       )}
     </div>
