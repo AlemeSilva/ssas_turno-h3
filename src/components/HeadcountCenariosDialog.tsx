@@ -103,7 +103,7 @@ export function HeadcountCenariosDialog({
         if (!aberto) tentarFechar()
       }}
     >
-      <DialogContent className="sm:max-w-xl">
+      <DialogContent className="sm:max-w-3xl">
         {mostrarConfirmacaoFecho ? (
           <>
             <DialogHeader>
@@ -131,33 +131,37 @@ export function HeadcountCenariosDialog({
             </p>
 
             <ResumoCenario resultado={resultado} parametros={parametros} />
-            <GraficoCenario resultado={resultado} />
 
-            <div className="grid grid-cols-2 gap-3 border-t border-zinc-100 pt-4 sm:w-1/2">
-              <label className="flex flex-col gap-1 text-xs text-zinc-500">
-                Operadores
-                <Input
-                  type="number"
-                  min={0}
-                  value={estado.operadores}
-                  onChange={(e) => ajustar('operadores', Math.max(0, Math.round(Number(e.target.value) || 0)))}
-                />
-              </label>
-              <label className="flex flex-col gap-1 text-xs text-zinc-500">
-                Operadores H3
-                <Input
-                  type="number"
-                  min={0}
-                  value={estado.operadoresH3}
-                  onChange={(e) => ajustar('operadoresH3', Math.max(0, Math.round(Number(e.target.value) || 0)))}
-                />
-              </label>
-            </div>
+            <div className="grid gap-4 border-t border-zinc-100 pt-4 sm:grid-cols-2">
+              <div className="flex flex-col gap-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="flex flex-col gap-1 text-xs text-zinc-500">
+                    Operadores
+                    <Input
+                      type="number"
+                      min={0}
+                      value={estado.operadores}
+                      onChange={(e) => ajustar('operadores', Math.max(0, Math.round(Number(e.target.value) || 0)))}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-xs text-zinc-500">
+                    Operadores H3
+                    <Input
+                      type="number"
+                      min={0}
+                      value={estado.operadoresH3}
+                      onChange={(e) => ajustar('operadoresH3', Math.max(0, Math.round(Number(e.target.value) || 0)))}
+                    />
+                  </label>
+                </div>
+                <GraficoCenario resultado={resultado} />
+              </div>
 
-            <div className="flex max-h-64 flex-col gap-3 overflow-y-auto border-t border-zinc-100 pt-4">
-              {SLIDERS_TAREFA.map((s) => (
-                <SliderTarefa key={s.campo} config={s} valor={estado[s.campo]} baseline={baselines[s.campo]} aoMudar={(v) => ajustar(s.campo, v)} />
-              ))}
+              <div className="flex max-h-96 flex-col gap-3 overflow-y-auto sm:border-l sm:border-zinc-100 sm:pl-4">
+                {SLIDERS_TAREFA.map((s) => (
+                  <SliderTarefa key={s.campo} config={s} valor={estado[s.campo]} baseline={baselines[s.campo]} aoMudar={(v) => ajustar(s.campo, v)} />
+                ))}
+              </div>
             </div>
           </>
         )}
