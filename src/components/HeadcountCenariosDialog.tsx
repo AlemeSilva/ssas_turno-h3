@@ -2,6 +2,7 @@ import { useMemo, useReducer, useState } from 'react'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import {
   calcularCenario,
@@ -30,18 +31,81 @@ interface SliderConfig {
   unidade: string
   /** Só usado quando o baseline deste campo é 0 (slider absoluto). */
   maxAbsoluto: number
+  /** Mesmo texto do balão de CAMPOS_PARAMETROS em HeadcountPage.tsx, para
+   * os 7 campos que também são parâmetro estrutural — volumePedidos e
+   * diasRecuperacaoCadeia não são parâmetro (são entrada mensal, em
+   * headcount_mensal), por isso têm descrição própria aqui. */
+  descricao: string
 }
 
 const SLIDERS_TAREFA: SliderConfig[] = [
-  { campo: 'batchHorasDia', rotulo: 'Batch', unidade: 'h/dia', maxAbsoluto: 24 },
-  { campo: 'olhoVivoMinutosDia', rotulo: 'Olho Vivo', unidade: 'min/dia', maxAbsoluto: 120 },
-  { campo: 'prepFimSemanaHorasSemana', rotulo: 'Prep. fim de semana', unidade: 'h/semana', maxAbsoluto: 20 },
-  { campo: 'imparidadeCalendarioHoras', rotulo: 'Imparidade — calendário', unidade: 'h/mês', maxAbsoluto: 40 },
-  { campo: 'imparidadeExecucaoHorasSemana', rotulo: 'Imparidade — execução', unidade: 'h/semana', maxAbsoluto: 20 },
-  { campo: 'imparidadeReportesMinutosDia', rotulo: 'Imparidade — reportes (minutos)', unidade: 'min/dia', maxAbsoluto: 120 },
-  { campo: 'imparidadeReportesDiasMes', rotulo: 'Imparidade — reportes (dias)', unidade: 'dias/mês', maxAbsoluto: 31 },
-  { campo: 'volumePedidos', rotulo: 'Volume de pedidos', unidade: 'pedidos/mês', maxAbsoluto: 1000 },
-  { campo: 'diasRecuperacaoCadeia', rotulo: 'Recuperação de cadeia', unidade: 'dias/mês', maxAbsoluto: 15 },
+  {
+    campo: 'batchHorasDia',
+    rotulo: 'Batch',
+    unidade: 'h/dia',
+    maxAbsoluto: 24,
+    descricao:
+      'Horas de processamento em lote (batch) que a equipa tem de garantir todos os dias do mês, independentemente do volume de pedidos. Entra na carga total multiplicada pelos dias corridos do mês.',
+  },
+  {
+    campo: 'olhoVivoMinutosDia',
+    rotulo: 'Olho Vivo',
+    unidade: 'min/dia',
+    maxAbsoluto: 120,
+    descricao:
+      'Minutos por dia dedicados à tarefa Olho Vivo — uma carga fixa diária da equipa. Entra na carga total (convertida para horas) multiplicada pelos dias corridos do mês.',
+  },
+  {
+    campo: 'prepFimSemanaHorasSemana',
+    rotulo: 'Prep. fim de semana',
+    unidade: 'h/semana',
+    maxAbsoluto: 20,
+    descricao: 'Horas por semana dedicadas à preparação do Plano de Fim de Semana. Entra na carga total multiplicada pelo número de semanas do mês.',
+  },
+  {
+    campo: 'imparidadeCalendarioHoras',
+    rotulo: 'Imparidade — calendário',
+    unidade: 'h/mês',
+    maxAbsoluto: 40,
+    descricao:
+      'Horas fixas por mês dedicadas à parte de calendário do Cálculo de Imparidade — um valor único que se soma uma vez à carga total, sem escalar com dias ou semanas do mês.',
+  },
+  {
+    campo: 'imparidadeExecucaoHorasSemana',
+    rotulo: 'Imparidade — execução',
+    unidade: 'h/semana',
+    maxAbsoluto: 20,
+    descricao: 'Horas por semana dedicadas à execução do Cálculo de Imparidade. Entra na carga total multiplicada pelo número de semanas do mês.',
+  },
+  {
+    campo: 'imparidadeReportesMinutosDia',
+    rotulo: 'Imparidade — reportes (minutos)',
+    unidade: 'min/dia',
+    maxAbsoluto: 120,
+    descricao:
+      'Minutos por dia dedicados aos reportes do Cálculo de Imparidade, nos dias em que há reportes. Combina-se com "Imparidade — reportes (dias)" para dar a carga total de reportes do mês.',
+  },
+  {
+    campo: 'imparidadeReportesDiasMes',
+    rotulo: 'Imparidade — reportes (dias)',
+    unidade: 'dias/mês',
+    maxAbsoluto: 31,
+    descricao: 'Número de dias por mês em que há reportes do Cálculo de Imparidade. Multiplicado pelos minutos por dia de reportes dá a carga total de reportes do mês.',
+  },
+  {
+    campo: 'volumePedidos',
+    rotulo: 'Volume de pedidos',
+    unidade: 'pedidos/mês',
+    maxAbsoluto: 1000,
+    descricao: 'Volume de pedidos do mês — multiplicado pelo Tempo médio por pedido (convertido para horas) dá a parcela da carga relativa a pedidos.',
+  },
+  {
+    campo: 'diasRecuperacaoCadeia',
+    rotulo: 'Recuperação de cadeia',
+    unidade: 'dias/mês',
+    maxAbsoluto: 15,
+    descricao: 'Dias de recuperação de cadeia no mês — cada dia soma 24h à carga total (é sempre dia inteiro, nunca meio-turno).',
+  },
 ]
 
 // Sliders percentuais vão de -100% (termo eliminado) a +200% (triplica
@@ -188,49 +252,59 @@ function SliderTarefa({
 
   if (absoluto) {
     return (
-      <label className="flex flex-col gap-1 text-xs text-zinc-500">
-        <span>
-          {config.rotulo} ({config.unidade}) — sem histórico nesta janela
-        </span>
-        <div className="flex items-center gap-2">
-          <input
-            type="range"
-            min={0}
-            max={config.maxAbsoluto}
-            step={1}
-            value={valor}
-            onChange={(e) => aoMudar(Number(e.target.value))}
-            className="w-full accent-zinc-900"
-          />
-          <span className="w-16 shrink-0 text-right text-sm font-medium text-zinc-700 tabular-nums">{valor.toFixed(0)}</span>
-        </div>
-      </label>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <label className="flex flex-col gap-1 text-xs text-zinc-500">
+            <span>
+              {config.rotulo} ({config.unidade}) — sem histórico nesta janela
+            </span>
+            <div className="flex items-center gap-2">
+              <input
+                type="range"
+                min={0}
+                max={config.maxAbsoluto}
+                step={1}
+                value={valor}
+                onChange={(e) => aoMudar(Number(e.target.value))}
+                className="w-full accent-zinc-900"
+              />
+              <span className="w-16 shrink-0 text-right text-sm font-medium text-zinc-700 tabular-nums">{valor.toFixed(0)}</span>
+            </div>
+          </label>
+        </TooltipTrigger>
+        <TooltipContent>{config.descricao}</TooltipContent>
+      </Tooltip>
     )
   }
 
   const percentagem = ((valor - baseline) / baseline) * 100
 
   return (
-    <label className="flex flex-col gap-1 text-xs text-zinc-500">
-      <span>
-        {config.rotulo} ({config.unidade}) — histórico: {baseline.toFixed(1)}
-      </span>
-      <div className="flex items-center gap-2">
-        <input
-          type="range"
-          min={PERCENTAGEM_MIN}
-          max={PERCENTAGEM_MAX}
-          step={1}
-          value={percentagem}
-          onChange={(e) => aoMudar(baseline * (1 + Number(e.target.value) / 100))}
-          className="w-full accent-zinc-900"
-        />
-        <span className="w-28 shrink-0 text-right text-sm font-medium text-zinc-700 tabular-nums">
-          {percentagem >= 0 ? '+' : ''}
-          {percentagem.toFixed(0)}% ({valor.toFixed(1)})
-        </span>
-      </div>
-    </label>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <label className="flex flex-col gap-1 text-xs text-zinc-500">
+          <span>
+            {config.rotulo} ({config.unidade}) — histórico: {baseline.toFixed(1)}
+          </span>
+          <div className="flex items-center gap-2">
+            <input
+              type="range"
+              min={PERCENTAGEM_MIN}
+              max={PERCENTAGEM_MAX}
+              step={1}
+              value={percentagem}
+              onChange={(e) => aoMudar(baseline * (1 + Number(e.target.value) / 100))}
+              className="w-full accent-zinc-900"
+            />
+            <span className="w-28 shrink-0 text-right text-sm font-medium text-zinc-700 tabular-nums">
+              {percentagem >= 0 ? '+' : ''}
+              {percentagem.toFixed(0)}% ({valor.toFixed(1)})
+            </span>
+          </div>
+        </label>
+      </TooltipTrigger>
+      <TooltipContent>{config.descricao}</TooltipContent>
+    </Tooltip>
   )
 }
 
@@ -296,7 +370,12 @@ function GraficoCenario({ resultado }: { resultado: ResultadoCenario }) {
         Capacidade real hoje
       </text>
 
-      <rect x={80} y={chartBottom - alturaCarga} width={70} height={alturaCarga} className="fill-amber-400" />
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <rect x={80} y={chartBottom - alturaCarga} width={70} height={alturaCarga} className="fill-amber-400" />
+        </TooltipTrigger>
+        <TooltipContent>Carga — total de horas de trabalho que a equipa precisa de cobrir no mês (pedidos, batch, Olho Vivo, prep. de fim de semana, imparidade e recuperação de cadeia), somadas.</TooltipContent>
+      </Tooltip>
       <text x={115} y={chartBottom + 14} textAnchor="middle" className="fill-zinc-500 text-[10px]">
         Carga
       </text>
@@ -304,7 +383,12 @@ function GraficoCenario({ resultado }: { resultado: ResultadoCenario }) {
         {resultado.cargaHoras.toFixed(0)}h
       </text>
 
-      <rect x={190} y={chartBottom - alturaCapacidade} width={70} height={alturaCapacidade} className="fill-emerald-400" />
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <rect x={190} y={chartBottom - alturaCapacidade} width={70} height={alturaCapacidade} className="fill-emerald-400" />
+        </TooltipTrigger>
+        <TooltipContent>Capacidade plena — total de horas produtivas que a equipa simulada consegue oferecer no mês, já com eficiência e reserva de férias descontadas.</TooltipContent>
+      </Tooltip>
       <text x={225} y={chartBottom + 14} textAnchor="middle" className="fill-zinc-500 text-[10px]">
         Capacidade plena
       </text>
