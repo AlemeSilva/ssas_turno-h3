@@ -217,6 +217,8 @@ export interface HeadcountParametros {
   imparidade_reportes_dias_mes: number
   banda_tolerancia_pessoas: number
   janela_tendencia_meses: number
+  minimo_turnos_criticos: number
+  garantia_contratual_fracao: number
   atualizado_por: string | null
   atualizado_em: string
 }

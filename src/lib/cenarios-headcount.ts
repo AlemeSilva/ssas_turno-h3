@@ -22,7 +22,7 @@
 // ainda que funcione no build da app. O resto do projeto só usa '@/...'
 // para tipos (apagados em tempo de compilação, nunca resolvidos em
 // runtime), por isso nunca tinha topado com isto até agora.
-import { avaliarRiscoEscalaH3, calcularHeadcountIdeal, classificarHeadcount, type ClassificacaoHeadcount } from './headcount'
+import { aplicarMinimoEstrutural, avaliarRiscoEscalaH3, calcularHeadcountIdeal, classificarHeadcount, type ClassificacaoHeadcount } from './headcount'
 import type { HeadcountMensal, HeadcountParametros } from '@/types/database'
 
 function media(valores: number[]): number {
@@ -243,10 +243,12 @@ function resultadoSemBaseline(headcountSimuladoTotal: number, operadoresH3: numb
 
 /**
  * Calcula o cenário hipotético. No ponto zero (ajustes === baselines em
- * cada campo) devolve, por construção, idealExato === calcularHeadcountIdeal(mesesJanela) —
- * cargaHoras é literalmente cargaBaseline (mean(carga_horas), sem
- * nenhuma soma de termos pelo meio) porque nenhum termo passa no
- * `tocado()` e a soma de deltas fica vazia.
+ * cada campo), idealExato bate exatamente com
+ * aplicarMinimoEstrutural(calcularHeadcountIdeal(mesesJanela), ...) da
+ * página principal — cargaHoras é literalmente cargaBaseline
+ * (mean(carga_horas), sem nenhuma soma de termos pelo meio) porque
+ * nenhum termo passa no `tocado()` e a soma de deltas fica vazia; o
+ * piso estrutural aplica-se depois, da mesma forma nos dois sítios.
  */
 export function calcularCenario(
   mesesJanela: HeadcountMensal[],
@@ -315,7 +317,8 @@ export function calcularCenario(
   }
 
   const cargaHoras = cargaBaseline + deltaTotal
-  const idealExato = cargaHoras / capacidadePlenaPessoaBaseline
+  const idealPorHoras = cargaHoras / capacidadePlenaPessoaBaseline
+  const idealExato = aplicarMinimoEstrutural(idealPorHoras, parametros.minimo_turnos_criticos, parametros.garantia_contratual_fracao)
   const classificacao = classificarHeadcount(headcountSimuladoTotal, idealExato, parametros.banda_tolerancia_pessoas)
   const capacidadePlenaEquipaHoras = capacidadePlenaPessoaBaseline * headcountSimuladoTotal
   const capacidadeRealHojeHoras = capacidadePlenaPessoaBaseline * headcountRealHoje

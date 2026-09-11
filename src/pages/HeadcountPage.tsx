@@ -5,6 +5,7 @@ import { useHeadcountParametros } from '@/data/useHeadcountParametros'
 import { useHeadcountMensal } from '@/data/useHeadcountMensal'
 import { useUsuarios, usuariosH3Ativos } from '@/data/useUsuarios'
 import {
+  aplicarMinimoEstrutural,
   avaliarRiscoEscalaH3,
   calcularHeadcountIdeal,
   calcularPercentagemCapacidadePresente,
@@ -125,6 +126,19 @@ const CAMPOS_PARAMETROS: { chave: keyof HeadcountParametros; rotulo: string; des
     rotulo: 'Janela de tendência (meses)',
     descricao:
       'Número de meses fechados mais recentes usados para calcular a média móvel que dá o Headcount Ideal. Suaviza picos e vales pontuais de carga e de capacidade em vez de reagir a um único mês atípico.',
+  },
+  {
+    chave: 'minimo_turnos_criticos',
+    rotulo: 'Mínimo turnos críticos (pessoas)',
+    descricao:
+      'Pessoas em simultâneo exigidas nos turnos obrigatórios (H1+H2+H3, hoje 1+1+1=3). H4 não conta — absorve quem sobra nas transições, não é um posto próprio. Junto com a Garantia contratual, define o piso estrutural do Headcount Ideal, independente da carga de pedidos.',
+  },
+  {
+    chave: 'garantia_contratual_fracao',
+    rotulo: 'Garantia contratual (0-1)',
+    passo: '0.01',
+    descricao:
+      'Fração contratual: o mínimo de turnos críticos nunca pode exceder esta fração do total da equipa (ex.: 0,50 = os turnos obrigatórios não podem exigir mais de metade da equipa em simultâneo). O piso estrutural do Ideal é Mínimo turnos críticos ÷ esta fração.',
   },
 ]
 
@@ -325,7 +339,11 @@ export function HeadcountPage() {
   const mesesPendentes = meses.filter((m) => !m.fechado)
   const janela = parametros?.janela_tendencia_meses ?? 3
   const mesesJanela = mesesFechados.slice(0, janela)
-  const idealExato = calcularHeadcountIdeal(mesesJanela)
+  const idealPorHoras = calcularHeadcountIdeal(mesesJanela)
+  const idealExato =
+    idealPorHoras !== null && parametros
+      ? aplicarMinimoEstrutural(idealPorHoras, parametros.minimo_turnos_criticos, parametros.garantia_contratual_fracao)
+      : idealPorHoras
   const classificacao =
     idealExato !== null && parametros ? classificarHeadcount(headcountRealHoje, idealExato, parametros.banda_tolerancia_pessoas) : null
 

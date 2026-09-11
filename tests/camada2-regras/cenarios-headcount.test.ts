@@ -6,7 +6,7 @@ import {
   estadoInicial,
   type AjustesCenario,
 } from '../../src/lib/cenarios-headcount'
-import { calcularHeadcountIdeal } from '../../src/lib/headcount'
+import { aplicarMinimoEstrutural, calcularHeadcountIdeal } from '../../src/lib/headcount'
 import type { HeadcountMensal, HeadcountParametros } from '../../src/types/database'
 
 function mesFechado(mesReferencia: string, overrides: Partial<HeadcountMensal> = {}): HeadcountMensal {
@@ -64,6 +64,8 @@ const PARAMETROS: HeadcountParametros = {
   imparidade_reportes_dias_mes: 15,
   banda_tolerancia_pessoas: 1,
   janela_tendencia_meses: 3,
+  minimo_turnos_criticos: 3,
+  garantia_contratual_fracao: 0.5,
   atualizado_por: null,
   atualizado_em: '2026-09-01T00:00:00Z',
 }
@@ -97,11 +99,22 @@ describe('construirBaselinesTermos — deteção de baseline zero (decide slider
   })
 })
 
-describe('calcularCenario — ponto zero reproduz exatamente calcularHeadcountIdeal', () => {
-  it('sem nenhum ajuste tocado, idealExato bate com a página principal', () => {
+describe('calcularCenario — ponto zero reproduz exatamente calcularHeadcountIdeal + piso estrutural', () => {
+  it('sem nenhum ajuste tocado, idealExato bate com a página principal (incluindo o piso estrutural)', () => {
     const resultado = calcularCenario(JANELA, ajustesBase(), 7, PARAMETROS)
-    expect(resultado.idealExato).toBeCloseTo(calcularHeadcountIdeal(JANELA)!, 10)
+    const idealEsperado = aplicarMinimoEstrutural(
+      calcularHeadcountIdeal(JANELA)!,
+      PARAMETROS.minimo_turnos_criticos,
+      PARAMETROS.garantia_contratual_fracao
+    )
+    expect(resultado.idealExato).toBeCloseTo(idealEsperado, 10)
     expect(resultado.cargaHoras).toBeCloseTo(600, 10) // mean(carga_horas), não a soma dos 8 termos (~637h) — lidos independentemente por desenho
+  })
+
+  it('caso real desta janela: ideal por horas (3.0) fica abaixo do piso contratual (6) — o piso vence', () => {
+    const resultado = calcularCenario(JANELA, ajustesBase(), 7, PARAMETROS)
+    expect(calcularHeadcountIdeal(JANELA)).toBeCloseTo(3, 10) // 600/200, sem piso
+    expect(resultado.idealExato).toBe(6) // 3 ÷ 0.5 — o piso, não o valor por horas
   })
 })
 

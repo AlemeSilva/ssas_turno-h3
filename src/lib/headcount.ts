@@ -37,6 +37,28 @@ export function classificarHeadcount(realHoje: number, idealExato: number, banda
 }
 
 /**
+ * Piso estrutural do Headcount Ideal — garantia contratual, independente
+ * da carga de trabalho. A equipa opera 24x7; H1/H2/H3 exigem sempre
+ * `minimoTurnosCriticos` pessoas em simultâneo (hoje 1+1+1=3; H4 não
+ * conta, absorve quem sobra nas transições). Contratualmente, esse
+ * mínimo concorrente nunca pode exceder `garantiaContratualFracao` do
+ * total da equipa — daí o total ter de ser sempre pelo menos
+ * minimoTurnosCriticos ÷ garantiaContratualFracao, para sustentar
+ * rotação de férias e ausências sem furar a cobertura. Achado do
+ * Gerente, 2026-09-11: sem isto, "ideal" podia cair abaixo do que a
+ * própria estrutura de turnos exige, mesmo com pouco volume de pedidos.
+ */
+export function aplicarMinimoEstrutural(
+  idealPorHoras: number,
+  minimoTurnosCriticos: number,
+  garantiaContratualFracao: number
+): number {
+  if (garantiaContratualFracao <= 0) return idealPorHoras
+  const minimoEstrutural = minimoTurnosCriticos / garantiaContratualFracao
+  return Math.max(idealPorHoras, minimoEstrutural)
+}
+
+/**
  * "Capacidade Presente Necessária" — indicador operacional à parte do
  * veredito estrutural: mostra se a equipa realmente presente no
  * último mês fechado (descontando férias/licenças reais) bastou, sem

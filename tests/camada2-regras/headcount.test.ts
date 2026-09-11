@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  aplicarMinimoEstrutural,
   avaliarRiscoEscalaH3,
   calcularHeadcountIdeal,
   calcularPercentagemCapacidadePresente,
@@ -89,6 +90,24 @@ describe('calcularPercentagemCapacidadePresente — indicador operacional, não 
   })
   it('devolve null se não há capacidade plena para comparar (mês sem dados)', () => {
     expect(calcularPercentagemCapacidadePresente(mesFechado({ capacidade_plena_horas_equipa: null }))).toBeNull()
+  })
+})
+
+describe('aplicarMinimoEstrutural — piso contratual (H1+H2+H3 nunca mais que uma fração da equipa)', () => {
+  it('caso real do achado: ideal por horas 3.3, piso 3÷0.5=6 — o piso vence', () => {
+    expect(aplicarMinimoEstrutural(3.3, 3, 0.5)).toBe(6)
+  })
+  it('quando a carga de horas já excede o piso, o ideal por horas vence', () => {
+    expect(aplicarMinimoEstrutural(8, 3, 0.5)).toBe(8)
+  })
+  it('exemplo do Gerente: 10 elementos necessários → garantia de 5, e o ideal por horas (10) continua a vencer', () => {
+    expect(aplicarMinimoEstrutural(10, 5, 0.5)).toBe(10)
+  })
+  it('no limiar exato, fica no valor do piso (empate)', () => {
+    expect(aplicarMinimoEstrutural(6, 3, 0.5)).toBe(6)
+  })
+  it('fração contratual inválida (0) devolve o ideal por horas sem aplicar piso nenhum, em vez de dividir por zero', () => {
+    expect(aplicarMinimoEstrutural(3.3, 3, 0)).toBe(3.3)
   })
 })
 
