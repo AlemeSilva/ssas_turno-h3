@@ -7,41 +7,38 @@ import {
   type AjustesCenario,
 } from '../../src/lib/cenarios-headcount'
 import { aplicarMinimoEstrutural, calcularHeadcountIdeal } from '../../src/lib/headcount'
-import type { HeadcountMensal, HeadcountParametros } from '../../src/types/database'
+import { construirFabricaMesFechado } from './fixtures-headcount'
+import type { HeadcountParametros } from '../../src/types/database'
 
-function mesFechado(mesReferencia: string, overrides: Partial<HeadcountMensal> = {}): HeadcountMensal {
-  return {
-    id: 1,
-    mes_referencia: mesReferencia,
-    volume_pedidos: 200,
-    dias_recuperacao_cadeia: 0,
-    capacidade_base_horas: 8,
-    taxa_eficiencia: 0.85,
-    taxa_cobertura_ferias: 0.9,
-    batch_horas_dia: 15,
-    olho_vivo_minutos_dia: 30,
-    prep_fim_semana_horas_semana: 2,
-    tempo_medio_pedido_minutos: 40,
-    imparidade_calendario_horas: 8,
-    imparidade_execucao_horas_semana: 1,
-    imparidade_reportes_minutos_dia: 30,
-    imparidade_reportes_dias_mes: 15,
-    carga_horas: 600,
-    dias_uteis: 21,
-    capacidade_plena_horas_pessoa: 200,
-    capacidade_plena_horas_equipa: 1400,
-    capacidade_presente_horas_equipa: 1300,
-    headcount_real_snapshot: 7,
-    operador_h3_ativo_snapshot: 3,
-    fechado: true,
-    fechado_por: 'gerente-id',
-    fechado_em: '2026-09-03T10:00:00Z',
-    atualizado_por: null,
-    atualizado_em: '2026-09-03T10:00:00Z',
-    criado_em: '2026-09-01T00:00:00Z',
-    ...overrides,
-  }
-}
+const mesFechado = construirFabricaMesFechado({
+  id: 1,
+  volume_pedidos: 200,
+  dias_recuperacao_cadeia: 0,
+  capacidade_base_horas: 8,
+  taxa_eficiencia: 0.85,
+  taxa_cobertura_ferias: 0.9,
+  batch_horas_dia: 15,
+  olho_vivo_minutos_dia: 30,
+  prep_fim_semana_horas_semana: 2,
+  tempo_medio_pedido_minutos: 40,
+  imparidade_calendario_horas: 8,
+  imparidade_execucao_horas_semana: 1,
+  imparidade_reportes_minutos_dia: 30,
+  imparidade_reportes_dias_mes: 15,
+  carga_horas: 600,
+  dias_uteis: 21,
+  capacidade_plena_horas_pessoa: 200,
+  capacidade_plena_horas_equipa: 1400,
+  capacidade_presente_horas_equipa: 1300,
+  headcount_real_snapshot: 7,
+  operador_h3_ativo_snapshot: 3,
+  fechado: true,
+  fechado_por: 'gerente-id',
+  fechado_em: '2026-09-03T10:00:00Z',
+  atualizado_por: null,
+  atualizado_em: '2026-09-03T10:00:00Z',
+  criado_em: '2026-09-01T00:00:00Z',
+})
 
 // Junho (30 dias), Julho (31) e Agosto (31) de 2026 — parâmetros
 // constantes nos 3 meses (o caso comum: parâmetro estrutural raramente

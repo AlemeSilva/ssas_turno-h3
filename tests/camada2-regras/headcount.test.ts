@@ -2,14 +2,43 @@ import { describe, expect, it } from 'vitest'
 import {
   aplicarMinimoEstrutural,
   avaliarRiscoEscalaH3,
+  calcularEstadoHeadcountAtual,
   calcularHeadcountIdeal,
   calcularPercentagemCapacidadePresente,
+  calcularPisoEstrutural,
   classificarHeadcount,
+  construirHistoriaEquipa,
   decomporCalculoMes,
   mediasJanela,
 } from '../../src/lib/headcount'
-import type { HeadcountMensal } from '../../src/types/database'
+import type { HeadcountMensal, HeadcountParametros } from '../../src/types/database'
 
+const PARAMETROS_BASE: HeadcountParametros = {
+  id: true,
+  capacidade_base_horas: 8,
+  taxa_eficiencia: 0.85,
+  taxa_cobertura_ferias: 0.9,
+  batch_horas_dia: 15,
+  olho_vivo_minutos_dia: 30,
+  prep_fim_semana_horas_semana: 2,
+  tempo_medio_pedido_minutos: 40,
+  imparidade_calendario_horas: 8,
+  imparidade_execucao_horas_semana: 1,
+  imparidade_reportes_minutos_dia: 30,
+  imparidade_reportes_dias_mes: 15,
+  banda_tolerancia_pessoas: 1,
+  janela_tendencia_meses: 3,
+  minimo_turnos_criticos: 3,
+  garantia_contratual_fracao: 0.5,
+  atualizado_por: null,
+  atualizado_em: '2026-09-01T00:00:00Z',
+}
+
+// Fixture de um só argumento (sem mes_referencia) — a maioria dos testes
+// deste ficheiro nunca varia o mês, por isso não usa a fábrica partilhada
+// de tests/camada2-regras/fixtures-headcount.ts (essa exige o mês como
+// primeiro argumento sempre). Diferença de conveniência deliberada, não
+// divergência não examinada — ver o comentário nesse ficheiro.
 function mesFechado(overrides: Partial<HeadcountMensal>): HeadcountMensal {
   return {
     id: 1,
@@ -18,6 +47,7 @@ function mesFechado(overrides: Partial<HeadcountMensal>): HeadcountMensal {
     dias_recuperacao_cadeia: 0,
     capacidade_base_horas: 8,
     taxa_eficiencia: 0.85,
+    taxa_cobertura_ferias: 0.9,
     batch_horas_dia: 15,
     olho_vivo_minutos_dia: 30,
     prep_fim_semana_horas_semana: 2,
@@ -128,6 +158,18 @@ describe('aplicarMinimoEstrutural — piso contratual (H1+H2+H3 nunca mais que u
   })
 })
 
+describe('calcularPisoEstrutural — a mesma guarda de aplicarMinimoEstrutural, isolada para quem só precisa de mostrar o número (ex.: o relatório PDF)', () => {
+  it('calcula o piso normalmente com uma fração válida', () => {
+    expect(calcularPisoEstrutural(3, 0.5)).toBe(6)
+  })
+  it('devolve null (não Infinity nem NaN) com fração zero — achado de peer-review: o relatório PDF recalculava isto sem esta guarda', () => {
+    expect(calcularPisoEstrutural(3, 0)).toBeNull()
+  })
+  it('devolve null também com fração negativa', () => {
+    expect(calcularPisoEstrutural(3, -0.1)).toBeNull()
+  })
+})
+
 describe('avaliarRiscoEscalaH3 — a escala anual precisa de um mínimo de 3 Operadores H3', () => {
   it('sinaliza risco no limiar exato (3 ativos, sem margem nenhuma)', () => {
     expect(avaliarRiscoEscalaH3(3)).toBe(true)
@@ -137,6 +179,34 @@ describe('avaliarRiscoEscalaH3 — a escala anual precisa de um mínimo de 3 Ope
   })
   it('não sinaliza risco com margem acima do limiar', () => {
     expect(avaliarRiscoEscalaH3(4)).toBe(false)
+  })
+})
+
+describe('calcularEstadoHeadcountAtual — fonte única partilhada por HeadcountPage e pelo relatório PDF (achado de peer-review: antes cada um reimplementava a mesma sequência à parte)', () => {
+  it('encadeia médias → ideal por horas → piso → classificação, de forma consistente com as funções individuais', () => {
+    // capacidade alta de propósito (2000) para o ideal por horas (0.3) ficar
+    // bem abaixo do piso (6) e não interferir com o teste do piso, abaixo.
+    const janela = [mesFechado({ carga_horas: 600, capacidade_plena_horas_pessoa: 2000 })]
+    const estado = calcularEstadoHeadcountAtual(janela, 6, PARAMETROS_BASE)
+    expect(estado.medias).toEqual({ cargaMedia: 600, capacidadeMedia: 2000 })
+    expect(estado.idealPorHoras).toBe(0.3) // 600/2000
+    expect(estado.idealExato).toBe(6) // piso = 3/0.5 = 6, vence porque 6 > 0.3
+    expect(estado.classificacao).toBe(classificarHeadcount(6, estado.idealExato!, PARAMETROS_BASE.banda_tolerancia_pessoas))
+  })
+
+  it('sem meses fechados, tudo fica null em cascata — nunca NaN', () => {
+    const estado = calcularEstadoHeadcountAtual([], 5, PARAMETROS_BASE)
+    expect(estado.medias).toBeNull()
+    expect(estado.idealPorHoras).toBeNull()
+    expect(estado.idealExato).toBeNull()
+    expect(estado.classificacao).toBeNull()
+  })
+
+  it('o piso estrutural vence quando o ideal por horas fica abaixo do mínimo contratual', () => {
+    const janela = [mesFechado({ carga_horas: 600, capacidade_plena_horas_pessoa: 200 })] // ideal por horas = 3
+    const estado = calcularEstadoHeadcountAtual(janela, 3, PARAMETROS_BASE) // piso = 3/0.5 = 6
+    expect(estado.idealPorHoras).toBe(3)
+    expect(estado.idealExato).toBe(6)
   })
 })
 
@@ -240,5 +310,97 @@ describe('decomporCalculoMes — espelha termo a termo a fórmula de calcular_he
     const dec = decomporCalculoMes({ ...mes, dias_recuperacao_cadeia: 3 })
     const porChave = Object.fromEntries(dec.parcelasCarga.map((p) => [p.chave, p.valor]))
     expect(porChave.recuperacao_cadeia).toBe(3 * 24)
+  })
+})
+
+describe('construirHistoriaEquipa — narrativa funcional da janela de tendência (nível leigo), para o relatório PDF', () => {
+  it('sem nenhum mês fechado, devolve null', () => {
+    expect(construirHistoriaEquipa([], 5)).toBeNull()
+  })
+
+  it('achado do stress-test: um pico no mês do MEIO da janela é identificado — comparar só as pontas (mais antigo vs. mais recente) escondia-o', () => {
+    const janela = [
+      mesFechado({ mes_referencia: '2026-08-01', capacidade_plena_horas_pessoa: 100 }), // mais recente
+      mesFechado({ mes_referencia: '2026-07-01', capacidade_plena_horas_pessoa: 140 }), // meio — o pico real
+      mesFechado({ mes_referencia: '2026-06-01', capacidade_plena_horas_pessoa: 110 }), // mais antigo
+    ]
+    const historia = construirHistoriaEquipa(janela, 5)
+    expect(historia?.paragrafoCapacidade).toContain('140h')
+    expect(historia?.paragrafoCapacidade).toContain('Julho')
+  })
+
+  it('o mesmo vale para a carga — um vale no mês do meio da janela é identificado, não só as pontas', () => {
+    const janela = [
+      mesFechado({ mes_referencia: '2026-08-01', carga_horas: 660 }), // mais recente
+      mesFechado({ mes_referencia: '2026-07-01', carga_horas: 500 }), // meio — o vale real
+      mesFechado({ mes_referencia: '2026-06-01', carga_horas: 650 }), // mais antigo
+    ]
+    const historia = construirHistoriaEquipa(janela, 5)
+    expect(historia?.paragrafoCarga).toContain('500h')
+    expect(historia?.paragrafoCarga).toContain('Julho')
+  })
+
+  it('variação inferior a 3% descreve-se como estável, não como subida — limiar relativo, não absoluto (o mesmo padrão dos números reais de Jun-Ago/2026 que motivou esta correção)', () => {
+    const janela = [mesFechado({ mes_referencia: '2026-08-01', carga_horas: 663 }), mesFechado({ mes_referencia: '2026-06-01', carga_horas: 657 })]
+    const historia = construirHistoriaEquipa(janela, 5)
+    expect(historia?.paragrafoCarga).toContain('estável')
+    expect(historia?.paragrafoCarga).not.toContain('variou entre')
+  })
+
+  it('variação de 3% ou mais nomeia os meses do mínimo e do máximo, e menciona sempre o headcount real de hoje', () => {
+    const janela = [mesFechado({ mes_referencia: '2026-08-01', carga_horas: 800 }), mesFechado({ mes_referencia: '2026-06-01', carga_horas: 600 })]
+    const historia = construirHistoriaEquipa(janela, 5)
+    expect(historia?.paragrafoCarga).toContain('variou entre')
+    expect(historia?.paragrafoCarga).toContain('600h')
+    expect(historia?.paragrafoCarga).toContain('Junho')
+    expect(historia?.paragrafoCarga).toContain('800h')
+    expect(historia?.paragrafoCarga).toContain('Agosto')
+    expect(historia?.paragrafoCapacidade).toContain('Hoje, a equipa conta com 5 pessoas')
+  })
+
+  it('janela com um único mês usa frase própria, sem comparar duas pontas', () => {
+    const janela = [mesFechado({ mes_referencia: '2026-08-01', carga_horas: 663 })]
+    const historia = construirHistoriaEquipa(janela, 5)
+    expect(historia?.paragrafoCarga).toContain('Agosto')
+    expect(historia?.paragrafoCarga).toContain('663h')
+    expect(historia?.paragrafoCarga).not.toContain('variou entre')
+    expect(historia?.paragrafoCarga).not.toContain('manteve-se estável, entre')
+  })
+
+  it('nomeia a maior parcela de carga do mês mais recente, quando houver uma parcela dominante', () => {
+    const janela = [mesFechado({ mes_referencia: '2026-08-01', volume_pedidos: 100000, tempo_medio_pedido_minutos: 60 })]
+    const historia = construirHistoriaEquipa(janela, 5)
+    expect(historia?.paragrafoCarga).toContain('a maior parcela foi Pedidos')
+  })
+
+  it('não nomeia parcela nenhuma se todas as parcelas de carga forem zero — evita "Pedidos (0h)" sem sentido', () => {
+    const janela = [
+      mesFechado({
+        mes_referencia: '2026-08-01',
+        volume_pedidos: 0,
+        batch_horas_dia: 0,
+        olho_vivo_minutos_dia: 0,
+        prep_fim_semana_horas_semana: 0,
+        imparidade_calendario_horas: 0,
+        imparidade_execucao_horas_semana: 0,
+        imparidade_reportes_minutos_dia: 0,
+        imparidade_reportes_dias_mes: 0,
+        dias_recuperacao_cadeia: 0,
+      }),
+    ]
+    const historia = construirHistoriaEquipa(janela, 5)
+    expect(historia?.paragrafoCarga).not.toContain('a maior parcela foi')
+  })
+
+  it('menciona a percentagem de reserva de férias, calculada a partir do parâmetro do mês mais recente', () => {
+    const janela = [mesFechado({ mes_referencia: '2026-08-01', taxa_cobertura_ferias: 0.6 })]
+    const historia = construirHistoriaEquipa(janela, 5)
+    expect(historia?.paragrafoCapacidade).toContain('reserva 40%')
+  })
+
+  it('omite a frase de reserva de férias quando o parâmetro é 1 (sem reserva nenhuma)', () => {
+    const janela = [mesFechado({ mes_referencia: '2026-08-01', taxa_cobertura_ferias: 1 })]
+    const historia = construirHistoriaEquipa(janela, 5)
+    expect(historia?.paragrafoCapacidade).not.toContain('reserva')
   })
 })

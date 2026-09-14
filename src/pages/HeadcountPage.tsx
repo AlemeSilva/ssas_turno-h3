@@ -5,11 +5,10 @@ import { useHeadcountParametros } from '@/data/useHeadcountParametros'
 import { useHeadcountMensal } from '@/data/useHeadcountMensal'
 import { useUsuarios, usuariosH3Ativos } from '@/data/useUsuarios'
 import {
-  aplicarMinimoEstrutural,
   avaliarRiscoEscalaH3,
-  calcularHeadcountIdeal,
+  calcularEstadoHeadcountAtual,
   calcularPercentagemCapacidadePresente,
-  classificarHeadcount,
+  CAMPOS_PARAMETROS,
 } from '@/lib/headcount'
 import { agora, formatarMesAnoPT } from '@/lib/datas'
 import { cn } from '@/lib/utils'
@@ -20,6 +19,8 @@ import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { HeadcountCenariosDialog } from '@/components/HeadcountCenariosDialog'
 import { HeadcountExplicacaoDialog } from '@/components/HeadcountExplicacaoDialog'
+import { construirDocumentoRelatorioHeadcount, nomeFicheiroRelatorioHeadcount } from '@/lib/relatorio-headcount'
+import { descarregarRelatorioHeadcountPdf } from '@/lib/relatorio-headcount-pdf'
 
 function formatarMesReferencia(mesISO: string): string {
   const [ano, mes] = mesISO.split('-').map(Number)
@@ -46,102 +47,6 @@ const ROTULO_CLASSIFICACAO = {
   SOBRE_DIMENSIONADO: { texto: 'Sobre-dimensionado', cor: 'border-amber-100 bg-amber-50 text-amber-700' },
   SUB_DIMENSIONADO: { texto: 'Sub-dimensionado', cor: 'border-red-100 bg-red-50 text-red-700' },
 } as const
-
-const CAMPOS_PARAMETROS: { chave: keyof HeadcountParametros; rotulo: string; descricao: string; passo?: string }[] = [
-  {
-    chave: 'capacidade_base_horas',
-    rotulo: 'Capacidade-base (h/dia)',
-    descricao:
-      'Horas de trabalho nominais de uma pessoa por dia — o ponto de partida da capacidade plena, antes de qualquer desconto de eficiência ou de reserva de férias.',
-  },
-  {
-    chave: 'taxa_eficiencia',
-    rotulo: 'Taxa de eficiência (0-1)',
-    passo: '0.01',
-    descricao:
-      'Fração do dia de trabalho presente que é efetivamente produtiva, descontando pausas, formação e pequenos atrasos do dia a dia. Aplica-se como multiplicador direto na capacidade plena por pessoa (ex.: 0,85 = 85% do dia é produtivo).',
-  },
-  {
-    chave: 'taxa_cobertura_ferias',
-    rotulo: 'Taxa de cobertura de férias (0-1)',
-    passo: '0.01',
-    descricao:
-      'Fração da capacidade nominal que sobra depois de reservar estruturalmente para a rotação de férias da equipa ao longo do ano. Não é a ausência real de um mês específico (essa já está refletida na capacidade presente) — é uma margem fixa para que o Headcount Ideal já venha dimensionado para absorver férias sem entrar em rutura (ex.: 0,90 = reserva-se 10% da capacidade para cobertura de férias).',
-  },
-  {
-    chave: 'batch_horas_dia',
-    rotulo: 'Batch (h/dia)',
-    descricao:
-      'Horas de processamento em lote (batch) que a equipa tem de garantir todos os dias do mês, independentemente do volume de pedidos. Entra na carga total multiplicada pelos dias corridos do mês.',
-  },
-  {
-    chave: 'olho_vivo_minutos_dia',
-    rotulo: 'Olho Vivo (min/dia)',
-    descricao:
-      'Minutos por dia dedicados à tarefa Olho Vivo — uma carga fixa diária da equipa. Entra na carga total (convertida para horas) multiplicada pelos dias corridos do mês.',
-  },
-  {
-    chave: 'prep_fim_semana_horas_semana',
-    rotulo: 'Prep. fim de semana (h/semana)',
-    descricao:
-      'Horas por semana dedicadas à preparação do Plano de Fim de Semana. Entra na carga total multiplicada pelo número de semanas do mês.',
-  },
-  {
-    chave: 'tempo_medio_pedido_minutos',
-    rotulo: 'Tempo médio / pedido (min)',
-    descricao:
-      'Tempo médio, em minutos, para tratar um pedido. Multiplicado pelo volume de pedidos do mês (convertido para horas) dá a parcela da carga relativa a pedidos.',
-  },
-  {
-    chave: 'imparidade_calendario_horas',
-    rotulo: 'Imparidade — calendário (h/mês)',
-    descricao:
-      'Horas fixas por mês dedicadas à parte de calendário do Cálculo de Imparidade — um valor único que se soma uma vez à carga total, sem escalar com dias ou semanas do mês.',
-  },
-  {
-    chave: 'imparidade_execucao_horas_semana',
-    rotulo: 'Imparidade — execução (h/semana)',
-    descricao:
-      'Horas por semana dedicadas à execução do Cálculo de Imparidade. Entra na carga total multiplicada pelo número de semanas do mês.',
-  },
-  {
-    chave: 'imparidade_reportes_minutos_dia',
-    rotulo: 'Imparidade — reportes (min/dia)',
-    descricao:
-      'Minutos por dia dedicados aos reportes do Cálculo de Imparidade, nos dias em que há reportes. Combina-se com "Imparidade — reportes (dias/mês)" para dar a carga total de reportes do mês.',
-  },
-  {
-    chave: 'imparidade_reportes_dias_mes',
-    rotulo: 'Imparidade — reportes (dias/mês)',
-    descricao:
-      'Número de dias por mês em que há reportes do Cálculo de Imparidade. Multiplicado pelos minutos por dia de reportes dá a carga total de reportes do mês.',
-  },
-  {
-    chave: 'banda_tolerancia_pessoas',
-    rotulo: 'Banda de tolerância (pessoas)',
-    descricao:
-      'Margem de tolerância, em número de pessoas, à volta do Headcount Ideal. Dentro desta margem (ideal ± banda) a equipa é classificada como Aceitável; fora dela, Sobre-dimensionada ou Sub-dimensionada.',
-  },
-  {
-    chave: 'janela_tendencia_meses',
-    rotulo: 'Janela de tendência (meses)',
-    descricao:
-      'Número de meses fechados mais recentes usados para calcular a média móvel que dá o Headcount Ideal. Suaviza picos e vales pontuais de carga e de capacidade em vez de reagir a um único mês atípico.',
-  },
-  {
-    chave: 'minimo_turnos_criticos',
-    rotulo: 'Mínimo turnos críticos (pessoas)',
-    descricao:
-      'Pessoas em simultâneo exigidas nos turnos obrigatórios (H1+H2+H3, hoje 1+1+1=3). H4 não conta — absorve quem sobra nas transições, não é um posto próprio. Junto com a Garantia contratual, define o piso estrutural do Headcount Ideal, independente da carga de pedidos.',
-  },
-  {
-    chave: 'garantia_contratual_fracao',
-    rotulo: 'Garantia contratual (0-1)',
-    passo: '0.01',
-    descricao:
-      'Fração contratual: o mínimo de turnos críticos nunca pode exceder esta fração do total da equipa (ex.: 0,50 = os turnos obrigatórios não podem exigir mais de metade da equipa em simultâneo). O piso estrutural do Ideal é Mínimo turnos críticos ÷ esta fração.',
-  },
-]
 
 function PainelParametros({
   parametros,
@@ -308,6 +213,8 @@ export function HeadcountPage() {
   const ehGerenteTitular = usuario?.perfil === 'GERENTE'
   const [dialogCenariosAberto, setDialogCenariosAberto] = useState(false)
   const [dialogExplicacaoAberto, setDialogExplicacaoAberto] = useState(false)
+  const [aGerarRelatorio, setAGerarRelatorio] = useState(false)
+  const [erroRelatorio, setErroRelatorio] = useState<string | null>(null)
 
   useEffect(() => {
     if (!ehGerenteOuDelegado) return
@@ -341,16 +248,41 @@ export function HeadcountPage() {
   const mesesPendentes = meses.filter((m) => !m.fechado)
   const janela = parametros?.janela_tendencia_meses ?? 3
   const mesesJanela = mesesFechados.slice(0, janela)
-  const idealPorHoras = calcularHeadcountIdeal(mesesJanela)
-  const idealExato =
-    idealPorHoras !== null && parametros
-      ? aplicarMinimoEstrutural(idealPorHoras, parametros.minimo_turnos_criticos, parametros.garantia_contratual_fracao)
-      : idealPorHoras
-  const classificacao =
-    idealExato !== null && parametros ? classificarHeadcount(headcountRealHoje, idealExato, parametros.banda_tolerancia_pessoas) : null
+  // Mesma função usada pelo relatório PDF — nunca duas implementações da
+  // mesma sequência de cálculo (achado de peer-review).
+  const estado = parametros ? calcularEstadoHeadcountAtual(mesesJanela, headcountRealHoje, parametros) : null
+  const idealPorHoras = estado?.idealPorHoras ?? null
+  const idealExato = estado?.idealExato ?? null
+  const classificacao = estado?.classificacao ?? null
 
   const ultimoFechado = mesesFechados[0]
   const pctPresente = ultimoFechado ? calcularPercentagemCapacidadePresente(ultimoFechado) : null
+
+  async function gerarRelatorio() {
+    if (!parametros) return
+    setErroRelatorio(null)
+    setAGerarRelatorio(true)
+    try {
+      const agoraGeracao = new Date()
+      const documento = construirDocumentoRelatorioHeadcount({
+        mesesJanela,
+        mesesFechados,
+        parametros,
+        headcountRealHoje,
+        operadorH3AtivoHoje,
+        geradoEm: agoraGeracao,
+      })
+      if (!documento) {
+        setErroRelatorio('Não foi possível gerar o relatório com os dados atuais.')
+        return
+      }
+      await descarregarRelatorioHeadcountPdf(documento, nomeFicheiroRelatorioHeadcount(agoraGeracao))
+    } catch (erro) {
+      setErroRelatorio(erro instanceof Error ? erro.message : 'Falha a gerar o PDF. Tenta novamente.')
+    } finally {
+      setAGerarRelatorio(false)
+    }
+  }
 
   return (
     <div className="flex flex-col gap-5">
@@ -393,8 +325,25 @@ export function HeadcountPage() {
                     : 'Explora hipóteses de headcount e de carga, sem gravar nada'}
                 </TooltipContent>
               </Tooltip>
+              {ehGerenteTitular && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>
+                      <Button variant="secondary" size="sm" disabled={idealExato === null || aGerarRelatorio} onClick={gerarRelatorio}>
+                        {aGerarRelatorio ? 'A gerar…' : 'Relatório'}
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {idealExato === null
+                      ? 'Só disponível depois de haver um veredito de Headcount Ideal'
+                      : 'Descarrega um relatório em PDF, pronto a distribuir'}
+                  </TooltipContent>
+                </Tooltip>
+              )}
             </div>
           </div>
+          {erroRelatorio && <p className="text-sm text-red-600">{erroRelatorio}</p>}
 
           {idealExato === null || classificacao === null ? (
             <p className="text-sm text-zinc-500">Ainda sem nenhum mês fechado — fecha o primeiro mês para veres o veredito.</p>

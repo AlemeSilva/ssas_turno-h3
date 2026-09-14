@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { decomporCalculoMes, mediasJanela, type ClassificacaoHeadcount, type ParcelaCarga } from '@/lib/headcount'
+import { decomporCalculoMes, mediasJanela, fraseVeredicto, PARCELAS_CARGA_INFO, type ClassificacaoHeadcount } from '@/lib/headcount'
 import { formatarMesAnoPT } from '@/lib/datas'
 import type { HeadcountMensal, HeadcountParametros } from '@/types/database'
 
@@ -18,52 +18,6 @@ const ROTULO_CLASSIFICACAO_ESCURO = {
   SOBRE_DIMENSIONADO: { texto: 'Sobre-dimensionado', cor: 'border-amber-400/30 bg-amber-400/10 text-amber-400' },
   SUB_DIMENSIONADO: { texto: 'Sub-dimensionado', cor: 'border-red-400/30 bg-red-400/10 text-red-400' },
 } as const
-
-const PARCELAS_CARGA_INFO: Record<ParcelaCarga['chave'], { rotulo: string; formula: (mes: HeadcountMensal, diasCorridos: number, semanas: number) => string }> = {
-  pedidos: {
-    rotulo: 'Pedidos',
-    formula: (mes) => `${mes.volume_pedidos ?? 0} pedidos × ${mes.tempo_medio_pedido_minutos ?? 0} min ÷ 60`,
-  },
-  batch: {
-    rotulo: 'Batch',
-    formula: (mes, dias) => `${mes.batch_horas_dia ?? 0} h/dia × ${dias} dias`,
-  },
-  olho_vivo: {
-    rotulo: 'Olho Vivo',
-    formula: (mes, dias) => `${mes.olho_vivo_minutos_dia ?? 0} min/dia ÷ 60 × ${dias} dias`,
-  },
-  prep_fim_semana: {
-    rotulo: 'Prep. fim de semana',
-    formula: (mes, _dias, semanas) => `${mes.prep_fim_semana_horas_semana ?? 0} h/semana × ${semanas.toFixed(2)} semanas`,
-  },
-  imparidade_calendario: {
-    rotulo: 'Imparidade — calendário',
-    formula: (mes) => `fixo, ${mes.imparidade_calendario_horas ?? 0} h/mês`,
-  },
-  imparidade_execucao: {
-    rotulo: 'Imparidade — execução',
-    formula: (mes, _dias, semanas) => `${mes.imparidade_execucao_horas_semana ?? 0} h/semana × ${semanas.toFixed(2)} semanas`,
-  },
-  imparidade_reportes: {
-    rotulo: 'Imparidade — reportes',
-    formula: (mes) => `${mes.imparidade_reportes_minutos_dia ?? 0} min/dia ÷ 60 × ${mes.imparidade_reportes_dias_mes ?? 0} dias/mês`,
-  },
-  recuperacao_cadeia: {
-    rotulo: 'Recuperação de cadeia',
-    formula: (mes) => `${mes.dias_recuperacao_cadeia} dias × 24h`,
-  },
-}
-
-function fraseVeredicto(classificacao: ClassificacaoHeadcount, real: number, idealExato: number, banda: number): string {
-  const diferenca = Math.abs(real - idealExato).toFixed(1)
-  if (classificacao === 'ACEITAVEL') {
-    return `A diferença entre a equipa real (${real}) e o Ideal (${idealExato.toFixed(1)}) é ${diferenca} pessoas — dentro da tolerância de ±${banda}, por isso o veredito é Aceitável.`
-  }
-  if (classificacao === 'SOBRE_DIMENSIONADO') {
-    return `A equipa real (${real}) está ${diferenca} pessoas acima do Ideal (${idealExato.toFixed(1)}) — fora da tolerância de ±${banda}, por isso o veredito é Sobre-dimensionado.`
-  }
-  return `A equipa real (${real}) está ${diferenca} pessoas abaixo do Ideal (${idealExato.toFixed(1)}) — fora da tolerância de ±${banda}, por isso o veredito é Sub-dimensionado.`
-}
 
 function SeccaoTitulo({ children }: { children: React.ReactNode }) {
   return <h3 className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">{children}</h3>
