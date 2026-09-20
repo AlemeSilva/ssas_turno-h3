@@ -95,6 +95,17 @@ export function PainelTrocas({ usuarios }: { usuarios: Usuario[] }) {
     return usuarios.find((u) => u.id === id)?.nome ?? id
   }
 
+  // Mesmo raciocínio de PainelFerias.tsx — uma troca proposta antes de
+  // o proponente ou o substituto serem desativados não deve continuar
+  // à espera de Aprovar/Rejeitar. A base de dados já recusa aprovar
+  // (trg_valida_troca), mas sem este filtro a proposta ainda aparecia
+  // aqui a convidar a tentativa.
+  const trocasEquipaAtiva = trocas.filter(
+    (t) =>
+      usuarios.some((u) => u.id === t.usuario_proponente && u.ativo) &&
+      usuarios.some((u) => u.id === t.usuario_substituto && u.ativo)
+  )
+
   return (
     <Card>
       <CardHeader>
@@ -130,8 +141,8 @@ export function PainelTrocas({ usuarios }: { usuarios: Usuario[] }) {
         )}
 
         <div className="flex flex-col gap-2">
-          {trocas.length === 0 && <p className="text-sm text-zinc-400">Sem trocas propostas.</p>}
-          {trocas.map((t) => (
+          {trocasEquipaAtiva.length === 0 && <p className="text-sm text-zinc-400">Sem trocas propostas.</p>}
+          {trocasEquipaAtiva.map((t) => (
             <div key={t.id} className="flex flex-col gap-1">
               <div className="flex items-center justify-between gap-2 text-sm">
                 <span className="text-zinc-700">

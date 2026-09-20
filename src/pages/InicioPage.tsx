@@ -128,6 +128,13 @@ export function InicioPage() {
   // mostra feriados em dias úteis.
   const feriadosFuturos = gerente.feriadosDoAno.filter((f) => f.data >= hojeISO && !ehFimDeSemana(f.data))
 
+  // Desativar alguém não mexe nas férias já aprovadas em seu nome —
+  // sem este filtro, a pessoa continuava a aparecer aqui a pedir
+  // substituto indefinidamente, mesmo depois de já ter saído da equipa.
+  const idsAtivos = new Set(usuarios.filter((u) => u.ativo).map((u) => u.id))
+  const ausenciasHojeEquipaAtiva = gerente.ausenciasHoje.filter((f) => idsAtivos.has(f.usuario_id))
+  const ausenciasProximaSemanaEquipaAtiva = gerente.ausenciasProximaSemana.filter((f) => idsAtivos.has(f.usuario_id))
+
   function abrirDetalhePessoa(id: string, nome: string, status: 'APROVADA' | 'PENDENTE') {
     const periodos = gerente.feriasEquipeAno
       .filter((f) => f.usuario_id === id && f.status === status)
@@ -404,11 +411,11 @@ export function InicioPage() {
               <CardContent className="flex flex-col gap-4">
                 <div>
                   <div className="mb-1 text-xs font-bold tracking-wide text-zinc-400 uppercase">Hoje</div>
-                  {gerente.ausenciasHoje.length === 0 ? (
+                  {ausenciasHojeEquipaAtiva.length === 0 ? (
                     <p className="text-sm text-zinc-400">Ninguém ausente hoje.</p>
                   ) : (
                     <ul>
-                      {gerente.ausenciasHoje.map((f) => (
+                      {ausenciasHojeEquipaAtiva.map((f) => (
                         <LinhaAusencia key={f.id} f={f} />
                       ))}
                     </ul>
@@ -419,11 +426,11 @@ export function InicioPage() {
                   <div className="mb-1 text-xs font-bold tracking-wide text-zinc-400 uppercase">
                     Próxima semana ({formatarDataPT(proximaSexta)} a {formatarDataPT(proximaQuinta)})
                   </div>
-                  {gerente.ausenciasProximaSemana.length === 0 ? (
+                  {ausenciasProximaSemanaEquipaAtiva.length === 0 ? (
                     <p className="text-sm text-zinc-400">Ninguém ausente.</p>
                   ) : (
                     <ul>
-                      {gerente.ausenciasProximaSemana.map((f) => (
+                      {ausenciasProximaSemanaEquipaAtiva.map((f) => (
                         <LinhaAusencia key={f.id} f={f} />
                       ))}
                     </ul>

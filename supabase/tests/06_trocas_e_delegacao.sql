@@ -1,5 +1,5 @@
 begin;
-select plan(7);
+select plan(9);
 
 select tests.criar_usuario('Bruno Diniz', 'bruno4@teste.pt', 'OPERADOR_H3') as bruno_id \gset
 select tests.criar_usuario('Kilson Júnior', 'kilson4@teste.pt', 'OPERADOR_H3') as kilson_id \gset
@@ -63,6 +63,38 @@ select ok(is_gerente_ou_delegado(), 'substituto dentro da janela de delegação 
 
 select tests.autenticar_como(:'gerente_id');
 select ok(is_gerente_ou_delegado(), 'o Gerente titular mantém sempre o seu próprio poder de aprovar, mesmo com delegação ativa');
+
+-- Achado da auditoria de 2026-09-20: is_gerente_ou_delegado() só
+-- verificava ativo=true no ramo do titular, nunca no da delegação —
+-- desativar o delegado a meio da janela não lhe retirava os poderes.
+-- update a usuarios exige is_gerente_ou_delegado() (RLS
+-- usuarios_update_gerente), por isso corre sempre autenticado como o
+-- Gerente, nunca como o próprio Bruno/Kilson a mexer no seu registo.
+update usuarios set ativo = false where id = :'bruno_id';
+select tests.autenticar_como(:'bruno_id');
+select ok(not is_gerente_ou_delegado(), 'delegado que é entretanto desativado perde os poderes de Gerente, mesmo dentro da janela da delegação');
+
+select tests.autenticar_como(:'gerente_id');
+update usuarios set ativo = true where id = :'bruno_id';
+
+-- Mesma auditoria: trg_valida_troca() só validava o substituto —
+-- nada impedia aprovar uma troca cujo proponente tivesse sido
+-- desativado depois de a propor. RLS trocas_insert exige
+-- usuario_proponente = auth.uid(), por isso o insert corre como o
+-- próprio Kilson, não como o Gerente.
+select tests.autenticar_como(:'kilson_id');
+insert into trocas_escala (usuario_proponente, usuario_substituto, semana_ref)
+values (:'kilson_id', :'bruno_id', '2026-08-13') returning id as troca2_id \gset
+
+select tests.autenticar_como(:'gerente_id');
+update usuarios set ativo = false where id = :'kilson_id';
+select throws_ok(
+    format($f$ update trocas_escala set status = 'APROVADA', aprovado_por = %L where id = %L $f$, :'gerente_id', :'troca2_id'),
+    'P0001',
+    'O proponente de uma troca de H3 tem de estar ativo.',
+    'aprovar uma troca cujo proponente foi entretanto desativado é bloqueado'
+);
+update usuarios set ativo = true where id = :'kilson_id';
 
 select * from finish();
 rollback;

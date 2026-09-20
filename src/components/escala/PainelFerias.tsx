@@ -111,6 +111,11 @@ export function PainelFerias({ usuarios }: { usuarios: Usuario[] }) {
     return usuarios.find((u) => u.id === id)?.nome ?? id
   }
 
+  // Desativar alguém não decide sozinho os pedidos de férias que essa
+  // pessoa já tinha em aberto — sem este filtro, ficavam aqui a pedir
+  // Aprovar/Rejeitar indefinidamente, mesmo depois de já ter saído.
+  const pedidosEquipaAtiva = pedidos.filter((f) => usuarios.some((u) => u.id === f.usuario_id && u.ativo))
+
   return (
     <Card>
       <CardHeader>
@@ -133,8 +138,8 @@ export function PainelFerias({ usuarios }: { usuarios: Usuario[] }) {
         </form>
 
         <div className="flex flex-col gap-2">
-          {pedidos.length === 0 && <p className="text-sm text-zinc-400">Sem pedidos pendentes.</p>}
-          {pedidos.map((f) => (
+          {pedidosEquipaAtiva.length === 0 && <p className="text-sm text-zinc-400">Sem pedidos pendentes.</p>}
+          {pedidosEquipaAtiva.map((f) => (
             <div key={f.id} className="flex flex-col gap-1">
               <div className="flex items-center justify-between gap-2 text-sm">
                 <span className="text-zinc-700">

@@ -19,7 +19,7 @@ export function PainelDelegacao({ usuarios }: { usuarios: Usuario[] }) {
   const [aEnviar, setAEnviar] = useState(false)
 
   const souGerenteTitular = usuario?.perfil === 'GERENTE'
-  const candidatos = usuarios.filter((u) => u.id !== usuario?.id)
+  const candidatos = usuarios.filter((u) => u.id !== usuario?.id && u.ativo)
 
   async function carregar() {
     const { data } = await supabase
