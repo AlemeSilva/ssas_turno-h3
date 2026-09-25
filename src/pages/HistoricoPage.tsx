@@ -2,6 +2,7 @@ import { useState, type FormEvent, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/auth/AuthContext'
 import { useUsuarios } from '@/data/useUsuarios'
+import { nomeParaLista } from '@/lib/usuarios'
 import type { CadeiaDiaria, EscalaSemanal, LogAuditoria, Plano, StatusPlano } from '@/types/database'
 import { formatarDataPT } from '@/lib/datas'
 import { cn } from '@/lib/utils'
@@ -60,7 +61,7 @@ export function HistoricoPage() {
   )
 }
 
-function FiltroEscala({ usuarios }: { usuarios: { id: string; nome: string }[] }) {
+function FiltroEscala({ usuarios }: { usuarios: { id: string; nome: string; ativo: boolean }[] }) {
   const [usuarioId, setUsuarioId] = useState('')
   const [turno, setTurno] = useState('')
   const [de, setDe] = useState('')
@@ -94,7 +95,7 @@ function FiltroEscala({ usuarios }: { usuarios: { id: string; nome: string }[] }
               <SelectItem value={TODOS}>Todas</SelectItem>
               {usuarios.map((u) => (
                 <SelectItem key={u.id} value={u.id}>
-                  {u.nome}
+                  {nomeParaLista(u)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -153,7 +154,7 @@ function FiltroEscala({ usuarios }: { usuarios: { id: string; nome: string }[] }
   )
 }
 
-function FiltroAuditoria({ usuarios }: { usuarios: { id: string; nome: string }[] }) {
+function FiltroAuditoria({ usuarios }: { usuarios: { id: string; nome: string; ativo: boolean }[] }) {
   const [usuarioId, setUsuarioId] = useState('')
   const [acao, setAcao] = useState('')
   const [resultados, setResultados] = useState<LogAuditoria[]>([])
@@ -184,7 +185,7 @@ function FiltroAuditoria({ usuarios }: { usuarios: { id: string; nome: string }[
               <SelectItem value={TODOS}>Todas</SelectItem>
               {usuarios.map((u) => (
                 <SelectItem key={u.id} value={u.id}>
-                  {u.nome}
+                  {nomeParaLista(u)}
                 </SelectItem>
               ))}
             </SelectContent>
