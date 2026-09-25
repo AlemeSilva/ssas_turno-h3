@@ -12,14 +12,31 @@ select plan(26);
 -- =====================================================================
 
 -- Isola de qualquer OPERADOR/OPERADOR_H3 real — as funções de cálculo
--- somam sobre TODOS os ativos, não só os sintéticos desta suite.
-update usuarios set ativo = false where perfil in ('OPERADOR', 'OPERADOR_H3') and ativo;
+-- somam sobre TODOS os ativos e sobre quem já saiu mas esteve presente
+-- no mês (data_saida, migração 0047), não só os sintéticos desta suite.
+update usuarios set ativo = false, data_saida = null
+ where perfil in ('OPERADOR', 'OPERADOR_H3') and (ativo or data_saida is not null);
+
+-- Os parâmetros que entram nas contas abaixo (8h por dia, 0,85 de
+-- eficiência, sem reserva de férias) ficam fixos: o Gerente afina-os em
+-- produção e os valores esperados dependem deles.
+update headcount_parametros set capacidade_base_horas = 8, taxa_eficiencia = 0.85, taxa_cobertura_ferias = 1 where id = true;
+
+-- Os meses de headcount reais (fechados, portanto imutáveis) fariam de
+-- "último mês fechado" na Fase 9 e o backfill não criaria nada em 2025.
+-- Limpam-se só dentro desta transação, com as triggers desligadas (a de
+-- imutabilidade bloquearia também o DELETE).
+set session_replication_role = replica;
+delete from headcount_mensal;
+set session_replication_role = default;
 
 -- Desde a migração 0044, trg_valida_ferias bloqueia sobreposição entre
--- QUALQUER par de colegas (não só OPERADOR_H3) — limpa férias reais de
--- maio/junho de 2026 só dentro desta transação (revertida no fim),
--- para os cenários sintéticos abaixo não colidirem com dados reais.
-delete from ferias where data_inicio <= '2026-12-31' and data_fim >= '2026-01-01';
+-- QUALQUER par de colegas (não só OPERADOR_H3) — limpa férias reais do
+-- ano corrente só dentro desta transação (revertida no fim), para os
+-- cenários sintéticos abaixo não colidirem com dados reais. Os cenários
+-- usam maio e junho do ano corrente (tests.dia, 00_helpers.sql): o
+-- INSERT de férias só aceita o ano em curso.
+delete from ferias where data_inicio <= tests.dia(12, 31) and data_fim >= tests.dia(1, 1);
 
 select tests.criar_usuario('Titular HC Teste', 'titular.hc@x.pt', 'GERENTE') as titular_id \gset
 select tests.criar_usuario('Operador Simples HC Teste', 'operador.hc@x.pt', 'OPERADOR', false) as operador_id \gset
@@ -32,14 +49,13 @@ select tests.criar_usuario('Recorte Mes HC Teste', 'recorte.hc@x.pt', 'OPERADOR'
 -- Migração 0047: calcular_headcount() agora exige criado_em <= fim do
 -- mês a calcular. tests.criar_usuario() não aceita criado_em — sem
 -- isto, estes dois ficariam de fora de qualquer cálculo para
--- maio/junho de 2026 (criado_em ficaria "hoje", bem depois desses
--- meses).
-update usuarios set criado_em = '2026-01-01T00:00:00Z' where id in (:'overlap_id', :'crossmonth_id');
+-- maio/junho (criado_em ficaria "hoje", bem depois desses meses).
+update usuarios set criado_em = tests.dia(1, 1)::timestamptz where id in (:'overlap_id', :'crossmonth_id');
 
 insert into delegacoes_aprovacao (gerente_titular, substituto, data_inicio, data_fim)
 values (:'titular_id', :'delegado_id', current_date - 1, current_date + 1);
 
--- Férias + licença sobrepostas na mesma pessoa (junho/2026) — desde a
+-- Férias + licença sobrepostas na mesma pessoa (junho) — desde a
 -- migração 0045, trg_valida_ferias já bloqueia isto consigo própria
 -- (peer-review de sobreposição, 2026-09-07), por isso a segunda linha
 -- semeia-se com session_replication_role a saltar a trigger: o ponto
@@ -50,15 +66,15 @@ values (:'titular_id', :'delegado_id', current_date - 1, current_date + 1);
 -- 6/junho) — desde 0044 essa sobreposição, entre pessoas diferentes,
 -- já bloquearia.
 insert into ferias (usuario_id, data_inicio, data_fim, status, tipo)
-values (:'overlap_id', '2026-06-10', '2026-06-19', 'APROVADA', 'FERIAS');
+values (:'overlap_id', tests.dia(6, 10), tests.dia(6, 19), 'APROVADA', 'FERIAS');
 set session_replication_role = replica;
 insert into ferias (usuario_id, data_inicio, data_fim, status, tipo)
-values (:'overlap_id', '2026-06-14', '2026-06-17', 'APROVADA', 'LICENCA');
+values (:'overlap_id', tests.dia(6, 14), tests.dia(6, 17), 'APROVADA', 'LICENCA');
 set session_replication_role = default;
 
--- Férias a cavalo entre dois meses (28/maio a 6/junho de 2026).
+-- Férias a cavalo entre dois meses (28/maio a 6/junho).
 insert into ferias (usuario_id, data_inicio, data_fim, status, tipo)
-values (:'crossmonth_id', '2026-05-28', '2026-06-06', 'APROVADA', 'FERIAS');
+values (:'crossmonth_id', tests.dia(5, 28), tests.dia(6, 6), 'APROVADA', 'FERIAS');
 
 -- Mês já fechado à mão (só para servir de "último mês fechado" ao
 -- teste de backfill) e teste de imutabilidade em bypass de RLS —
@@ -159,11 +175,15 @@ select tests.autenticar_como(:'titular_id');
 update usuarios set ativo = false where id = :'delegado_id';
 update usuarios set ativo = true where id = :'overlap_id';
 
+-- Dias úteis do mês menos dias úteis ausentes (sem feriados, desde a
+-- migração 0052 a capacidade conta dias úteis e não de calendário), a
+-- 8h × 0,85 por dia.
 select capacidade_presente_horas_equipa as cap_overlap
-from calcular_headcount('2026-06-01', 0, 0) \gset
+from calcular_headcount(tests.dia(6, 1), 0, 0) \gset
 select is(
-    :'cap_overlap'::numeric, 136::numeric,
-    'sobreposição férias+licença conta 10 dias ausentes por união (30-10=20 dias × 8h × 0,85 = 136h), não 14 por soma ingénua'
+    :'cap_overlap'::numeric,
+    ((dias_uteis_sem_feriados(tests.dia(6, 1), tests.dia(6, 30)) - dias_uteis_sem_feriados(tests.dia(6, 10), tests.dia(6, 19))) * 8 * 0.85)::numeric,
+    'sobreposição férias+licença desconta os dias úteis ausentes por união (10 a 19), não por soma ingénua com a licença (14 a 17)'
 );
 
 -- =====================================================================
@@ -174,17 +194,25 @@ update usuarios set ativo = false where id = :'overlap_id';
 update usuarios set ativo = true where id = :'crossmonth_id';
 
 select capacidade_presente_horas_equipa as cap_ago, capacidade_plena_horas_pessoa as plena_1
-from calcular_headcount('2026-05-01', 0, 0) \gset
+from calcular_headcount(tests.dia(5, 1), 0, 0) \gset
 select capacidade_presente_horas_equipa as cap_set, capacidade_plena_horas_pessoa as plena_set_1
-from calcular_headcount('2026-06-01', 0, 0) \gset
+from calcular_headcount(tests.dia(6, 1), 0, 0) \gset
 
-select is(:'cap_ago'::numeric, 183.6::numeric, 'férias a cavalo em 2 meses só desconta os 4 dias de maio em maio (31-4=27 × 8h × 0,85)');
-select is(:'cap_set'::numeric, 163.2::numeric, 'férias a cavalo em 2 meses só desconta os 6 dias de junho em junho (30-6=24 × 8h × 0,85)');
+select is(
+    :'cap_ago'::numeric,
+    ((dias_uteis_sem_feriados(tests.dia(5, 1), tests.dia(5, 31)) - dias_uteis_sem_feriados(tests.dia(5, 28), tests.dia(5, 31))) * 8 * 0.85)::numeric,
+    'férias a cavalo em 2 meses só descontam em maio os dias úteis de maio (28 a 31)'
+);
+select is(
+    :'cap_set'::numeric,
+    ((dias_uteis_sem_feriados(tests.dia(6, 1), tests.dia(6, 30)) - dias_uteis_sem_feriados(tests.dia(6, 1), tests.dia(6, 6))) * 8 * 0.85)::numeric,
+    'férias a cavalo em 2 meses só descontam em junho os dias úteis de junho (1 a 6)'
+);
 
 -- capacidade plena por pessoa não pode depender de quantas pessoas há
 update usuarios set ativo = true where id = :'overlap_id'; -- agora 2 pessoas ativas em junho
 select capacidade_plena_horas_pessoa as plena_set_2
-from calcular_headcount('2026-06-01', 0, 0) \gset
+from calcular_headcount(tests.dia(6, 1), 0, 0) \gset
 select is(
     :'plena_set_2'::numeric, :'plena_set_1'::numeric,
     'capacidade plena por pessoa é igual com 1 ou 2 pessoas ativas — nunca depende do headcount'
@@ -198,16 +226,17 @@ select is(
 -- em capacidade_presente_horas_equipa — essa já desconta a ausência
 -- REAL do mês via dias_ausente; aplicar as duas seria duplo desconto.
 select capacidade_plena_horas_pessoa as plena_defeito, capacidade_presente_horas_equipa as presente_defeito
-from calcular_headcount('2026-06-01', 0, 0) \gset
+from calcular_headcount(tests.dia(6, 1), 0, 0) \gset
 
 update headcount_parametros set taxa_cobertura_ferias = 0.5 where id = true;
 
 select capacidade_plena_horas_pessoa as plena_alterado, capacidade_presente_horas_equipa as presente_alterado
-from calcular_headcount('2026-06-01', 0, 0) \gset
+from calcular_headcount(tests.dia(6, 1), 0, 0) \gset
 
 select is(
-    :'plena_alterado'::numeric, 102::numeric,
-    'capacidade_plena_horas_pessoa aplica taxa_cobertura_ferias (30 dias × 8h × 0,85 × 0,5 = 102h)'
+    :'plena_alterado'::numeric,
+    (dias_uteis_sem_feriados(tests.dia(6, 1), tests.dia(6, 30)) * 8 * 0.85 * 0.5)::numeric,
+    'capacidade_plena_horas_pessoa aplica taxa_cobertura_ferias (dias úteis do mês × 8h × 0,85 × 0,5)'
 );
 select isnt(
     :'plena_alterado'::numeric, :'plena_defeito'::numeric,
@@ -226,7 +255,7 @@ update headcount_parametros set taxa_cobertura_ferias = 0.9 where id = true;
 
 update usuarios set ativo = false where id in (:'overlap_id', :'crossmonth_id', :'delegado_id');
 select headcount_real as hr_vazio, capacidade_presente_horas_equipa as cap_vazio
-from calcular_headcount('2026-06-01', 0, 0) \gset
+from calcular_headcount(tests.dia(6, 1), 0, 0) \gset
 select is(:'hr_vazio'::int, 0, 'equipa sem ninguém ativo: headcount_real = 0, sem erro');
 select is(:'cap_vazio'::numeric, 0::numeric, 'equipa sem ninguém ativo: capacidade_presente_horas_equipa = 0, sem erro');
 
@@ -281,7 +310,7 @@ select garantir_rascunho_headcount_mensal();
 select is(
     (select count(*)::int from headcount_mensal where mes_referencia in ('2025-08-01', '2025-09-01') and not fechado),
     2,
-    'garantir_rascunho_headcount_mensal cria as linhas em falta desde o último mês fechado (2025-07, fechado na Fase 7), não só a mais recente'
+    'garantir_rascunho_headcount_mensal cria as linhas em falta desde o último mês fechado (2025-07, fechado na Fase 8), não só a mais recente'
 );
 
 select * from finish();

@@ -3,12 +3,16 @@ select plan(9);
 
 -- Isto corre contra uma base com dados reais — limpa temporariamente,
 -- só dentro desta transação (revertida no fim), qualquer escala já
--- gravada para 2027 que possa colidir com os casos abaixo.
-delete from escala_semanal where extract(year from semana_ref) = 2027;
+-- gravada para o ano seguinte (o que preencher_escala_anual() gera) que
+-- possa colidir com os casos abaixo. O ano seguinte, o número das suas
+-- semanas (os sábados: 52 ou 53) e o primeiro sábado vêm de
+-- tests.ano_seguinte()/semanas_ano_seguinte()/primeiro_sabado_ano_seguinte()
+-- (00_helpers.sql) — um "2027" ou "312 linhas" fixo partia a 1 de janeiro.
+delete from escala_semanal where extract(year from semana_ref) = tests.ano_seguinte();
 
 -- CASO A: caminho feliz (estado real de hoje, nenhum pool vazio) —
--- não-regressão: 312 linhas, log continua PREENCHIMENTO_AUTOMATICO
--- puro, sem aviso nenhum.
+-- não-regressão: 6 linhas por semana, log continua
+-- PREENCHIMENTO_AUTOMATICO puro, sem aviso nenhum.
 savepoint antes_caso_a;
 
 select lives_ok(
@@ -16,9 +20,9 @@ select lives_ok(
     'caminho feliz continua sem rebentar depois de introduzir os avisos'
 );
 select is(
-    (select count(*)::int from escala_semanal where extract(year from semana_ref) = 2027),
-    312,
-    'sem nenhum pool vazio, continua a gerar as mesmas 312 linhas'
+    (select count(*)::int from escala_semanal where extract(year from semana_ref) = tests.ano_seguinte()),
+    tests.semanas_ano_seguinte() * 6,
+    'sem nenhum pool vazio, continua a gerar as mesmas 6 linhas por semana'
 );
 select is(
     (select acao from logs_auditoria where referencia_tipo = 'ESCALA_ANUAL' order by id desc limit 1),
@@ -39,9 +43,9 @@ select lives_ok(
     'sem ninguém em H1 fixo, não rebenta — gera o ano na mesma'
 );
 select is(
-    (select count(*)::int from escala_semanal where extract(year from semana_ref) = 2027),
-    260,
-    'sem H1 fixo, gera 260 linhas (52 semanas x 5 pessoas/semana: H3+H2+H4 do trio, H4 Leonardo+Gerente, sem H1)'
+    (select count(*)::int from escala_semanal where extract(year from semana_ref) = tests.ano_seguinte()),
+    tests.semanas_ano_seguinte() * 5,
+    'sem H1 fixo, gera 5 linhas por semana (H3+H2+H4 do trio, H4 Leonardo+Gerente, sem H1)'
 );
 select is(
     (select acao from logs_auditoria where referencia_tipo = 'ESCALA_ANUAL' order by id desc limit 1),
@@ -63,9 +67,9 @@ select lives_ok(
     'sem ninguém elegível para H2, não rebenta — gera o ano na mesma'
 );
 select is(
-    (select count(*)::int from escala_semanal where extract(year from semana_ref) = 2027 and turno = 'H2'),
+    (select count(*)::int from escala_semanal where extract(year from semana_ref) = tests.ano_seguinte() and turno = 'H2'),
     0,
-    'sem ninguém elegível, H2 fica mesmo vazio todas as 52 semanas'
+    'sem ninguém elegível, H2 fica mesmo vazio todas as semanas'
 );
 select is(
     (select descricao_detalhada like '%H2%' from logs_auditoria

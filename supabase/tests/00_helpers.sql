@@ -61,6 +61,47 @@ begin
 end;
 $$ language plpgsql;
 
+-- Datas dos testes calculadas a partir de hoje, nunca escritas à mão.
+-- trg_valida_ferias só aceita INSERT de férias com data_inicio no ano
+-- em curso, e preencher_escala_anual() gera sempre o ano SEGUINTE — por
+-- isso um '2026-08-10' ou um "2027" literal fazia a suite falhar a 1 de
+-- janeiro. O dia da semana de uma mesma data muda de ano para ano; os
+-- testes que dependem dele (semana_ref é sempre Sábado, o saldo de
+-- férias conta dias úteis) ancoram-se em sabado()/segunda() em vez de
+-- num dia do mês fixo.
+create or replace function tests.dia(p_mes int, p_dia int) returns date as $$
+    select make_date(extract(year from current_date)::int, p_mes, p_dia);
+$$ language sql stable;
+
+-- Primeiro sábado em ou depois de p_mes/p_dia, no ano corrente.
+create or replace function tests.sabado(p_mes int, p_dia int) returns date as $$
+    select tests.dia(p_mes, p_dia) + ((6 - extract(dow from tests.dia(p_mes, p_dia))::int + 7) % 7);
+$$ language sql stable;
+
+-- Primeira segunda-feira em ou depois de p_mes/p_dia, no ano corrente.
+create or replace function tests.segunda(p_mes int, p_dia int) returns date as $$
+    select tests.dia(p_mes, p_dia) + ((1 - extract(dow from tests.dia(p_mes, p_dia))::int + 7) % 7);
+$$ language sql stable;
+
+-- O ano que preencher_escala_anual() gera, os seus sábados (52 ou 53,
+-- conforme o ano — as semanas são os sábados de 1 de janeiro a 31 de
+-- dezembro) e o primeiro deles.
+create or replace function tests.ano_seguinte() returns int as $$
+    select extract(year from current_date)::int + 1;
+$$ language sql stable;
+
+create or replace function tests.semanas_ano_seguinte() returns int as $$
+    select count(*)::int
+      from generate_series(make_date(tests.ano_seguinte(), 1, 1)::timestamp, make_date(tests.ano_seguinte(), 12, 31)::timestamp, interval '1 day') d
+     where extract(dow from d) = 6;
+$$ language sql stable;
+
+create or replace function tests.primeiro_sabado_ano_seguinte() returns date as $$
+    select d::date
+      from generate_series(make_date(tests.ano_seguinte(), 1, 1)::timestamp, make_date(tests.ano_seguinte(), 1, 7)::timestamp, interval '1 day') d
+     where extract(dow from d) = 6;
+$$ language sql stable;
+
 -- Sem isto, a PRIMEIRA chamada a tests.autenticar_como() funciona
 -- (ainda a correr como o role de ligação, tipicamente superuser), mas
 -- QUALQUER chamada seguinte a uma função tests.* falha com "permission

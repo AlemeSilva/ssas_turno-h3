@@ -25,20 +25,22 @@ select tests.criar_usuario('Kilson Nono', 'kilson9@teste.pt', 'OPERADOR_H3') as 
 -- ---------------------------------------------------------------------
 -- A) ferias_semanas
 -- ---------------------------------------------------------------------
--- Ano corrente obrigatório (trg_valida_ferias) — 2026-05-04/08 está
--- livre de qualquer férias real de qualquer pessoa (verificado contra
--- produção; desde a migração 0044 a sobreposição bloqueia-se entre
--- qualquer par de colegas, não só H3, por isso já não basta verificar
--- só ausências de OPERADOR_H3 nesta janela). ferias_insert_propria
--- exige inserir em nome próprio — nunca o Gerente a pedir em nome de
--- outro.
+-- Ano corrente obrigatório (trg_valida_ferias) — por isso a semana de
+-- segunda a sexta a partir de 4 de maio é calculada (tests.segunda,
+-- 00_helpers.sql), não fixa num ano. Desde a migração 0044 a
+-- sobreposição bloqueia-se entre qualquer par de colegas, não só H3:
+-- limpa-se, só dentro desta transação (revertida no fim), qualquer
+-- férias real que caia nessa semana. ferias_insert_propria exige
+-- inserir em nome próprio — nunca o Gerente a pedir em nome de outro.
+delete from ferias where data_inicio <= tests.segunda(5, 4) + 4 and data_fim >= tests.segunda(5, 4);
+
 select tests.autenticar_como(:'kilson_id');
 insert into ferias (usuario_id, data_inicio, data_fim)
-values (:'kilson_id', '2026-05-04', '2026-05-08') returning id as ferias_id \gset
+values (:'kilson_id', tests.segunda(5, 4), tests.segunda(5, 4) + 4) returning id as ferias_id \gset
 
 select tests.autenticar_como(:'sergio_id');
 select throws_ok(
-    format($f$ insert into ferias_semanas (ferias_id, semana_inicio) values (%L, '2026-05-04') $f$, :'ferias_id'),
+    format($f$ insert into ferias_semanas (ferias_id, semana_inicio) values (%L, tests.segunda(5, 4)) $f$, :'ferias_id'),
     '42501',
     'new row violates row-level security policy for table "ferias_semanas"',
     'OPERADOR comum não pode decidir o substituto de uma semana de férias (violação de WITH CHECK)'
@@ -47,20 +49,20 @@ select throws_ok(
 select tests.autenticar_como(:'gerente_id');
 select lives_ok(
     format($f$ insert into ferias_semanas (ferias_id, semana_inicio, substituto_id, confirmado_por, confirmado_em)
-                values (%L, '2026-05-04', %L, %L, now()) $f$, :'ferias_id', :'sergio_id', :'gerente_id'),
+                values (%L, tests.segunda(5, 4), %L, %L, now()) $f$, :'ferias_id', :'sergio_id', :'gerente_id'),
     'Gerente/delegado consegue decidir o substituto de uma semana específica'
 );
 
 select tests.autenticar_como(:'sergio_id');
-update ferias_semanas set substituto_id = null where ferias_id = :'ferias_id' and semana_inicio = '2026-05-04';
+update ferias_semanas set substituto_id = null where ferias_id = :'ferias_id' and semana_inicio = tests.segunda(5, 4);
 select is(
-    (select substituto_id from ferias_semanas where ferias_id = :'ferias_id' and semana_inicio = '2026-05-04')::text, :'sergio_id',
+    (select substituto_id from ferias_semanas where ferias_id = :'ferias_id' and semana_inicio = tests.segunda(5, 4))::text, :'sergio_id',
     'OPERADOR comum não consegue alterar o substituto já decidido — RLS filtra a linha, UPDATE afeta 0 registos'
 );
 
 select tests.autenticar_como(:'gerente_id');
 select throws_ok(
-    format($f$ insert into ferias_semanas (ferias_id, semana_inicio) values (%L, '2026-05-04') $f$, :'ferias_id'),
+    format($f$ insert into ferias_semanas (ferias_id, semana_inicio) values (%L, tests.segunda(5, 4)) $f$, :'ferias_id'),
     '23505',
     'duplicate key value violates unique constraint "uq_ferias_semanas"',
     'a mesma semana civil não pode ter duas decisões de substituto para a mesma ausência (unique ferias_id+semana_inicio)'

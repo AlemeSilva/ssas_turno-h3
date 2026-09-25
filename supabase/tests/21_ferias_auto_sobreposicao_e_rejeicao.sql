@@ -32,18 +32,20 @@ select tests.criar_usuario('Delta Vinteum', 'delta21@teste.pt', 'OPERADOR') as d
 -- ---------------------------------------------------------------------
 -- A) auto-sobreposição
 -- ---------------------------------------------------------------------
+-- Datas do ano corrente e calculadas (tests.dia, 00_helpers.sql):
+-- trg_valida_ferias só aceita INSERT de férias do ano em curso.
 select tests.autenticar_como(:'alfa_id');
-insert into ferias (usuario_id, data_inicio, data_fim, status) values (:'alfa_id', '2026-03-02', '2026-03-06', 'APROVADA');
+insert into ferias (usuario_id, data_inicio, data_fim, status) values (:'alfa_id', tests.dia(3, 2), tests.dia(3, 6), 'APROVADA');
 
 select throws_ok(
-    format($f$ insert into ferias (usuario_id, data_inicio, data_fim) values (%L, '2026-03-05', '2026-03-10') $f$, :'alfa_id'),
+    format($f$ insert into ferias (usuario_id, data_inicio, data_fim) values (%L, tests.dia(3, 5), tests.dia(3, 10)) $f$, :'alfa_id'),
     'P0001',
     'Já tens um pedido de férias/licença teu sobreposto a este período.',
     'um novo pedido que sobrepõe um período JÁ APROVADO do mesmo utilizador é bloqueado (esticar férias aprovadas via novo pedido)'
 );
 
 select lives_ok(
-    format($f$ insert into ferias (usuario_id, data_inicio, data_fim) values (%L, '2026-04-08', '2026-04-10') $f$, :'alfa_id'),
+    format($f$ insert into ferias (usuario_id, data_inicio, data_fim) values (%L, tests.dia(4, 8), tests.dia(4, 10)) $f$, :'alfa_id'),
     'um pedido novo, verdadeiramente não sobreposto ao já aprovado do mesmo utilizador, continua a funcionar (não-regressão)'
 );
 
@@ -64,16 +66,16 @@ set session_replication_role = replica;
 
 -- B1) dois utilizadores diferentes com períodos sobrepostos, um deles
 -- ainda PENDENTE.
-insert into ferias (usuario_id, data_inicio, data_fim, status) values (:'beta_id', '2026-05-11', '2026-05-15', 'APROVADA');
+insert into ferias (usuario_id, data_inicio, data_fim, status) values (:'beta_id', tests.dia(5, 11), tests.dia(5, 15), 'APROVADA');
 insert into ferias (usuario_id, data_inicio, data_fim, status)
-values (:'alfa_id', '2026-05-13', '2026-05-14', 'PENDENTE') returning id as pendente_sobreposto_id \gset
+values (:'alfa_id', tests.dia(5, 13), tests.dia(5, 14), 'PENDENTE') returning id as pendente_sobreposto_id \gset
 
 -- B2) saldo já muito acima do limite anual só com um registo de fundo
 -- (6 meses, muito acima de 22 dias úteis por qualquer conta), sem
 -- sequer contar o pedido PENDENTE que vai ser rejeitado a seguir.
-insert into ferias (usuario_id, data_inicio, data_fim, tipo, status) values (:'beta_id', '2026-01-01', '2026-06-30', 'FERIAS', 'APROVADA');
+insert into ferias (usuario_id, data_inicio, data_fim, tipo, status) values (:'beta_id', tests.dia(1, 1), tests.dia(6, 30), 'FERIAS', 'APROVADA');
 insert into ferias (usuario_id, data_inicio, data_fim, tipo, status)
-values (:'beta_id', '2026-07-06', '2026-07-07', 'FERIAS', 'PENDENTE') returning id as saldo_estourado_id \gset
+values (:'beta_id', tests.dia(7, 6), tests.dia(7, 7), 'FERIAS', 'PENDENTE') returning id as saldo_estourado_id \gset
 
 set session_replication_role = default;
 
@@ -91,11 +93,11 @@ select lives_ok(
 -- rejeição é isenta) — usa um novo par limpo, sem o estado semeado
 -- acima.
 select tests.autenticar_como(:'gama_id');
-insert into ferias (usuario_id, data_inicio, data_fim, status) values (:'gama_id', '2026-10-12', '2026-10-16', 'APROVADA');
+insert into ferias (usuario_id, data_inicio, data_fim, status) values (:'gama_id', tests.dia(10, 12), tests.dia(10, 16), 'APROVADA');
 reset role;
 set session_replication_role = replica;
 insert into ferias (usuario_id, data_inicio, data_fim, status)
-values (:'delta_id', '2026-10-14', '2026-10-15', 'PENDENTE') returning id as pendente_para_aprovar_id \gset
+values (:'delta_id', tests.dia(10, 14), tests.dia(10, 15), 'PENDENTE') returning id as pendente_para_aprovar_id \gset
 set session_replication_role = default;
 
 select tests.autenticar_como(:'gerente_id');
