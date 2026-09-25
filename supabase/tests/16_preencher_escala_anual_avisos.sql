@@ -80,5 +80,7 @@ select is(
 
 rollback to savepoint antes_caso_c;
 
-select * from finish();
+-- Sem finish(): cada "rollback to savepoint" repõe também o estado interno
+-- do pgTAP (os contadores), e finish() falharia com "No tests run!". O
+-- plano (1..N) e as linhas ok/not ok já saíram por si.
 rollback;
