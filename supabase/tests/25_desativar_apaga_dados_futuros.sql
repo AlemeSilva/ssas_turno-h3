@@ -6,7 +6,9 @@
 --
 -- Todos os utilizadores criados já aqui, antes de qualquer seed —
 -- criar_usuario() não é security definer. Nada de autenticar_como(): a
--- limpeza corre num trigger e este ficheiro é todo com o role de ligação.
+-- limpeza corre num trigger e este ficheiro é todo com o role de ligação,
+-- menos o último caso, que desativa com o role service_role (o das Edge
+-- Functions gerir-utilizadores e desactivar-saidos).
 -- Datas relativas a "hoje em Lisboa" — a mesma que o trigger usa (o
 -- servidor está em UTC, por isso current_date pode ser outro dia perto da
 -- meia-noite). Sábados calculados a partir da segunda-feira da semana de
@@ -20,11 +22,12 @@
 -- que cortar umas férias nunca é recusado por dados antigos.
 -- =====================================================================
 begin;
-select plan(28);
+select plan(30);
 
 select tests.criar_usuario('Sai 25', 'sai25@teste.pt', 'OPERADOR_H3') as sai_id \gset
 select tests.criar_usuario('Colega 25', 'colega25@teste.pt', 'OPERADOR_H3') as colega_id \gset
 select tests.criar_usuario('Ausente 25', 'ausente25@teste.pt', 'OPERADOR') as ausente_id \gset
+select tests.criar_usuario('Sai Servidor 25', 'saiservidor25@teste.pt', 'OPERADOR_H3') as sai_srv_id \gset
 
 select (now() at time zone 'Europe/Lisbon')::date as hoje \gset
 select (date_trunc('week', :'hoje'::date)::date - 9) as sab_passado \gset
@@ -36,7 +39,8 @@ select (date_trunc('week', :'hoje'::date)::date + 12) as sab_futuro \gset
 insert into escala_semanal (semana_ref, usuario_id, turno) values
     (:'sab_passado', :'sai_id', 'H4'),
     (:'sab_futuro', :'sai_id', 'H4'),
-    (:'sab_futuro', :'colega_id', 'H4');
+    (:'sab_futuro', :'colega_id', 'H4'),
+    (:'sab_futuro', :'sai_srv_id', 'H4');
 
 set session_replication_role = replica;
 insert into ferias (usuario_id, data_inicio, data_fim, tipo, status) values
@@ -169,6 +173,19 @@ select is((select count(*)::int from logs_auditoria where acao = 'LIMPEZA_DADOS_
 update usuarios set ativo = true where id = :'sai_id';
 select is((select count(*)::int from ferias where usuario_id = :'sai_id' and data_inicio >= :'hoje'::date and status <> 'REJEITADA'), 0,
     'reativar não repõe o que foi apagado');
+
+-- O caminho das Edge Functions: a desativação (manual, em gerir-utilizadores,
+-- e por data_saida, em desactivar-saidos) faz-se com o role service_role, não
+-- com o de ligação. O trigger e a função de limpeza são security definer, por
+-- isso tem de resultar o mesmo — é isto que permite às funções não apagarem a
+-- escala por conta própria (o que antes faziam, a partir do dia UTC).
+set local role service_role;
+update usuarios set ativo = false where id = :'sai_srv_id';
+reset role;
+select is((select count(*)::int from escala_semanal where usuario_id = :'sai_srv_id' and semana_ref = :'sab_futuro'::date), 0,
+    'como service_role (o caminho das Edge Functions), desativar também apaga a escala futura');
+select is((select count(*)::int from logs_auditoria where acao = 'LIMPEZA_DADOS_FUTUROS' and descricao_detalhada like '%Sai Servidor 25%'), 1,
+    'e deixa o registo de auditoria da limpeza');
 
 select * from finish();
 rollback;

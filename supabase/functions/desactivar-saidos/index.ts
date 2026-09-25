@@ -64,13 +64,10 @@ Deno.serve(async () => {
     await supabase.rpc('revogar_sessoes_utilizador', { p_usuario_id: id })
   }
 
-  // Remove a escala futura de quem saiu — mesmo comportamento do
-  // caminho manual (ver gerir-utilizadores/index.ts) para não deixar
-  // turnos atribuídos a alguém que já não está na equipa. As férias,
-  // plantões, delegações, substituições e trocas por decidir a partir de
-  // hoje apaga-os o trigger em usuarios (migração 0057), na gravação de
-  // ativo=false acima.
-  await supabase.from('escala_semanal').delete().in('usuario_id', ids).gte('semana_ref', hoje)
+  // A escala, as férias, os plantões, as delegações, as substituições e as
+  // trocas por decidir de quem saiu, a partir de hoje, apaga-os o trigger em
+  // usuarios (migração 0057) na gravação de ativo=false acima — o mesmo que
+  // no caminho manual (ver gerir-utilizadores/index.ts).
 
   // Regista na auditoria (um log por utilizador desativado)
   await supabase.from('logs_auditoria').insert(
