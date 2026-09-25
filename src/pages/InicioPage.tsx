@@ -92,7 +92,7 @@ export function InicioPage() {
   // titular — um delegado só pode fazer a primeira escolha, quando
   // ainda não há ninguém (RLS: plantao_voluntarios_update_titular).
   const ehGerenteTitular = usuario?.perfil === 'GERENTE'
-  const { usuarios } = useUsuarios()
+  const { usuarios, aCarregar: aCarregarUsuarios } = useUsuarios()
   const resumo = useResumoUsuario(usuario?.id)
   const gerente = useResumoGerente(ehGerenteOuDelegado)
   // Chave composta "feriasId:semanaInicio" — cada semana de cada
@@ -179,11 +179,22 @@ export function InicioPage() {
             {f.nome} · {formatarDataPT(f.data)}
           </span>
           <div className="flex shrink-0 items-center gap-1.5">
-            {f.plantonistaId && (
-              <span className="inline-flex items-center rounded-md border border-emerald-100 bg-emerald-50 px-1.5 py-0.5 text-[0.65rem] font-medium whitespace-nowrap text-emerald-700">
-                Plantonista: {nomeDe(f.plantonistaId)}
-              </span>
-            )}
+            {/* Só depois de a lista de utilizadores carregar: sem ela ninguém conta
+                como ativo, e o aviso ia aparecer em todos os feriados. */}
+            {f.plantonistaId &&
+              !aCarregarUsuarios &&
+              (idsAtivos.has(f.plantonistaId) ? (
+                <span className="inline-flex items-center rounded-md border border-emerald-100 bg-emerald-50 px-1.5 py-0.5 text-[0.65rem] font-medium whitespace-nowrap text-emerald-700">
+                  Plantonista: {nomeDe(f.plantonistaId)}
+                </span>
+              ) : (
+                // A linha do plantão continua gravada (por isso "Alterar" usa
+                // o caminho de update, não um insert que colidiria com ela) —
+                // só deixa de se mostrar o nome de quem já saiu da equipa.
+                <span className="inline-flex items-center rounded-md border border-amber-100 bg-amber-50 px-1.5 py-0.5 text-[0.65rem] font-medium whitespace-nowrap text-amber-700">
+                  Plantonista já não está na equipa
+                </span>
+              ))}
             {podeAgir && (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -238,7 +249,15 @@ export function InicioPage() {
         </div>
         <div className="flex flex-col gap-1.5 pl-1">
           {semanas.map((semana) => {
-            const decisao = f.ferias_semanas.find((fs) => fs.semana_inicio === semana.semanaInicio)
+            const decisaoGravada = f.ferias_semanas.find((fs) => fs.semana_inicio === semana.semanaInicio)
+            // Um substituto que entretanto saiu da equipa já não cobre nada:
+            // a semana volta a "por decidir" (confirmar de novo faz upsert
+            // sobre a mesma linha). "Sem substituto" (substituto_id nulo) é
+            // uma decisão válida e mantém-se.
+            const decisao =
+              decisaoGravada && (decisaoGravada.substituto_id === null || idsAtivos.has(decisaoGravada.substituto_id))
+                ? decisaoGravada
+                : undefined
             const chave = `${f.id}:${semana.semanaInicio}`
             const aEscolher = escolhendoPara === chave
             const rotuloSemana =

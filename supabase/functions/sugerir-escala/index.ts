@@ -98,6 +98,13 @@ Deno.serve(async (req) => {
   const sugestaoH3 = escolherOperadorH3(elegiveis, contagem3Meses, contagemMes)
 
   // --- H1 / H2 / H4: repete a semana anterior ---
+  // Só a quem ainda está ativo — a semana anterior pode incluir alguém
+  // que entretanto saiu da equipa (desativar só apaga a escala futura).
+  // Se esta consulta falhar, o conjunto fica vazio e nenhum turno é
+  // sugerido (falha para o lado seguro: por decidir, nunca um nome errado).
+  const { data: usuariosAtivos } = await supabase.from('usuarios').select('id').eq('ativo', true)
+  const idsAtivos = new Set((usuariosAtivos ?? []).map((u) => u.id as string))
+
   const { data: escalaAnterior } = await supabase
     .from('escala_semanal')
     .select('usuario_id, turno')
@@ -107,9 +114,9 @@ Deno.serve(async (req) => {
   const sugestao = {
     semana_ref,
     H3: sugestaoH3,
-    H1: repetirTurnoAnterior(escalaAnterior ?? [], 'H1'),
-    H2: repetirTurnoAnterior(escalaAnterior ?? [], 'H2'),
-    H4: repetirTurnoAnterior(escalaAnterior ?? [], 'H4'),
+    H1: repetirTurnoAnterior(escalaAnterior ?? [], 'H1', idsAtivos),
+    H2: repetirTurnoAnterior(escalaAnterior ?? [], 'H2', idsAtivos),
+    H4: repetirTurnoAnterior(escalaAnterior ?? [], 'H4', idsAtivos),
   }
 
   return new Response(JSON.stringify(sugestao), {

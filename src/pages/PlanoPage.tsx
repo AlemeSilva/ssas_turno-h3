@@ -95,14 +95,14 @@ export function PlanoPage() {
   useEffect(() => {
     let cancelado = false
     async function carregar() {
-      const sabadoCiclo = paraISO(adicionarDias(new Date(dataInicioCiclo + 'T00:00:00'), 2))
-      const { data } = await supabase
-        .from('escala_semanal')
-        .select('usuario_id')
-        .eq('semana_ref', sabadoCiclo)
-        .eq('turno', 'H3')
-        .maybeSingle()
-      if (!cancelado) setOperadorCicloId((data as { usuario_id: string } | null)?.usuario_id ?? null)
+      // A mesma função que a RLS usa (is_operador_do_ciclo → pode_editar_plano),
+      // por isso o ecrã e a base nunca discordam sobre quem é o operador. Só
+      // devolve um H3 ativo, e continua a dar um só resultado quando o H3 saiu
+      // a meio da semana e outro o substituiu (a semana fica com a linha de
+      // quem saiu e a do substituto) — coisa que um .maybeSingle() sobre
+      // escala_semanal rebentava por ver duas linhas.
+      const { data } = await supabase.rpc('operador_do_ciclo', { p_data_inicio_ciclo: dataInicioCiclo })
+      if (!cancelado) setOperadorCicloId((data as string | null) ?? null)
     }
     carregar()
     return () => {

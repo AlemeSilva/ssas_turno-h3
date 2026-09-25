@@ -53,7 +53,7 @@ const DIAS_SEMANA_ABREV = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
 
 // Uma cor pastel distinta por turno real (não os 3 baldes genéricos
 // manhã/tarde/noite) — H3 leva ainda um ícone de cadeado, por ser o
-// turno restrito a Caique/Bruno/Kilson.
+// turno restrito a operadores com perfil OPERADOR_H3.
 const ESTILO_TURNO: Record<TurnoTipo, string> = {
   H1: 'bg-sky-50 text-sky-700 border-sky-100',
   H2: 'bg-amber-50 text-amber-700 border-amber-100',
@@ -127,7 +127,9 @@ function substitutoDoDia(
   const semanaInicio = paraISO(segundaDaSemanaDe(new Date(diaISO + 'T00:00:00')))
   const substitutoId = f.ferias_semanas.find((fs) => fs.semana_inicio === semanaInicio)?.substituto_id
   if (!substitutoId) return undefined
-  return usuarios.find((u) => u.id === substitutoId)?.nome
+  // Um substituto que entretanto saiu da equipa já não cobre ninguém —
+  // a célula fica como uma ausência sem substituto, não com o nome dele.
+  return usuarios.find((u) => u.id === substitutoId && u.ativo)?.nome
 }
 
 function feriadoDoDia(diaISO: string, feriados: FeriadoPortugal[]): FeriadoPortugal | undefined {
@@ -171,6 +173,10 @@ export function EscalaPage() {
   }
 
   const pessoasAtivas = usuarios.filter((u) => u.ativo)
+  // Quem pode ser H3 muda quando um operador H3 entra ou sai — a legenda
+  // lista os atuais em vez de os ter escritos à mão.
+  const nomesH3 = pessoasAtivas.filter((p) => p.perfil === 'OPERADOR_H3').map((p) => p.nome.split(' ')[0])
+  const legendaH3 = nomesH3.length > 0 ? `H3 (restrito a ${nomesH3.join('/')})` : 'H3'
   const aCarregar = aCarregarUsuarios || aCarregarEscala
 
   const [celulaEmEdicao, setCelulaEmEdicao] = useState<{ usuarioId: string; diaISO: string } | null>(null)
@@ -309,7 +315,7 @@ export function EscalaPage() {
         <CardFooter className="flex-wrap items-center gap-x-4 gap-y-2 text-xs text-zinc-500">
           <Legenda className={ESTILO_LEGENDA.H1} texto="H1" />
           <Legenda className={ESTILO_LEGENDA.H2} texto="H2" />
-          <Legenda className={ESTILO_LEGENDA.H3} texto="H3 (restrito a Caique/Bruno/Kilson)" />
+          <Legenda className={ESTILO_LEGENDA.H3} texto={legendaH3} />
           <Legenda className={ESTILO_LEGENDA.H4} texto="H4" />
           <Legenda className="border-dashed border-zinc-300 bg-zinc-50" texto="Folga / Férias" />
           <Legenda className="border-dashed border-violet-300 bg-violet-50" texto="Substituição confirmada" />
@@ -542,6 +548,23 @@ function PainelSugestao({ usuarios }: { usuarios: Pick<Usuario, 'id' | 'nome'>[]
     return usuarios.find((u) => u.id === id)?.nome ?? id
   }
 
+  // `usuarios` aqui é só a equipa ativa. A função devia propor apenas
+  // gente ativa, mas o que "Aplicar" grava vai direto para escala_semanal
+  // — esta segunda barreira garante que uma resposta que ainda cite
+  // alguém já desativado (função por publicar, resposta antiga) nunca
+  // chega ao ecrã nem à escala.
+  function soComEquipaAtiva(s: RespostaSugestao): RespostaSugestao {
+    const idsAtivos = new Set(usuarios.map((u) => u.id))
+    const ativo = (id: string | null) => (id && idsAtivos.has(id) ? id : null)
+    return {
+      ...s,
+      H3: s.H3 && idsAtivos.has(s.H3.usuario_id) ? s.H3 : null,
+      H1: ativo(s.H1),
+      H2: ativo(s.H2),
+      H4: ativo(s.H4),
+    }
+  }
+
   async function calcular() {
     setACarregar(true)
     setErro(null)
@@ -551,7 +574,7 @@ function PainelSugestao({ usuarios }: { usuarios: Pick<Usuario, 'id' | 'nome'>[]
       body: { semana_ref: semanaRef },
     })
     if (error) setErro(error.message)
-    else setSugestao(data as RespostaSugestao)
+    else setSugestao(data ? soComEquipaAtiva(data as RespostaSugestao) : null)
     setACarregar(false)
   }
 

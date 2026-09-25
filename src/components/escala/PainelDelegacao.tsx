@@ -67,6 +67,11 @@ export function PainelDelegacao({ usuarios }: { usuarios: Usuario[] }) {
     return usuarios.find((u) => u.id === id)?.nome ?? id
   }
 
+  // Uma delegação a alguém que entretanto saiu da equipa já não dá poder
+  // nenhum (is_gerente_ou_delegado() exige o delegado ativo) — mostrá-la
+  // aqui como "ativa" seria contá-lo como se ainda cá estivesse.
+  const delegacoesAtivas = delegacoes.filter((d) => usuarios.some((u) => u.id === d.substituto && u.ativo))
+
   if (!souGerenteTitular) return null
 
   return (
@@ -115,8 +120,8 @@ export function PainelDelegacao({ usuarios }: { usuarios: Usuario[] }) {
         </form>
 
         <div className="flex flex-col gap-1.5">
-          {delegacoes.length === 0 && <p className="text-sm text-zinc-400">Sem delegações ativas.</p>}
-          {delegacoes.map((d) => (
+          {delegacoesAtivas.length === 0 && <p className="text-sm text-zinc-400">Sem delegações ativas.</p>}
+          {delegacoesAtivas.map((d) => (
             <div key={d.id} className="text-sm text-zinc-700">
               {nomeDe(d.substituto)} · {formatarDataPT(d.data_inicio)} a {formatarDataPT(d.data_fim)}
             </div>

@@ -48,7 +48,19 @@ export interface AtribuicaoAnterior {
   turno: 'H1' | 'H2' | 'H3' | 'H4'
 }
 
-/** H1/H2/H4: sem regra própria — repete a atribuição da semana anterior. */
-export function repetirTurnoAnterior(escalaAnterior: AtribuicaoAnterior[], turno: 'H1' | 'H2' | 'H4'): string | null {
-  return escalaAnterior.find((e) => e.turno === turno)?.usuario_id ?? null
+/**
+ * H1/H2/H4: sem regra própria — repete a atribuição da semana anterior,
+ * mas só a quem ainda está ativo. Desativar alguém apaga-lhe a escala
+ * futura, não a da semana que acabou — sem este filtro, a semana logo a
+ * seguir a uma saída sugeria o turno a alguém que já não está na equipa
+ * (e "Aplicar" gravava-o em escala_semanal). Sem ninguém ativo nesse
+ * turno na semana anterior devolve null: fica por decidir, em vez de
+ * propor um nome errado.
+ */
+export function repetirTurnoAnterior(
+  escalaAnterior: AtribuicaoAnterior[],
+  turno: 'H1' | 'H2' | 'H4',
+  idsAtivos: ReadonlySet<string>
+): string | null {
+  return escalaAnterior.find((e) => e.turno === turno && idsAtivos.has(e.usuario_id))?.usuario_id ?? null
 }

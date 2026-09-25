@@ -64,12 +64,28 @@ describe('repetirTurnoAnterior — H1/H2/H4 sem regra própria', () => {
     { usuario_id: 'kilson', turno: 'H3' as const },
   ]
 
+  const todosAtivos = new Set(['bruno', 'caique', 'kilson'])
+
   it('repete quem esteve no turno na semana anterior', () => {
-    expect(repetirTurnoAnterior(escalaAnterior, 'H1')).toBe('bruno')
-    expect(repetirTurnoAnterior(escalaAnterior, 'H2')).toBe('caique')
+    expect(repetirTurnoAnterior(escalaAnterior, 'H1', todosAtivos)).toBe('bruno')
+    expect(repetirTurnoAnterior(escalaAnterior, 'H2', todosAtivos)).toBe('caique')
   })
 
   it('devolve null se não houver registo da semana anterior para esse turno (ex.: primeira semana da app)', () => {
-    expect(repetirTurnoAnterior([], 'H4')).toBeNull()
+    expect(repetirTurnoAnterior([], 'H4', todosAtivos)).toBeNull()
+  })
+
+  it('não repete quem já saiu da equipa — o turno fica por decidir em vez de propor um nome errado (caso real: Pedro, 2026-08-21)', () => {
+    const soCaiqueAtivo = new Set(['caique', 'kilson'])
+    expect(repetirTurnoAnterior(escalaAnterior, 'H1', soCaiqueAtivo)).toBeNull()
+    expect(repetirTurnoAnterior(escalaAnterior, 'H2', soCaiqueAtivo)).toBe('caique')
+  })
+
+  it('com duas pessoas no mesmo turno na semana anterior, ignora a que saiu e repete a que continua', () => {
+    const duasNoH1 = [
+      { usuario_id: 'pedro', turno: 'H1' as const },
+      { usuario_id: 'bruno', turno: 'H1' as const },
+    ]
+    expect(repetirTurnoAnterior(duasNoH1, 'H1', new Set(['bruno']))).toBe('bruno')
   })
 })
