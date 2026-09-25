@@ -152,6 +152,11 @@ export function avaliarAlertaHeadcountMensal(mesesAbertos: string[], hoje: Date)
   }
 }
 
+/** semanaRef: YYYY-MM-DD. */
+function ehSabado(semanaRef: string): boolean {
+  return isoWeekdayDe(new Date(semanaRef + 'T00:00:00')) === 6
+}
+
 export interface AlertaSemanasSemH3 {
   /** semana_ref (Sábado) de cada semana com escala mas sem nenhum H3 ativo, da mais próxima para a mais distante. */
   semanas: string[]
@@ -166,6 +171,14 @@ export interface AlertaSemanasSemH3 {
  * dele, que já não conta. Só olha para semanas que existem na escala
  * (têm linha de alguém) — semanas para lá do que já foi preenchido não
  * são "sem H3", ainda não foram geradas.
+ *
+ * O turno H3 começa ao sábado e cada semana da escala é a que começa num
+ * sábado (semana_ref). Uma linha noutro dia da semana não é uma semana:
+ * acontece, por exemplo, quando uma troca é aprovada com a data de uma
+ * quinta-feira, e nesse caso a escala fica com uma linha solta nesse dia.
+ * Essas linhas são ignoradas — nem inventam uma semana "sem H3" (foi o
+ * erro da primeira versão: acusou 15/10 a 21/10 quando a semana de sábado
+ * 10/10 e a de 17/10 tinham H3), nem cobrem uma semana que não tem.
  *
  * `escalas` = linhas de escala_semanal; `idsH3Ativos` = utilizadores
  * OPERADOR_H3 ativos (só esses podem cumprir o turno H3). A semana em
@@ -184,6 +197,7 @@ export function avaliarSemanasSemH3(
   const comH3 = new Set<string>()
   for (const e of escalas) {
     if (e.semana_ref < inicioJanela) continue
+    if (!ehSabado(e.semana_ref)) continue
     comEscala.add(e.semana_ref)
     if (e.turno === 'H3' && idsH3Ativos.has(e.usuario_id)) comH3.add(e.semana_ref)
   }

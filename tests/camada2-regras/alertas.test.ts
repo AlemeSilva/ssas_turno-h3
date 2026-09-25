@@ -254,6 +254,35 @@ describe('avaliarSemanasSemH3 — aviso quando uma semana da escala fica sem H3'
     expect(avaliarSemanasSemH3(escalas, h3Ativos, hoje).semanas).toEqual(['2026-10-03'])
   })
 
+  it('uma linha que não é de sábado (uma troca gravada numa quinta-feira) não é uma semana e não gera aviso', () => {
+    // Caso real de 2026-09-25: a troca Caique -> Bruno foi aprovada com a data 15/10 (quinta-feira) e deixou uma
+    // linha H2 nesse dia; as semanas de sábado (10/10 e 17/10) têm H3.
+    const escalas = [
+      linha('2026-10-10', 'bruno', 'H3'),
+      linha('2026-10-15', 'bruno', 'H2'),
+      linha('2026-10-17', 'caique', 'H3'),
+    ]
+    expect(avaliarSemanasSemH3(escalas, h3Ativos, hoje)).toEqual({ semanas: [], urgente: false })
+  })
+
+  it('uma linha H3 fora de sábado também não cobre a semana de sábado que continua sem H3', () => {
+    const escalas = [linha('2026-10-10', 'sergio', 'H1'), linha('2026-10-15', 'caique', 'H3')]
+    expect(avaliarSemanasSemH3(escalas, h3Ativos, hoje).semanas).toEqual(['2026-10-10'])
+  })
+
+  it('caso real de 2026-09-25: todas as semanas de sábado até dezembro têm H3 e há uma linha solta numa quinta-feira', () => {
+    const h3PorSabado: Record<string, string> = {
+      '2026-09-19': 'kilson', '2026-09-26': 'bruno', '2026-10-03': 'kilson', '2026-10-10': 'bruno', '2026-10-17': 'caique',
+      '2026-10-24': 'kilson', '2026-10-31': 'caique', '2026-11-07': 'kilson', '2026-11-14': 'bruno', '2026-11-21': 'kilson',
+      '2026-11-28': 'bruno', '2026-12-05': 'caique', '2026-12-12': 'bruno', '2026-12-19': 'kilson', '2026-12-26': 'bruno',
+    }
+    const escalas = [
+      ...Object.entries(h3PorSabado).flatMap(([sabado, h3]) => [linha(sabado, h3, 'H3'), linha(sabado, 'sergio', 'H1')]),
+      linha('2026-10-15', 'bruno', 'H2'),
+    ]
+    expect(avaliarSemanasSemH3(escalas, h3Ativos, hoje)).toEqual({ semanas: [], urgente: false })
+  })
+
   it('devolve as semanas ordenadas da mais próxima para a mais distante', () => {
     const escalas = [linha('2026-11-07', 'sergio', 'H1'), linha('2026-10-03', 'sergio', 'H1'), linha('2026-10-24', 'sergio', 'H1')]
     expect(avaliarSemanasSemH3(escalas, h3Ativos, hoje).semanas).toEqual(['2026-10-03', '2026-10-24', '2026-11-07'])
