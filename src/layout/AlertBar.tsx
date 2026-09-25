@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { calcularProximoAlerta, estaHrLimiteEstourado } from '@/lib/alertas'
-import { semanaRefDe, paraISO, agora as getNow } from '@/lib/datas'
+import { semanaRefDe, paraISO, adicionarDias, formatarDataPT, agora as getNow } from '@/lib/datas'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/auth/AuthContext'
 import { useSaudeAutomacaoAnual } from '@/data/useSaudeAutomacaoAnual'
 import { useAlertaHeadcountMensal } from '@/data/useAlertaHeadcountMensal'
+import { useAlertaSemanasSemH3 } from '@/data/useAlertaSemanasSemH3'
 import type { TarefaPlano } from '@/types/database'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
@@ -15,6 +16,7 @@ export function AlertBar() {
   const { avisoAmbar: headcountAmbar, avisoVermelho: headcountVermelho, mesesPendentes: headcountMesesPendentes } = useAlertaHeadcountMensal(
     ehGerenteOuDelegado
   )
+  const { semanas: semanasSemH3, urgente: semH3Urgente } = useAlertaSemanasSemH3(ehGerenteOuDelegado)
   const [agora, setAgora] = useState(getNow())
   const [ehManutencao, setEhManutencao] = useState(false)
   const [tarefasExcecionais, setTarefasExcecionais] = useState<TarefaPlano[]>([])
@@ -58,6 +60,13 @@ export function AlertBar() {
   const tarefasAtrasadas = tarefasExcecionais.filter((t) => estaHrLimiteEstourado((t.hr_limite ?? '').slice(0, 5), t.status, agoraHHMM))
   const rotuloAtraso =
     tarefasAtrasadas.length === 1 ? '1 tarefa excecional atrasada' : `${tarefasAtrasadas.length} tarefas excecionais atrasadas`
+  const rotuloSemH3 = `H3 por atribuir: ${semanasSemH3.length} ${semanasSemH3.length === 1 ? 'semana' : 'semanas'}`
+  const nomeDaSemana = (semanaRef: string) =>
+    `${formatarDataPT(semanaRef)} a ${formatarDataPT(paraISO(adicionarDias(new Date(semanaRef + 'T00:00:00'), 6)))}`
+  const detalheSemH3 =
+    `Sem nenhum operador H3 ativo em: ${semanasSemH3.slice(0, 5).map(nomeDaSemana).join(' · ')}` +
+    (semanasSemH3.length > 5 ? ` · e mais ${semanasSemH3.length - 5}` : '') +
+    ' — atribui um H3 na Escala do Mês (ou usa "Sugerir automaticamente").'
 
   return (
     <div className="flex items-center border-b border-zinc-100 bg-zinc-50 px-5 py-2.5">
@@ -123,6 +132,21 @@ export function AlertBar() {
               </span>
             </TooltipTrigger>
             <TooltipContent>{`Por fechar: ${headcountMesesPendentes.join(', ')} — separador Headcount.`}</TooltipContent>
+          </Tooltip>
+        )}
+        {ehGerenteOuDelegado && semanasSemH3.length > 0 && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span
+                className={cn(
+                  'inline-flex items-center rounded-md border px-1.5 py-0.5 text-[0.65rem] font-medium whitespace-nowrap',
+                  semH3Urgente ? 'border-red-100 bg-red-50 text-red-700' : 'border-amber-100 bg-amber-50 text-amber-700'
+                )}
+              >
+                {rotuloSemH3}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>{detalheSemH3}</TooltipContent>
           </Tooltip>
         )}
         {ehGerenteOuDelegado && !headcountVermelho && headcountAmbar && (

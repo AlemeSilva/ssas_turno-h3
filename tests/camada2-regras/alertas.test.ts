@@ -6,6 +6,7 @@ import {
   avaliarAvisoAutomacaoAnual,
   avaliarRiscoGirFl,
   avaliarSaudeAutomacaoAnual,
+  avaliarSemanasSemH3,
   calcularProximoAlerta,
   estaHrLimiteEstourado,
   isoWeekdayDe,
@@ -200,5 +201,61 @@ describe('avaliarAlertaHeadcountMensal — o mês anterior fica pendente até ao
     const hoje = new Date(2026, 8, 10)
     const r = avaliarAlertaHeadcountMensal(['2026-07-01', '2026-09-01'], hoje)
     expect(r.mesesPendentes).toEqual(['2026-07-01'])
+  })
+})
+
+describe('avaliarSemanasSemH3 — aviso quando uma semana da escala fica sem H3', () => {
+  // Sexta 2026-09-25: a semana em curso é a de Sábado 2026-09-19 (19 a 25).
+  const hoje = new Date('2026-09-25T10:00:00')
+  const h3Ativos = new Set(['bruno', 'caique', 'kilson'])
+  const linha = (semana_ref: string, usuario_id: string, turno: string) => ({ semana_ref, usuario_id, turno })
+
+  it('sem nenhuma semana sem H3, não avisa', () => {
+    const escalas = [linha('2026-09-19', 'caique', 'H3'), linha('2026-09-26', 'bruno', 'H3'), linha('2026-10-03', 'kilson', 'H3')]
+    expect(avaliarSemanasSemH3(escalas, h3Ativos, hoje)).toEqual({ semanas: [], urgente: false })
+  })
+
+  it('uma semana futura em que só há outros turnos (o H3 saiu e a escala dele foi apagada) é apontada', () => {
+    const escalas = [
+      linha('2026-09-19', 'caique', 'H3'),
+      linha('2026-09-26', 'caique', 'H3'),
+      linha('2026-10-10', 'sergio', 'H1'), // semana com escala, mas ninguém em H3
+      linha('2026-10-17', 'caique', 'H3'),
+    ]
+    const r = avaliarSemanasSemH3(escalas, h3Ativos, hoje)
+    expect(r.semanas).toEqual(['2026-10-10'])
+    expect(r.urgente).toBe(false)
+  })
+
+  it('a semana em curso cujo único H3 já saiu (a linha dele não é apagada) conta, e é urgente', () => {
+    const escalas = [linha('2026-09-19', 'rui-que-saiu', 'H3'), linha('2026-09-19', 'sergio', 'H1'), linha('2026-09-26', 'caique', 'H3')]
+    expect(avaliarSemanasSemH3(escalas, h3Ativos, hoje)).toEqual({ semanas: ['2026-09-19'], urgente: true })
+  })
+
+  it('a semana seguinte, que começa daqui a 1 dia, também é urgente; uma que começa daqui a 14 dias não', () => {
+    const daqui1 = avaliarSemanasSemH3([linha('2026-09-26', 'sergio', 'H1')], h3Ativos, hoje)
+    expect(daqui1.urgente).toBe(true)
+    const daqui14 = avaliarSemanasSemH3([linha('2026-10-09', 'sergio', 'H1')], h3Ativos, hoje)
+    expect(daqui14.urgente).toBe(false)
+  })
+
+  it('semanas já terminadas não contam', () => {
+    const escalas = [linha('2026-09-12', 'sergio', 'H1'), linha('2026-09-05', 'sergio', 'H1')]
+    expect(avaliarSemanasSemH3(escalas, h3Ativos, hoje)).toEqual({ semanas: [], urgente: false })
+  })
+
+  it('não inventa semanas: sem nenhuma linha de escala para lá do que já foi preenchido, não há aviso', () => {
+    const escalas = [linha('2026-09-19', 'caique', 'H3'), linha('2026-09-26', 'caique', 'H3')]
+    expect(avaliarSemanasSemH3(escalas, h3Ativos, hoje).semanas).toEqual([])
+  })
+
+  it('só conta como H3 quem é OPERADOR_H3 ativo: um turno H3 de alguém fora desse conjunto não cobre a semana', () => {
+    const escalas = [linha('2026-10-03', 'operador-normal', 'H3')]
+    expect(avaliarSemanasSemH3(escalas, h3Ativos, hoje).semanas).toEqual(['2026-10-03'])
+  })
+
+  it('devolve as semanas ordenadas da mais próxima para a mais distante', () => {
+    const escalas = [linha('2026-11-07', 'sergio', 'H1'), linha('2026-10-03', 'sergio', 'H1'), linha('2026-10-24', 'sergio', 'H1')]
+    expect(avaliarSemanasSemH3(escalas, h3Ativos, hoje).semanas).toEqual(['2026-10-03', '2026-10-24', '2026-11-07'])
   })
 })

@@ -1,5 +1,5 @@
 // Lógica pura dos alertas — sem DOM, sem Supabase, 100% testável.
-import { paraISO } from './datas'
+import { adicionarDias, paraISO } from './datas'
 
 // Dois padrões de alerta, deliberadamente diferentes (fechado no
 // levantamento de requisitos):
@@ -150,4 +150,44 @@ export function avaliarAlertaHeadcountMensal(mesesAbertos: string[], hoje: Date)
     avisoVermelho: pendentes.some((m) => m < mesAnteriorISO),
     mesesPendentes: pendentes,
   }
+}
+
+export interface AlertaSemanasSemH3 {
+  /** semana_ref (Sábado) de cada semana com escala mas sem nenhum H3 ativo, da mais próxima para a mais distante. */
+  semanas: string[]
+  /** Alguma é a semana em curso ou começa nos próximos 7 dias. */
+  urgente: boolean
+}
+
+/**
+ * Semanas da escala, a partir da semana em curso, que ficaram sem H3.
+ * Acontece quando um operador H3 sai: desativar apaga-lhe a escala de
+ * hoje em diante (migração 0057), e a semana em curso mantém a linha
+ * dele, que já não conta. Só olha para semanas que existem na escala
+ * (têm linha de alguém) — semanas para lá do que já foi preenchido não
+ * são "sem H3", ainda não foram geradas.
+ *
+ * `escalas` = linhas de escala_semanal; `idsH3Ativos` = utilizadores
+ * OPERADOR_H3 ativos (só esses podem cumprir o turno H3). A semana em
+ * curso é a que tem semana_ref (Sábado) nos 6 dias anteriores a hoje, ou
+ * hoje — mesma convenção de useResumoUsuario.
+ */
+export function avaliarSemanasSemH3(
+  escalas: { semana_ref: string; usuario_id: string; turno: string }[],
+  idsH3Ativos: ReadonlySet<string>,
+  hoje: Date
+): AlertaSemanasSemH3 {
+  const inicioJanela = paraISO(adicionarDias(hoje, -6))
+  const limiteUrgente = paraISO(adicionarDias(hoje, 7))
+
+  const comEscala = new Set<string>()
+  const comH3 = new Set<string>()
+  for (const e of escalas) {
+    if (e.semana_ref < inicioJanela) continue
+    comEscala.add(e.semana_ref)
+    if (e.turno === 'H3' && idsH3Ativos.has(e.usuario_id)) comH3.add(e.semana_ref)
+  }
+
+  const semanas = [...comEscala].filter((s) => !comH3.has(s)).sort()
+  return { semanas, urgente: semanas.some((s) => s <= limiteUrgente) }
 }
