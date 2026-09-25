@@ -66,7 +66,10 @@ Deno.serve(async () => {
 
   // Remove a escala futura de quem saiu — mesmo comportamento do
   // caminho manual (ver gerir-utilizadores/index.ts) para não deixar
-  // turnos atribuídos a alguém que já não está na equipa.
+  // turnos atribuídos a alguém que já não está na equipa. As férias,
+  // plantões, delegações, substituições e trocas por decidir a partir de
+  // hoje apaga-os o trigger em usuarios (migração 0057), na gravação de
+  // ativo=false acima.
   await supabase.from('escala_semanal').delete().in('usuario_id', ids).gte('semana_ref', hoje)
 
   // Regista na auditoria (um log por utilizador desativado)

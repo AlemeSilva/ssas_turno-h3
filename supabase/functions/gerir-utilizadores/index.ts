@@ -272,8 +272,14 @@ Deno.serve(async (req) => {
 
       // Remove a escala futura desta pessoa — sem isto, semanas já
       // gravadas antes da desativação continuariam a atribuí-la a um
-      // turno (visível no relatório semanal, que não filtra por ativo)
-      // mesmo depois de ter saído da equipa.
+      // turno mesmo depois de ter saído da equipa. O resto do que ela
+      // tinha marcado (férias, plantões, delegações, substituições,
+      // trocas por decidir) apaga-o, a partir de hoje, o trigger em
+      // usuarios (migração 0057) na própria gravação de ativo=false, e
+      // mantém o histórico anterior; a escala fica repetida aqui de
+      // propósito, como segurança. O que já estiver gravado e for
+      // lido por um sítio novo continua a ter de ignorar quem não está
+      // ativo: quem saiu não conta como equipa ativa.
       await admin.from('escala_semanal').delete().eq('usuario_id', usuario_id).gte('semana_ref', hoje)
 
       await admin.from('logs_auditoria').insert({
