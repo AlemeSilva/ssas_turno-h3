@@ -1,5 +1,18 @@
-// Utilitários de datas — âncora semanal = Quinta-feira (semana_ref),
-// cobrindo Quinta a Quarta-feira seguinte (7 dias). Locale sempre pt-PT.
+// Utilitários de datas. Locale sempre pt-PT.
+//
+// AS SEMANAS DO TURNO H3 — as âncoras dependem do que se descreve, não as
+// confundas (definido pelo Gerente):
+//  - Escala (escala_semanal.semana_ref): SÁBADO; a linha cobre Sábado a
+//    Sexta. O H3 trabalha 22h00 às 07h00, por isso a semana ativa-se às 22h
+//    de sexta-feira, na véspera do sábado (ativacaoH3DaSemana,
+//    sabadoDaSemanaH3), e dura até às 22h da sexta seguinte. Uma linha de
+//    escala noutro dia da semana não é uma semana.
+//  - Relatório semanal e emails: período Sexta a Quinta, rotulado pela
+//    "sexta-feira administrativa" (proximaSextaISO); nesse dia o H3 só
+//    arranca às 22h.
+//  - Plano de Fim de Semana (planos.data_inicio_ciclo): QUINTA
+//    (semanaRefDe), ciclo Quinta a Segunda.
+//  - Férias e substitutos: semana civil, Segunda a Sexta (segundaDaSemanaDe).
 
 // Nunca usar toISOString() aqui — converte para UTC e, com Portugal em
 // UTC+1 no horário de verão (que cobre a maior parte da época H3),
@@ -47,6 +60,27 @@ export function adicionarDias(d: Date, n: number): Date {
   const r = new Date(d)
   r.setDate(r.getDate() + n)
   return r
+}
+
+/**
+ * Momento em que o turno H3 da semana cujo semana_ref é `sabadoISO` se
+ * ativa: 22h00 da sexta-feira anterior a esse sábado.
+ */
+export function ativacaoH3DaSemana(sabadoISO: string): Date {
+  const [ano, mes, dia] = sabadoISO.split('-').map(Number)
+  return new Date(ano, mes - 1, dia - 1, 22, 0, 0, 0)
+}
+
+/**
+ * Sábado (semana_ref) da semana H3 em curso em `momento`. A semana ativa-se
+ * às 22h de sexta-feira: a partir daí já é a do sábado seguinte, e até então
+ * (mesmo na própria sexta) ainda é a do sábado anterior.
+ */
+export function sabadoDaSemanaH3(momento: Date): Date {
+  const dia = new Date(momento.getFullYear(), momento.getMonth(), momento.getDate())
+  const desdeSabado = (dia.getDay() + 1) % 7 // Sáb = 0, Dom = 1, …, Sex = 6
+  const jaAtivouProximaSemana = dia.getDay() === 5 && momento.getHours() >= 22
+  return adicionarDias(dia, jaAtivouProximaSemana ? 1 : -desdeSabado)
 }
 
 /**

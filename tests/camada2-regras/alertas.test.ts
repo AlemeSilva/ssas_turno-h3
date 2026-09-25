@@ -232,11 +232,25 @@ describe('avaliarSemanasSemH3 — aviso quando uma semana da escala fica sem H3'
     expect(avaliarSemanasSemH3(escalas, h3Ativos, hoje)).toEqual({ semanas: ['2026-09-19'], urgente: true })
   })
 
-  it('a semana seguinte, que começa daqui a 1 dia, também é urgente; uma que começa daqui a 14 dias não', () => {
-    const daqui1 = avaliarSemanasSemH3([linha('2026-09-26', 'sergio', 'H1')], h3Ativos, hoje)
-    expect(daqui1.urgente).toBe(true)
-    const daqui14 = avaliarSemanasSemH3([linha('2026-10-09', 'sergio', 'H1')], h3Ativos, hoje)
-    expect(daqui14.urgente).toBe(false)
+  it('a semana seguinte, que se ativa daqui a 12 horas (sexta às 22h), também é urgente; uma que só se ativa daqui a mais de 14 dias não', () => {
+    const seguinte = avaliarSemanasSemH3([linha('2026-09-26', 'sergio', 'H1')], h3Ativos, hoje)
+    expect(seguinte).toEqual({ semanas: ['2026-09-26'], urgente: true })
+    const daquiA15 = avaliarSemanasSemH3([linha('2026-10-10', 'sergio', 'H1')], h3Ativos, hoje)
+    expect(daquiA15).toEqual({ semanas: ['2026-10-10'], urgente: false })
+  })
+
+  it('a semana muda às 22h de sexta-feira: às 21h59 ainda conta a que acaba, às 22h00 já não', () => {
+    // A semana de 19/09 ficou sem H3 (o dele saiu) e a de 26/09 tem H3.
+    const escalas = [linha('2026-09-19', 'rui-que-saiu', 'H3'), linha('2026-09-19', 'sergio', 'H1'), linha('2026-09-26', 'caique', 'H3')]
+    expect(avaliarSemanasSemH3(escalas, h3Ativos, new Date('2026-09-25T21:59:00'))).toEqual({ semanas: ['2026-09-19'], urgente: true })
+    expect(avaliarSemanasSemH3(escalas, h3Ativos, new Date('2026-09-25T22:00:00'))).toEqual({ semanas: [], urgente: false })
+  })
+
+  it('"urgente" mede-se até à ativação do H3 (22h de sexta-feira): a exatamente 7 dias já é, um minuto antes não', () => {
+    // Semana de 03/10 sem H3: ativa-se na sexta 02/10 às 22h00.
+    const escalas = [linha('2026-10-03', 'sergio', 'H1')]
+    expect(avaliarSemanasSemH3(escalas, h3Ativos, new Date('2026-09-25T21:59:00'))).toEqual({ semanas: ['2026-10-03'], urgente: false })
+    expect(avaliarSemanasSemH3(escalas, h3Ativos, new Date('2026-09-25T22:00:00'))).toEqual({ semanas: ['2026-10-03'], urgente: true })
   })
 
   it('semanas já terminadas não contam', () => {

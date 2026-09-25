@@ -1,5 +1,5 @@
 // Lógica pura dos alertas — sem DOM, sem Supabase, 100% testável.
-import { adicionarDias, paraISO } from './datas'
+import { ativacaoH3DaSemana, paraISO, sabadoDaSemanaH3 } from './datas'
 
 // Dois padrões de alerta, deliberadamente diferentes (fechado no
 // levantamento de requisitos):
@@ -160,7 +160,7 @@ function ehSabado(semanaRef: string): boolean {
 export interface AlertaSemanasSemH3 {
   /** semana_ref (Sábado) de cada semana com escala mas sem nenhum H3 ativo, da mais próxima para a mais distante. */
   semanas: string[]
-  /** Alguma é a semana em curso ou começa nos próximos 7 dias. */
+  /** Alguma é a semana em curso ou o H3 dela se ativa (22h de sexta-feira) nos próximos 7 dias. */
   urgente: boolean
 }
 
@@ -172,36 +172,37 @@ export interface AlertaSemanasSemH3 {
  * (têm linha de alguém) — semanas para lá do que já foi preenchido não
  * são "sem H3", ainda não foram geradas.
  *
- * O turno H3 começa ao sábado e cada semana da escala é a que começa num
- * sábado (semana_ref). Uma linha noutro dia da semana não é uma semana:
- * acontece, por exemplo, quando uma troca é aprovada com a data de uma
- * quinta-feira, e nesse caso a escala fica com uma linha solta nesse dia.
- * Essas linhas são ignoradas — nem inventam uma semana "sem H3" (foi o
- * erro da primeira versão: acusou 15/10 a 21/10 quando a semana de sábado
- * 10/10 e a de 17/10 tinham H3), nem cobrem uma semana que não tem.
+ * O turno H3 é semanal: a semana tem semana_ref no SÁBADO e ativa-se às
+ * 22h de sexta-feira, na véspera (o H3 trabalha 22h00 às 07h00), até às 22h
+ * da sexta seguinte. Uma linha de escala noutro dia da semana não é uma
+ * semana: acontece, por exemplo, quando uma troca é aprovada com a data de
+ * uma quinta-feira, e nesse caso a escala fica com uma linha solta nesse
+ * dia. Essas linhas são ignoradas — nem inventam uma semana "sem H3" (foi o
+ * erro da primeira versão: acusou 15/10 a 21/10 quando as semanas de sábado
+ * 10/10 e 17/10 tinham H3), nem cobrem uma semana que não tem.
  *
  * `escalas` = linhas de escala_semanal; `idsH3Ativos` = utilizadores
- * OPERADOR_H3 ativos (só esses podem cumprir o turno H3). A semana em
- * curso é a que tem semana_ref (Sábado) nos 6 dias anteriores a hoje, ou
- * hoje — mesma convenção de useResumoUsuario.
+ * OPERADOR_H3 ativos (só esses podem cumprir o turno H3); `momento` = agora,
+ * com hora. A semana em curso é a do último sábado, exceto a partir das 22h
+ * de sexta-feira, em que já é a do sábado seguinte (ver sabadoDaSemanaH3).
  */
 export function avaliarSemanasSemH3(
   escalas: { semana_ref: string; usuario_id: string; turno: string }[],
   idsH3Ativos: ReadonlySet<string>,
-  hoje: Date
+  momento: Date
 ): AlertaSemanasSemH3 {
-  const inicioJanela = paraISO(adicionarDias(hoje, -6))
-  const limiteUrgente = paraISO(adicionarDias(hoje, 7))
+  const inicioJanela = paraISO(sabadoDaSemanaH3(momento))
+  const limiteUrgente = momento.getTime() + 7 * 24 * 60 * 60 * 1000
 
   const comEscala = new Set<string>()
   const comH3 = new Set<string>()
   for (const e of escalas) {
-    if (e.semana_ref < inicioJanela) continue
     if (!ehSabado(e.semana_ref)) continue
+    if (e.semana_ref < inicioJanela) continue
     comEscala.add(e.semana_ref)
     if (e.turno === 'H3' && idsH3Ativos.has(e.usuario_id)) comH3.add(e.semana_ref)
   }
 
   const semanas = [...comEscala].filter((s) => !comH3.has(s)).sort()
-  return { semanas, urgente: semanas.some((s) => s <= limiteUrgente) }
+  return { semanas, urgente: semanas.some((s) => ativacaoH3DaSemana(s).getTime() <= limiteUrgente) }
 }

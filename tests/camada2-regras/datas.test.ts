@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
   adicionarDias,
+  ativacaoH3DaSemana,
   diasSobrepostos,
   duracaoEmAnosEMeses,
   formatarDataPT,
   isoWeekday,
   paraISO,
   quintaEscalaDe,
+  sabadoDaSemanaH3,
   segundaDaSemanaDe,
   semanaRefDe,
   semanasTocadas,
@@ -185,5 +187,47 @@ describe('diasSobrepostos — dias em comum entre dois períodos, para o limiar 
 
   it('é simétrica — a ordem dos dois períodos não altera o resultado', () => {
     expect(diasSobrepostos('2026-08-14', '2026-08-20', '2026-08-18', '2026-08-20')).toBe(3)
+  })
+})
+
+describe('sabadoDaSemanaH3 — a semana H3 ativa-se às 22h de sexta-feira', () => {
+  // Sábado 2026-09-26 é o semana_ref da semana que se ativa na sexta 25/09 às 22h.
+  const semanaDe = (ano: number, mes: number, dia: number, hora = 12, minuto = 0) =>
+    paraISO(sabadoDaSemanaH3(new Date(ano, mes - 1, dia, hora, minuto)))
+
+  it('de sábado a quinta é a semana do último sábado', () => {
+    expect(semanaDe(2026, 9, 26, 0, 0)).toBe('2026-09-26') // Sábado, 00h00
+    expect(semanaDe(2026, 9, 26, 23, 59)).toBe('2026-09-26')
+    expect(semanaDe(2026, 9, 27)).toBe('2026-09-26') // Domingo
+    expect(semanaDe(2026, 9, 28)).toBe('2026-09-26') // Segunda
+    expect(semanaDe(2026, 10, 1)).toBe('2026-09-26') // Quinta
+  })
+
+  it('na sexta-feira, até às 21h59, ainda é a semana do sábado anterior', () => {
+    expect(semanaDe(2026, 10, 2, 0, 0)).toBe('2026-09-26')
+    expect(semanaDe(2026, 10, 2, 21, 59)).toBe('2026-09-26')
+  })
+
+  it('na sexta-feira, a partir das 22h00, já é a semana do sábado seguinte', () => {
+    expect(semanaDe(2026, 10, 2, 22, 0)).toBe('2026-10-03')
+    expect(semanaDe(2026, 10, 2, 23, 59)).toBe('2026-10-03')
+    expect(semanaDe(2026, 10, 3, 0, 0)).toBe('2026-10-03') // já sábado
+  })
+
+  it('atravessa a mudança de mês e de ano', () => {
+    expect(semanaDe(2026, 12, 31)).toBe('2026-12-26') // Quinta
+    expect(semanaDe(2027, 1, 1, 22, 0)).toBe('2027-01-02') // Sexta 22h -> sábado 02/01
+    expect(semanaDe(2026, 7, 31, 22, 0)).toBe('2026-08-01') // Sexta 22h -> sábado 01/08
+  })
+})
+
+describe('ativacaoH3DaSemana — 22h de sexta-feira, véspera do sábado', () => {
+  it('a semana de sábado 26/09 ativa-se na sexta 25/09 às 22h00', () => {
+    expect(ativacaoH3DaSemana('2026-09-26').getTime()).toBe(new Date(2026, 8, 25, 22, 0).getTime())
+  })
+
+  it('atravessa o início do mês e do ano', () => {
+    expect(ativacaoH3DaSemana('2026-08-01').getTime()).toBe(new Date(2026, 6, 31, 22, 0).getTime())
+    expect(ativacaoH3DaSemana('2028-01-01').getTime()).toBe(new Date(2027, 11, 31, 22, 0).getTime()) // sábado 01/01/2028
   })
 })

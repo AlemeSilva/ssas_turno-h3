@@ -28,6 +28,7 @@ export function useAlertaSemanasSemH3(ativo: boolean): AlertaSemanasSemH3 {
       const meuPedido = ++ultimoPedido
       const hoje = agora()
       const [{ data: dadosEscala, error: erroEscala }, { data: dadosH3, error: erroH3 }] = await Promise.all([
+        // Lê com folga (a semana em curso começa, no máximo, 6 dias antes de hoje); quem decide o que conta é avaliarSemanasSemH3.
         supabase.from('escala_semanal').select('semana_ref, usuario_id, turno').gte('semana_ref', paraISO(adicionarDias(hoje, -6))),
         supabase.from('usuarios').select('id').eq('perfil', 'OPERADOR_H3').eq('ativo', true),
       ])
