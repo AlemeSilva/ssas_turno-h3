@@ -33,7 +33,10 @@ export function RelatoriosPage() {
     [quintaCiclo]
   )
 
-  const { usuarios } = useUsuarios()
+  // Sem a lista de utilizadores carregada o gerador não sabe quem já
+  // saiu da equipa — durante esse instante o texto mostraria nomes em
+  // bruto e gente que já não devia constar, por isso espera-se por ela.
+  const { usuarios, aCarregar: aCarregarUsuarios } = useUsuarios()
   const [escalas, setEscalas] = useState<EscalaSemanal[]>([])
   const [ferias, setFerias] = useState<AusenciaComSemanas[]>([])
   const [aCarregar, setACarregar] = useState(true)
@@ -104,7 +107,7 @@ export function RelatoriosPage() {
           Texto pronto a copiar/colar para envio manual por email — publicação semanal às quintas-feiras. As
           alterações que ocorrerem ficam sempre a cargo do Gerente.
         </p>
-        {aCarregar ? (
+        {aCarregar || aCarregarUsuarios ? (
           <p className="text-sm text-zinc-400">A carregar…</p>
         ) : erroCarregar ? (
           <p className="text-sm text-red-600">

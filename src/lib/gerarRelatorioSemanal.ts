@@ -89,17 +89,32 @@ function formatarDiasFerias(dias: string[]): string {
  * `semanaRef` é a sexta-feira de início do período (não o `semana_ref`
  * interno de `escala_semanal`, que ancora ao sábado seguinte) — quem
  * chama esta função já deve ter filtrado `escalas` para a semana certa.
+ *
+ * Quem já saiu da equipa (`ativo = false`) não aparece em nenhuma parte
+ * do texto — nem no turno, nem em Férias/Licenças, nem como substituto.
  */
 export function gerarTextoRelatorioSemanal(
   semanaRef: string,
-  escalas: EscalaSemanal[],
-  ferias: AusenciaComSemanas[],
+  todasAsEscalas: EscalaSemanal[],
+  todasAsFerias: AusenciaComSemanas[],
   usuarios: Usuario[],
   momentoAtual: Date = agora()
 ): string {
   const inicio = new Date(semanaRef + 'T00:00:00')
   const fim = adicionarDias(inicio, 6)
   const nomeDe = (id: string) => usuarios.find((u) => u.id === id)?.nome ?? id
+
+  // Desativar alguém apaga-lhe a escala futura, mas não as férias já
+  // aprovadas — sem filtrar as duas listas à entrada, essas férias
+  // continuavam a ser anunciadas por email como previsão da semana.
+  // Caso real: Pedro, desligado a 21/08, aparecia em Férias/Licenças
+  // com "28/09 à 02/10" no relatório de 25/09. `escalas` e `ferias`
+  // daqui para baixo já são só da equipa ativa, por isso nenhuma das
+  // derivações seguintes (turno, férias, substitutos, notas de férias
+  // parciais) tem de voltar a lembrar-se disto.
+  const idsInativos = new Set(usuarios.filter((u) => !u.ativo).map((u) => u.id))
+  const escalas = todasAsEscalas.filter((e) => !idsInativos.has(e.usuario_id))
+  const ferias = todasAsFerias.filter((f) => !idsInativos.has(f.usuario_id))
 
   // O relatório é rotulado Sexta a Quinta, mas o substituto agora é
   // decidido por semana civil (Segunda a Sexta, ver migração 0025) —
@@ -136,10 +151,9 @@ export function gerarTextoRelatorioSemanal(
   // Quem está de férias/licença esta semana também não aparece a
   // "trabalhar" nenhum turno.
   const idsGerentes = new Set(usuarios.filter((u) => u.perfil === 'GERENTE').map((u) => u.id))
-  const idsInativos = new Set(usuarios.filter((u) => !u.ativo).map((u) => u.id))
   const turnoEfetivo = new Map<string, TurnoTipo>()
   for (const e of escalas) {
-    if (!idsEmFerias.has(e.usuario_id) && !idsGerentes.has(e.usuario_id) && !idsInativos.has(e.usuario_id)) {
+    if (!idsEmFerias.has(e.usuario_id) && !idsGerentes.has(e.usuario_id)) {
       turnoEfetivo.set(e.usuario_id, e.turno)
     }
   }
@@ -149,10 +163,12 @@ export function gerarTextoRelatorioSemanal(
   // substituto não esteja também ausente essa semana. Sem substituto
   // confirmado (ou decisão "Nenhum"), o turno fica vazio ("—"), a
   // sinalizar decisão manual do Gerente, tal como já acontecia para
-  // qualquer ausência sem cobertura definida.
+  // qualquer ausência sem cobertura definida. Um substituto que entretanto
+  // saiu da equipa também não cobre ninguém — mesma consequência de não
+  // haver substituto confirmado.
   for (const f of emFerias) {
     const substitutoId = f.ferias_semanas.find((fs) => fs.semana_inicio === semanaCivilDominante)?.substituto_id
-    if (!substitutoId || idsEmFerias.has(substitutoId)) continue
+    if (!substitutoId || idsEmFerias.has(substitutoId) || idsInativos.has(substitutoId)) continue
     const turnoDoAusente = escalas.find((e) => e.usuario_id === f.usuario_id)?.turno
     if (turnoDoAusente) {
       turnoEfetivo.set(substitutoId, turnoDoAusente)

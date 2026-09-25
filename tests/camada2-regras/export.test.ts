@@ -137,6 +137,54 @@ describe('gerarTextoRelatorioSemanal — utilizador inativo não aparece a ocupa
   })
 })
 
+describe('gerarTextoRelatorioSemanal — utilizador inativo nunca aparece em Férias/Licenças nem como substituto (caso real: Pedro, 2026-09-25)', () => {
+  const usuarios: Usuario[] = [
+    { id: 'bruno', nome: 'Bruno Diniz', email: 'b@x.pt', perfil: 'OPERADOR_H3', empresa: 'Accenture', ativo: true, data_saida: null, limite_h3_mensal: null, criado_em: '' },
+    { id: 'kilson', nome: 'Kilson Júnior', email: 'k@x.pt', perfil: 'OPERADOR_H3', empresa: 'Accenture', ativo: true, data_saida: null, limite_h3_mensal: null, criado_em: '' },
+    { id: 'pedro', nome: 'Pedro Saiu', email: 'p@x.pt', perfil: 'OPERADOR', empresa: 'Accenture', ativo: false, data_saida: '2026-08-21', limite_h3_mensal: null, criado_em: '' },
+  ]
+
+  const escalas: EscalaSemanal[] = [
+    { id: 1, semana_ref: '2026-09-26', usuario_id: 'bruno', turno: 'H1', criado_por: null, atualizado_em: '' },
+    { id: 2, semana_ref: '2026-09-26', usuario_id: 'kilson', turno: 'H3', criado_por: null, atualizado_em: '' },
+  ]
+
+  // Aprovadas antes de o Pedro sair — desativar não lhas apaga. 28/09 a
+  // 02/10 cobre 4 dos 7 dias do período 25/09-01/10 (57%), por isso sem
+  // filtro entrava em Férias/Licenças.
+  const feriasDoPedro = semDecisao({
+    id: 1, usuario_id: 'pedro', data_inicio: '2026-09-28', data_fim: '2026-10-02',
+    status: 'APROVADA', aprovado_por: null, data_aprovacao: null, criado_em: '', tipo: 'FERIAS', eh_operador_h3: false,
+  })
+
+  it('não lista em Férias/Licenças quem já saiu, mesmo com férias aprovadas que cobrem mais de metade da semana', () => {
+    const texto = gerarTextoRelatorioSemanal('2026-09-25', escalas, [feriasDoPedro], usuarios)
+    expect(texto).not.toContain('Pedro')
+    expect(texto.split('Férias/Licenças')[1].trim()).toBe('—')
+  })
+
+  it('o filtro não engole quem está ativo: um colega ativo com férias na mesma semana continua listado', () => {
+    const feriasDoKilson = semDecisao({
+      id: 2, usuario_id: 'kilson', data_inicio: '2026-09-28', data_fim: '2026-10-01',
+      status: 'APROVADA', aprovado_por: null, data_aprovacao: null, criado_em: '', tipo: 'FERIAS', eh_operador_h3: true,
+    })
+    const texto = gerarTextoRelatorioSemanal('2026-09-25', escalas, [feriasDoPedro, feriasDoKilson], usuarios)
+    expect(texto.split('Férias/Licenças')[1].trim()).toBe('Kilson Júnior - 28/09/2026 à 01/10/2026')
+    expect(texto).not.toContain('Pedro')
+  })
+
+  it('um substituto que entretanto saiu da equipa não cobre o turno — fica vazio, como sem substituto confirmado', () => {
+    const feriasDoBruno: Ferias = {
+      id: 3, usuario_id: 'bruno', data_inicio: '2026-09-28', data_fim: '2026-10-02',
+      status: 'APROVADA', aprovado_por: null, data_aprovacao: null, criado_em: '', tipo: 'FERIAS', eh_operador_h3: true,
+    }
+    // Semana civil dominante de 25/09-01/10 é a que começa a 28/09.
+    const texto = gerarTextoRelatorioSemanal('2026-09-25', escalas, [comSubstituto(feriasDoBruno, 'pedro', '2026-09-28')], usuarios)
+    expect(texto).toContain('H1 - 07h00 às 16h00 – —')
+    expect(texto).not.toContain('Pedro')
+  })
+})
+
 describe('gerarTextoRelatorioSemanal — férias parciais na semana aparecem como nota junto ao turno (caso real: Caique, 2026-08-27)', () => {
   const usuarios: Usuario[] = [
     { id: 'caique', nome: 'Caique Silva', email: 'c@x.pt', perfil: 'OPERADOR_H3', empresa: 'Accenture', ativo: true, data_saida: null, limite_h3_mensal: null, turno_fixo: null, criado_em: '' },
