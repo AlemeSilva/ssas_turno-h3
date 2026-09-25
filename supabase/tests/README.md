@@ -26,6 +26,15 @@ Caminho oficial (Postgres local, recomendado para desenvolvimento):
    `supabase/tests/*.sql` por ordem alfabética, cada um dentro de uma
    transação revertida no fim (não deixa dados de teste na base).
 
+Não há workflow de CI para esta suite. O antigo (`pgtap.yml`) apontava
+à base de produção e reaplicava nela as migrações 0001 a 0009, o que repõe
+treze funções nas versões antigas e altera dados; foi removido em
+2026-09-25. Um substituto teria de correr numa base local, e as migrações
+não se aplicam do zero (a 0006 assume a tabela antiga `escala_diaria`; a
+0015 e a 0020 precisam de pg_cron). Os testes 14 a 17 acabam com um erro
+inofensivo do pgTAP (`No tests run!`: o próprio ficheiro faz `rollback to
+savepoint`), que um CI leria como falha.
+
 ## Estrutura
 
 - `00_helpers.sql` — `tests.criar_usuario()` e `tests.autenticar_como()`,
