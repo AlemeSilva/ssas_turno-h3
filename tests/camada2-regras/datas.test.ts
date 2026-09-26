@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   adicionarDias,
   ativacaoH3DaSemana,
+  descreverSemanaH3,
   diasSobrepostos,
   duracaoEmAnosEMeses,
   ehSabadoISO,
@@ -251,5 +252,15 @@ describe('ehSabadoISO — a semana H3 (semana_ref, troca) começa sempre ao sáb
 
   it('um campo de data por preencher não é sábado', () => {
     expect(ehSabadoISO('')).toBe(false)
+  })
+})
+
+describe('descreverSemanaH3 — os 7 dias da semana H3, de sábado a sexta', () => {
+  it('descreve a semana que começa no sábado indicado', () => {
+    expect(descreverSemanaH3('2026-10-17')).toBe('Sábado 17/10/2026 a sexta 23/10/2026')
+  })
+  it('atravessa o fim do mês e do ano', () => {
+    expect(descreverSemanaH3('2026-10-31')).toBe('Sábado 31/10/2026 a sexta 06/11/2026')
+    expect(descreverSemanaH3('2026-12-26')).toBe('Sábado 26/12/2026 a sexta 01/01/2027')
   })
 })

@@ -88,6 +88,15 @@ export function ehSabadoISO(iso: string): boolean {
   return isoWeekday(new Date(iso + 'T00:00:00')) === 6
 }
 
+/** Aviso quando a data escolhida para uma semana H3 não é sábado. */
+export const MENSAGEM_SEMANA_SABADO = 'A semana do H3 começa ao sábado — escolhe um sábado.'
+
+/** "Sábado 17/10/2026 a sexta 23/10/2026": os 7 dias da semana H3 que começa no sábado indicado. */
+export function descreverSemanaH3(sabadoISO: string): string {
+  const sexta = paraISO(adicionarDias(new Date(sabadoISO + 'T00:00:00'), 6))
+  return `Sábado ${formatarDataPT(sabadoISO)} a sexta ${formatarDataPT(sexta)}`
+}
+
 /**
  * Conta dias úteis (Segunda a Sexta, ambos inclusive) entre duas datas
  * ISO — espelha exatamente a função SQL dias_uteis() usada pelo

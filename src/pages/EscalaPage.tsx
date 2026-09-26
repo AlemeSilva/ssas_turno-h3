@@ -4,10 +4,13 @@ import { useUsuarios } from '@/data/useUsuarios'
 import { useEscalaMes } from '@/data/useEscalaMes'
 import {
   adicionarDias,
+  descreverSemanaH3,
   ehFimDeSemana,
+  ehSabadoISO,
   formatarDataPT,
   formatarMesAnoPT,
   isoWeekday,
+  MENSAGEM_SEMANA_SABADO,
   paraISO,
   segundaDaSemanaDe,
 } from '@/lib/datas'
@@ -36,17 +39,23 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 interface RespostaSugestao {
   semana_ref: string
   H3: { usuario_id: string; nome: string; precisa_override: boolean } | null
-  H1: string | null
+  H1: string[]
   H2: string | null
-  H4: string | null
+  H4: string[]
 }
 
-function proximaQuinta(): string {
+// Uma versão anterior da função devolvia uma só pessoa em H1 e H4; enquanto a nova
+// não chega, o ecrã aceita as duas formas.
+const comoLista = (v: string[] | string | null): string[] => (Array.isArray(v) ? v : v ? [v] : [])
+
+// Sábado que a sugestão propõe por omissão: o da próxima quinta-feira (o mesmo dia
+// de sempre), dois dias depois.
+function proximoSabadoSugerido(): string {
   const hoje = new Date()
   const diff = (4 - hoje.getDay() + 7) % 7 || 7
-  const quinta = new Date(hoje)
-  quinta.setDate(hoje.getDate() + diff)
-  return paraISO(quinta)
+  const sabado = new Date(hoje)
+  sabado.setDate(hoje.getDate() + diff + 2)
+  return paraISO(sabado)
 }
 
 const DIAS_SEMANA_ABREV = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
@@ -537,15 +546,15 @@ function ModalEdicaoTurno({
 
 function PainelSugestao({ usuarios }: { usuarios: Pick<Usuario, 'id' | 'nome'>[] }) {
   const [aberto, setAberto] = useState(false)
-  const [semanaRef, setSemanaRef] = useState(proximaQuinta)
+  const [semanaRef, setSemanaRef] = useState(proximoSabadoSugerido)
   const [sugestao, setSugestao] = useState<RespostaSugestao | null>(null)
   const [aCarregar, setACarregar] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [aplicado, setAplicado] = useState(false)
 
-  function nomePorId(id: string | null): string {
-    if (!id) return '—'
-    return usuarios.find((u) => u.id === id)?.nome ?? id
+  function nomesDoTurno(ids: string[] | string | null): string {
+    const nomes = comoLista(ids).map((id) => usuarios.find((u) => u.id === id)?.nome ?? id)
+    return nomes.length > 0 ? nomes.join(', ') : '—'
   }
 
   // `usuarios` aqui é só a equipa ativa. A função devia propor apenas
@@ -553,19 +562,23 @@ function PainelSugestao({ usuarios }: { usuarios: Pick<Usuario, 'id' | 'nome'>[]
   // — esta segunda barreira garante que uma resposta que ainda cite
   // alguém já desativado (função por publicar, resposta antiga) nunca
   // chega ao ecrã nem à escala.
-  function soComEquipaAtiva(s: RespostaSugestao): RespostaSugestao {
+  function soComEquipaAtiva(s: Omit<RespostaSugestao, 'H1' | 'H4'> & { H1: string[] | string | null; H4: string[] | string | null }): RespostaSugestao {
     const idsAtivos = new Set(usuarios.map((u) => u.id))
     const ativo = (id: string | null) => (id && idsAtivos.has(id) ? id : null)
     return {
       ...s,
       H3: s.H3 && idsAtivos.has(s.H3.usuario_id) ? s.H3 : null,
-      H1: ativo(s.H1),
+      H1: comoLista(s.H1).filter((id) => idsAtivos.has(id)),
       H2: ativo(s.H2),
-      H4: ativo(s.H4),
+      H4: comoLista(s.H4).filter((id) => idsAtivos.has(id)),
     }
   }
 
   async function calcular() {
+    if (!ehSabadoISO(semanaRef)) {
+      setErro(MENSAGEM_SEMANA_SABADO)
+      return
+    }
     setACarregar(true)
     setErro(null)
     setSugestao(null)
@@ -574,7 +587,7 @@ function PainelSugestao({ usuarios }: { usuarios: Pick<Usuario, 'id' | 'nome'>[]
       body: { semana_ref: semanaRef },
     })
     if (error) setErro(error.message)
-    else setSugestao(data ? soComEquipaAtiva(data as RespostaSugestao) : null)
+    else setSugestao(data ? soComEquipaAtiva(data as Parameters<typeof soComEquipaAtiva>[0]) : null)
     setACarregar(false)
   }
 
@@ -582,10 +595,12 @@ function PainelSugestao({ usuarios }: { usuarios: Pick<Usuario, 'id' | 'nome'>[]
     if (!sugestao) return
     setErro(null)
     const linhas: { usuario_id: string; semana_ref: string; turno: string }[] = []
-    if (sugestao.H3) linhas.push({ usuario_id: sugestao.H3.usuario_id, semana_ref: sugestao.semana_ref, turno: 'H3' })
-    if (sugestao.H1) linhas.push({ usuario_id: sugestao.H1, semana_ref: sugestao.semana_ref, turno: 'H1' })
+    for (const id of sugestao.H1) linhas.push({ usuario_id: id, semana_ref: sugestao.semana_ref, turno: 'H1' })
     if (sugestao.H2) linhas.push({ usuario_id: sugestao.H2, semana_ref: sugestao.semana_ref, turno: 'H2' })
-    if (sugestao.H4) linhas.push({ usuario_id: sugestao.H4, semana_ref: sugestao.semana_ref, turno: 'H4' })
+    for (const id of sugestao.H4) linhas.push({ usuario_id: id, semana_ref: sugestao.semana_ref, turno: 'H4' })
+    // O H3 entra por último: se a semana já tem outro H3, esse passa primeiro para o
+    // seu novo turno nesta mesma gravação e só depois entra o novo (um H3 por semana).
+    if (sugestao.H3) linhas.push({ usuario_id: sugestao.H3.usuario_id, semana_ref: sugestao.semana_ref, turno: 'H3' })
     const { error } = await supabase.from('escala_semanal').upsert(linhas, { onConflict: 'usuario_id,semana_ref' })
     // A sugestão de H1/H2/H4 não sabe se a pessoa tem férias aprovadas
     // essa semana (só o H3 verifica isso) — o erro mais provável aqui
@@ -627,15 +642,17 @@ function PainelSugestao({ usuarios }: { usuarios: Pick<Usuario, 'id' | 'nome'>[]
         </div>
 
         <label className="mb-3 flex flex-col gap-1 text-xs text-zinc-500">
-          Semana (Quinta-feira de referência)
+          Semana H3 (o sábado em que começa)
           <Input
             type="date"
             value={semanaRef}
             onChange={(e) => {
               setSemanaRef(e.target.value)
               setSugestao(null)
+              setErro(e.target.value && !ehSabadoISO(e.target.value) ? MENSAGEM_SEMANA_SABADO : null)
             }}
           />
+          {ehSabadoISO(semanaRef) && <span>{descreverSemanaH3(semanaRef)}</span>}
         </label>
 
         <Tooltip>
@@ -665,7 +682,7 @@ function PainelSugestao({ usuarios }: { usuarios: Pick<Usuario, 'id' | 'nome'>[]
                         {t}
                       </span>
                     </td>
-                    <td className="py-1 text-zinc-700">{nomePorId(sugestao[t])}</td>
+                    <td className="py-1 text-zinc-700">{nomesDoTurno(sugestao[t])}</td>
                   </tr>
                 ))}
                 <tr>

@@ -36,6 +36,30 @@ Outras âncoras, que não se confundem com a da escala:
   ciclo de quinta a segunda.
 - Férias e substitutos: semana civil, de segunda a sexta.
 
+## Os turnos e a Sugestão automática
+
+As regras de cada turno são as do preenchimento automático anual da escala
+(`preencher_escala_anual()`, migração 0050), que é o que está em prática. A
+"Sugestão automática" da Escala do Mês (`PainelSugestao`, função `sugerir-escala`,
+lógica em `supabase/functions/sugerir-escala/algoritmo.ts`) tem de seguir as
+mesmas, e só propõe (o "Aplicar" é um ato do Gerente ou do delegado):
+
+- **H3**: rotação entre os OPERADOR_H3 ativos. Menos H3 nos últimos 3 meses,
+  depois menos no ano, depois o id. Respeita `limite_h3_mensal`; se ninguém couber
+  no limite, propõe na mesma, marcado "override". A sugestão evita quem tem férias
+  (aprovadas ou pendentes) a sobrepor a semana.
+- **H2**: rotação entre os OPERADOR_H3 ativos com `elegivel_h2`, sem o H3 da
+  semana; as mesmas contagens, de H2.
+- **H4**: os OPERADOR_H3 que nessa semana não são H3 nem H2, os OPERADOR com
+  `turno_fixo` H4 e o Gerente ativo mais antigo.
+- **H1**: os OPERADOR com `turno_fixo` H1.
+- **Limite mensal**: a semana conta no mês onde cai a maioria dos 7 dias, o do 4.º
+  dia (`semana_ref + 3`); a de 31/10 a 06/11/2026 é de novembro (migração 0050). O
+  trigger conta todas as semanas H3 desse mês, e a sugestão também.
+- Só entra quem está ativo, e a semana é sempre a do sábado: a função recusa outro dia.
+- Verificado em 2026-09-26 contra o preenchimento anual real (numa transação
+  revertida): as 52 semanas de 2027 saíram iguais às da sugestão.
+
 ## Alarmes
 
 Padrões definidos no levantamento de requisitos (`src/lib/alertas.ts`):
@@ -58,9 +82,5 @@ referência e escalona à própria hora.
 Onde o código ainda não segue os critérios acima. Cada uma pede primeiro a
 decisão do Gerente.
 
-- Sugestão automática (`PainelSugestao` em `src/pages/EscalaPage.tsx` e função
-  `sugerir-escala`): pede a "Quinta-feira de referência", o "Aplicar" grava
-  linhas de `escala_semanal` com essa quinta como `semana_ref`, e a função
-  procura a semana anterior nessa data menos 7 dias, onde a escala (aos
-  sábados) não tem linhas. A base de dados não impede uma linha de escala fora
-  de sábado.
+- A base de dados não impede uma linha de `escala_semanal` fora de sábado: só o
+  ecrã, a Sugestão automática e as trocas o impedem.
