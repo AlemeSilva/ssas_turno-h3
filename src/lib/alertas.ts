@@ -1,5 +1,5 @@
 // Lógica pura dos alertas — sem DOM, sem Supabase, 100% testável.
-import { ativacaoH3DaSemana, paraISO, sabadoDaSemanaH3 } from './datas'
+import { ativacaoH3DaSemana, ehSabadoISO, paraISO, sabadoDaSemanaH3 } from './datas'
 
 // Dois padrões de alerta, deliberadamente diferentes (fechado no
 // levantamento de requisitos):
@@ -152,11 +152,6 @@ export function avaliarAlertaHeadcountMensal(mesesAbertos: string[], hoje: Date)
   }
 }
 
-/** semanaRef: YYYY-MM-DD. */
-function ehSabado(semanaRef: string): boolean {
-  return isoWeekdayDe(new Date(semanaRef + 'T00:00:00')) === 6
-}
-
 export interface AlertaSemanasSemH3 {
   /** semana_ref (Sábado) de cada semana com escala mas sem nenhum H3 ativo, da mais próxima para a mais distante. */
   semanas: string[]
@@ -175,11 +170,12 @@ export interface AlertaSemanasSemH3 {
  * O turno H3 é semanal: a semana tem semana_ref no SÁBADO e ativa-se às
  * 22h de sexta-feira, na véspera (o H3 trabalha 22h00 às 07h00), até às 22h
  * da sexta seguinte. Uma linha de escala noutro dia da semana não é uma
- * semana: acontece, por exemplo, quando uma troca é aprovada com a data de
- * uma quinta-feira, e nesse caso a escala fica com uma linha solta nesse
- * dia. Essas linhas são ignoradas — nem inventam uma semana "sem H3" (foi o
- * erro da primeira versão: acusou 15/10 a 21/10 quando as semanas de sábado
- * 10/10 e 17/10 tinham H3), nem cobrem uma semana que não tem.
+ * semana: aconteceu com uma troca aprovada com a data de uma quinta-feira
+ * (a base de dados já a recusa, migração 0061), que deixava na escala uma
+ * linha solta nesse dia. Essas linhas são ignoradas — nem inventam uma
+ * semana "sem H3" (foi o erro da primeira versão: acusou 15/10 a 21/10 quando
+ * as semanas de sábado 10/10 e 17/10 tinham H3), nem cobrem uma semana que
+ * não tem.
  *
  * `escalas` = linhas de escala_semanal; `idsH3Ativos` = utilizadores
  * OPERADOR_H3 ativos (só esses podem cumprir o turno H3); `momento` = agora,
@@ -197,7 +193,7 @@ export function avaliarSemanasSemH3(
   const comEscala = new Set<string>()
   const comH3 = new Set<string>()
   for (const e of escalas) {
-    if (!ehSabado(e.semana_ref)) continue
+    if (!ehSabadoISO(e.semana_ref)) continue
     if (e.semana_ref < inicioJanela) continue
     comEscala.add(e.semana_ref)
     if (e.turno === 'H3' && idsH3Ativos.has(e.usuario_id)) comH3.add(e.semana_ref)

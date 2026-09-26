@@ -1,23 +1,28 @@
 begin;
 select plan(9);
 
+-- As semanas das trocas são sábados (0061: o semana_ref de uma troca é o sábado
+-- em que a semana H3 começa). A primeira, 2099-08-08, fica longe de qualquer
+-- escala real, porque esta suite corre contra uma base com dados reais; a
+-- segunda, 2020-08-15, é de uma semana já passada (ver o comentário mais abaixo).
+
 select tests.criar_usuario('Bruno Diniz', 'bruno4@teste.pt', 'OPERADOR_H3') as bruno_id \gset
 select tests.criar_usuario('Kilson Júnior', 'kilson4@teste.pt', 'OPERADOR_H3') as kilson_id \gset
 select tests.criar_usuario('Leonardo Madruga', 'leonardo4@teste.pt', 'OPERADOR') as leonardo_id \gset
 select tests.criar_usuario('Gerente Teste', 'gerente4@teste.pt', 'GERENTE') as gerente_id \gset
 
-insert into escala_semanal (semana_ref, usuario_id, turno) values ('2026-08-06', :'bruno_id', 'H3');
+insert into escala_semanal (semana_ref, usuario_id, turno) values ('2099-08-08', :'bruno_id', 'H3');
 
 -- O substituto de uma troca tem de ser OPERADOR_H3
 select throws_ok(
-    format($f$ insert into trocas_escala (usuario_proponente, usuario_substituto, semana_ref) values (%L, %L, '2026-08-06') $f$, :'bruno_id', :'leonardo_id'),
+    format($f$ insert into trocas_escala (usuario_proponente, usuario_substituto, semana_ref) values (%L, %L, '2099-08-08') $f$, :'bruno_id', :'leonardo_id'),
     'P0001',
     'O substituto de uma troca de H3 tem de ter perfil OPERADOR_H3 e estar ativo.',
     'não é possível propor um OPERADOR comum (não-H3) como substituto numa troca'
 );
 
 insert into trocas_escala (usuario_proponente, usuario_substituto, semana_ref)
-values (:'bruno_id', :'kilson_id', '2026-08-06') returning id as troca_id \gset
+values (:'bruno_id', :'kilson_id', '2099-08-08') returning id as troca_id \gset
 
 select is((select status from trocas_escala where id = :'troca_id'), 'PROPOSTA'::status_troca,
     'troca nasce em estado PROPOSTA, simplificado (sem passo de aceite do colega)');
@@ -26,12 +31,12 @@ select is((select status from trocas_escala where id = :'troca_id'), 'PROPOSTA':
 update trocas_escala set status = 'APROVADA', aprovado_por = :'gerente_id' where id = :'troca_id';
 
 select is(
-    (select usuario_id from escala_semanal where semana_ref = '2026-08-06' and turno = 'H3'),
+    (select usuario_id from escala_semanal where semana_ref = '2099-08-08' and turno = 'H3'),
     :'kilson_id',
     'aprovar a troca substitui automaticamente o operador H3 dessa semana na escala'
 );
 select is(
-    (select count(*)::int from escala_semanal where semana_ref = '2026-08-06' and turno = 'H3' and usuario_id = :'bruno_id'),
+    (select count(*)::int from escala_semanal where semana_ref = '2099-08-08' and turno = 'H3' and usuario_id = :'bruno_id'),
     0,
     'o proponente original deixa de constar como H3 dessa semana depois da troca aprovada'
 );
@@ -81,10 +86,13 @@ update usuarios set ativo = true where id = :'bruno_id';
 -- nada impedia aprovar uma troca cujo proponente tivesse sido
 -- desativado depois de a propor. RLS trocas_insert exige
 -- usuario_proponente = auth.uid(), por isso o insert corre como o
--- próprio Kilson, não como o Gerente.
+-- próprio Kilson, não como o Gerente. A semana é de um sábado JÁ
+-- PASSADO de propósito: desde a 0057, desativar alguém apaga as
+-- propostas futuras em que participa, e só uma proposta antiga,
+-- ainda por decidir, sobrevive para ser (mal) aprovada.
 select tests.autenticar_como(:'kilson_id');
 insert into trocas_escala (usuario_proponente, usuario_substituto, semana_ref)
-values (:'kilson_id', :'bruno_id', '2026-08-13') returning id as troca2_id \gset
+values (:'kilson_id', :'bruno_id', '2020-08-15') returning id as troca2_id \gset
 
 select tests.autenticar_como(:'gerente_id');
 update usuarios set ativo = false where id = :'kilson_id';

@@ -83,6 +83,11 @@ export function sabadoDaSemanaH3(momento: Date): Date {
   return adicionarDias(dia, jaAtivouProximaSemana ? 1 : -desdeSabado)
 }
 
+/** `true` se a data ISO (AAAA-MM-DD) é um sábado — o dia em que uma semana H3 começa. */
+export function ehSabadoISO(iso: string): boolean {
+  return isoWeekday(new Date(iso + 'T00:00:00')) === 6
+}
+
 /**
  * Conta dias úteis (Segunda a Sexta, ambos inclusive) entre duas datas
  * ISO — espelha exatamente a função SQL dias_uteis() usada pelo

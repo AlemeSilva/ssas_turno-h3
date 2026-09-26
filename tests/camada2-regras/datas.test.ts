@@ -4,6 +4,7 @@ import {
   ativacaoH3DaSemana,
   diasSobrepostos,
   duracaoEmAnosEMeses,
+  ehSabadoISO,
   formatarDataPT,
   isoWeekday,
   paraISO,
@@ -229,5 +230,26 @@ describe('ativacaoH3DaSemana — 22h de sexta-feira, véspera do sábado', () =>
   it('atravessa o início do mês e do ano', () => {
     expect(ativacaoH3DaSemana('2026-08-01').getTime()).toBe(new Date(2026, 6, 31, 22, 0).getTime())
     expect(ativacaoH3DaSemana('2028-01-01').getTime()).toBe(new Date(2027, 11, 31, 22, 0).getTime()) // sábado 01/01/2028
+  })
+})
+
+describe('ehSabadoISO — a semana H3 (semana_ref, troca) começa sempre ao sábado', () => {
+  it('sábado é sábado', () => {
+    expect(ehSabadoISO('2026-10-17')).toBe(true)
+    expect(ehSabadoISO('2028-01-01')).toBe(true) // sábado que abre o ano
+  })
+
+  it('a quinta de referência do plano de fim de semana não é uma semana H3 (o caso da troca #59, 15/10/2026)', () => {
+    expect(ehSabadoISO('2026-10-15')).toBe(false)
+  })
+
+  it('a sexta em que o H3 se ativa (22h) e os outros dias também não', () => {
+    expect(ehSabadoISO('2026-10-16')).toBe(false) // sexta
+    expect(ehSabadoISO('2026-10-18')).toBe(false) // domingo
+    expect(ehSabadoISO('2027-12-31')).toBe(false) // sexta, véspera do sábado 01/01/2028
+  })
+
+  it('um campo de data por preencher não é sábado', () => {
+    expect(ehSabadoISO('')).toBe(false)
   })
 })

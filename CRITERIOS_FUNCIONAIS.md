@@ -22,6 +22,11 @@ uma linha de escala solta que só os dados reais tinham).
   (Fontes: o Gerente, 2026-09-25; "BATCH SEXTA PARA SÁBADO" às 22h no
   `CheckList.xlsx`; os blocos H3 de sábado a sexta no `Escala_2026.xlsx`.)
 - Código: `sabadoDaSemanaH3()` e `ativacaoH3DaSemana()` em `src/lib/datas.ts`.
+- As trocas de H3 (`trocas_escala.semana_ref`) usam a mesma âncora: o sábado em
+  que a semana começa. O formulário só aceita sábados e a base de dados recusa
+  qualquer outro dia (migração 0061), porque a aprovação age nessa data exata:
+  numa quinta não trocava semana nenhuma e deixava uma linha solta na escala. A
+  troca #59 (2026-10-15, aprovada antes desta regra) fica no histórico.
 
 Outras âncoras, que não se confundem com a da escala:
 
@@ -47,3 +52,15 @@ referência e escalona à própria hora.
 | Preenchimento automático anual (escala, feriados) | vermelho se a última ação for falha ou erro; âmbar se for aviso; desaparece na próxima execução com sucesso | Gerente e delegado | `avaliarSaudeAutomacaoAnual`, `avaliarAvisoAutomacaoAnual` |
 | Headcount mensal | âmbar: o mês anterior por fechar, a partir do dia 5; vermelho: há um mês mais antigo por fechar | Gerente e delegado | `avaliarAlertaHeadcountMensal` |
 | H3 por atribuir | semanas H3 (de sábado) que têm escala mas nenhum H3 ativo; vermelho se é a semana em curso ou o H3 dela se ativa nos próximos 7 dias, âmbar se não; linhas fora de sábado são ignoradas; decidido pelo Gerente ("tem de avisar") | Gerente e delegado | `avaliarSemanasSemH3` |
+
+## Divergências conhecidas, por corrigir
+
+Onde o código ainda não segue os critérios acima. Cada uma pede primeiro a
+decisão do Gerente.
+
+- Sugestão automática (`PainelSugestao` em `src/pages/EscalaPage.tsx` e função
+  `sugerir-escala`): pede a "Quinta-feira de referência", o "Aplicar" grava
+  linhas de `escala_semanal` com essa quinta como `semana_ref`, e a função
+  procura a semana anterior nessa data menos 7 dias, onde a escala (aos
+  sábados) não tem linhas. A base de dados não impede uma linha de escala fora
+  de sábado.

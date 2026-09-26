@@ -56,7 +56,10 @@ contadores internos do pgTAP, e `finish()` falharia com `No tests run!`.
   `destravar_checklist_item` é o único caminho de correção.
 - `06_trocas_e_delegacao.sql` — substituto de troca tem de ser
   `OPERADOR_H3`; aprovação aplica-se de imediato à escala; delegação
-  sem sobreposição e aditiva (titular mantém o poder).
+  sem sobreposição e aditiva (titular mantém o poder). As trocas são em
+  sábados (0061); a que testa o proponente desativado é de uma semana
+  passada de propósito, porque desativar alguém apaga as propostas
+  futuras em que participa (0057).
 - `07_rls_permissoes.sql` — o teste mais importante de segurança:
   cada perfil a tentar escrever diretamente via SQL, incluindo a
   reatribuição dinâmica de permissão quando uma troca é aprovada a
@@ -162,3 +165,8 @@ contadores internos do pgTAP, e `finish()` falharia com `No tests run!`.
 - `27_feriados_sem_plantao_ignora_inativos.sql` — migração 0060: a vista
   `feriados_sem_plantao` não conta como plantonista confirmado nem como H3
   da semana quem já saiu da equipa.
+- `28_troca_semana_ao_sabado.sql` — migração 0061: o `semana_ref` de uma
+  troca é o sábado em que a semana H3 começa; quinta e sexta são recusadas
+  ao inserir e ao mudar a data; aprovar uma troca de sábado continua a passar
+  o H3; uma troca antiga já aprovada numa quinta (a #59) continua editável e
+  uma proposta antiga numa quinta pode ser rejeitada, mas já não aprovada.

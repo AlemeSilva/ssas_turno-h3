@@ -4,12 +4,16 @@ import { useAuth } from '@/auth/AuthContext'
 import { useDebounce } from '@/lib/hooks/useDebounce'
 import { usuariosH3Ativos } from '@/data/useUsuarios'
 import type { TrocaEscala, Usuario } from '@/types/database'
-import { formatarDataPT } from '@/lib/datas'
+import { adicionarDias, ehSabadoISO, formatarDataPT, paraISO } from '@/lib/datas'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+
+// A troca identifica a semana pelo sábado em que ela começa (semana_ref da escala). A base de
+// dados recusa qualquer outro dia (migração 0061); este aviso chega antes de enviar.
+const MENSAGEM_SEMANA_SABADO = 'A semana do H3 começa ao sábado — escolhe um sábado.'
 
 export function PainelTrocas({ usuarios }: { usuarios: Usuario[] }) {
   const { usuario, ehGerenteOuDelegado } = useAuth()
@@ -46,9 +50,18 @@ export function PainelTrocas({ usuarios }: { usuarios: Usuario[] }) {
     }
   }, [])
 
+  function aoMudarSemana(valor: string) {
+    setSemanaRef(valor)
+    setErro(valor && !ehSabadoISO(valor) ? MENSAGEM_SEMANA_SABADO : null)
+  }
+
   async function propor(e: FormEvent) {
     e.preventDefault()
     if (!usuario) return
+    if (!ehSabadoISO(semanaRef)) {
+      setErro(MENSAGEM_SEMANA_SABADO)
+      return
+    }
     // O <Select> do shadcn/Radix não é um <select> nativo, por isso não
     // participa na validação HTML do formulário (o "required" nativo
     // que antes impedia submissão sem substituto escolhido) — a
@@ -115,9 +128,14 @@ export function PainelTrocas({ usuarios }: { usuarios: Usuario[] }) {
         {souOperadorH3 && (
           <form onSubmit={propor} className="flex flex-col gap-2">
             <label className="flex flex-col gap-1 text-xs text-zinc-500">
-              Semana (Quinta de referência)
-              <Input type="date" required value={semanaRef} onChange={(e) => setSemanaRef(e.target.value)} />
+              Semana H3 (o sábado em que começa)
+              <Input type="date" required value={semanaRef} onChange={(e) => aoMudarSemana(e.target.value)} />
             </label>
+            {ehSabadoISO(semanaRef) && (
+              <p className="-mt-1 text-xs text-zinc-500">
+                Sábado {formatarDataPT(semanaRef)} a sexta {formatarDataPT(paraISO(adicionarDias(new Date(semanaRef + 'T00:00:00'), 6)))}
+              </p>
+            )}
             <label className="flex flex-col gap-1 text-xs text-zinc-500">
               Substituto
               <Select value={substitutoId} onValueChange={setSubstitutoId}>
