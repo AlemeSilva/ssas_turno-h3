@@ -34,9 +34,33 @@ export function avaliarAlertaPreditivo(horaReferenciaHHMM: string, agoraHHMM: st
   return 'ESCALONAR'
 }
 
-export function estaHrLimiteEstourado(horaLimite: string | null, statusTarefa: string, agoraHHMM: string): boolean {
-  if (!horaLimite || statusTarefa === 'CONCLUIDO') return false
-  return agoraHHMM >= horaLimite
+export interface TarefaComHrLimite {
+  hr_limite: string | null
+  /** DT. PREVISÃO: dia previsto de fim. */
+  dt_previsao: string | null
+  /** Dia marcado; conta quando não há dia previsto. */
+  data_execucao: string
+  status: string
+}
+
+/**
+ * Momento (hora local) em que se esgota a HR. LIMITE de uma tarefa: o dia
+ * previsto de fim (dt_previsao) ou, se estiver vazio, o dia marcado
+ * (data_execucao), às hr_limite. Uma hora-limite depois da meia-noite pede o
+ * dia seguinte em dt_previsao. `null` sem HR. LIMITE ou com valores inválidos.
+ */
+function momentoHrLimite(t: Pick<TarefaComHrLimite, 'hr_limite' | 'dt_previsao' | 'data_execucao'>): Date | null {
+  const hora = /^(\d{2}):(\d{2})/.exec(t.hr_limite ?? '')
+  const dia = /^(\d{4})-(\d{2})-(\d{2})/.exec(t.dt_previsao || t.data_execucao)
+  if (!hora || !dia) return null
+  return new Date(Number(dia[1]), Number(dia[2]) - 1, Number(dia[3]), Number(hora[1]), Number(hora[2]))
+}
+
+/** Reativo: a tarefa não concluída passou o momento da sua HR. LIMITE (dia e hora). */
+export function estaHrLimiteEstourado(tarefa: TarefaComHrLimite, momento: Date): boolean {
+  if (tarefa.status === 'CONCLUIDO') return false
+  const limite = momentoHrLimite(tarefa)
+  return limite !== null && momento.getTime() >= limite.getTime()
 }
 
 /** diaSemanaIso: 1=Segunda … 7=Domingo (ISO 8601). */

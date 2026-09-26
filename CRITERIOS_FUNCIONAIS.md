@@ -46,7 +46,7 @@ referência e escalona à própria hora.
 | Alarme | Critério | Quem vê | Código |
 | --- | --- | --- | --- |
 | Próximo alerta (barra) | 20h de sábado e de domingo; 15h só no sábado de fim de semana de manutenção; 22h só no sábado (janela GIR_FL) | todos | `calcularProximoAlerta` |
-| HR.LIMITE (tarefas excecionais atrasadas) | reativo: dispara na hora-limite da tarefa, se ainda não concluída. Limitação conhecida: compara só a hora, sem data, por isso um limite depois da meia-noite (por exemplo 02h00) dispara logo às 22h30 do dia anterior; hoje nenhuma tarefa tem HR.LIMITE | todos | `estaHrLimiteEstourado` |
+| HR.LIMITE (tarefas atrasadas) | reativo: dispara no momento-limite da tarefa, se ainda não concluída, e continua enquanto não for concluída. O momento é o dia previsto de fim (`dt_previsao`) ou, se estiver vazio, o dia marcado (`data_execucao`), mais a hora-limite. Um limite depois da meia-noite pede o dia seguinte em `dt_previsao`. Decidido pelo Gerente em 2026-09-26; hoje nenhuma tarefa tem HR.LIMITE | todos | `estaHrLimiteEstourado` |
 | Checagens de 20h e de 15h (Checklist) | reativo: 20h de sábado e domingo; 15h só no sábado de manutenção | todos | `PainelAlertas` |
 | GIR_FL (Checklist) | preditivo: aviso 30 min antes das 22h de sábado, escalona às 22h; só se houver cadeia dependente por concluir | todos | `avaliarRiscoGirFl` |
 | Preenchimento automático anual (escala, feriados) | vermelho se a última ação for falha ou erro; âmbar se for aviso; desaparece na próxima execução com sucesso | Gerente e delegado | `avaliarSaudeAutomacaoAnual`, `avaliarAvisoAutomacaoAnual` |

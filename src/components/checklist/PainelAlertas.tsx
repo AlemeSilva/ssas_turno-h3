@@ -52,8 +52,9 @@ export function PainelAlertas({ tarefas, cadeias, dependenciasGirFl: nomesDepend
   const { usuario } = useAuth()
   const [registados, setRegistados] = useState<Set<string>>(new Set())
 
+  const momento = getNow()
   const agora = agoraHHMM()
-  const diaSemanaIso = isoWeekdayDe(getNow())
+  const diaSemanaIso = isoWeekdayDe(momento)
 
   // Debounce para prevenir múltiplos clics acidentais em "Registar
   // acionamento" — travado por `chave` (identifica o alerta concreto,
@@ -76,7 +77,7 @@ export function PainelAlertas({ tarefas, cadeias, dependenciasGirFl: nomesDepend
     (_tipo, chave) => chave
   )
 
-  const tarefasComHrLimiteEstourado = tarefas.filter((t) => estaHrLimiteEstourado(t.hr_limite, t.status, agora))
+  const tarefasComHrLimiteEstourado = tarefas.filter((t) => estaHrLimiteEstourado(t, momento))
 
   const statusDependenciasGirFl = cadeias
     .filter((c) => c.secao === 'BATCH_SAB_DOM' && nomesDependenciasGirFl.includes(c.nome_cadeia))

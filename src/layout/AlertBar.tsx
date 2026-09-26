@@ -56,8 +56,7 @@ export function AlertBar() {
   }, [])
 
   const proximo = calcularProximoAlerta(agora, ehManutencao)
-  const agoraHHMM = `${String(agora.getHours()).padStart(2, '0')}:${String(agora.getMinutes()).padStart(2, '0')}`
-  const tarefasAtrasadas = tarefasExcecionais.filter((t) => estaHrLimiteEstourado((t.hr_limite ?? '').slice(0, 5), t.status, agoraHHMM))
+  const tarefasAtrasadas = tarefasExcecionais.filter((t) => estaHrLimiteEstourado(t, agora))
   const rotuloAtraso =
     tarefasAtrasadas.length === 1 ? '1 tarefa excecional atrasada' : `${tarefasAtrasadas.length} tarefas excecionais atrasadas`
   const rotuloSemH3 = `H3 por atribuir: ${semanasSemH3.length} ${semanasSemH3.length === 1 ? 'semana' : 'semanas'}`

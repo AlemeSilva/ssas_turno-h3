@@ -10,6 +10,7 @@ import {
   calcularProximoAlerta,
   estaHrLimiteEstourado,
   isoWeekdayDe,
+  type TarefaComHrLimite,
 } from '../../src/lib/alertas'
 
 describe('avaliarAlertaReativo — HR.LIMITE e checagens 20h/15h', () => {
@@ -46,30 +47,57 @@ describe('avaliarAlertaPreditivo — GIR_FL (aviso antes, não depois)', () => {
   })
 })
 
-describe('estaHrLimiteEstourado', () => {
+describe('estaHrLimiteEstourado — a HR. LIMITE conta no dia e na hora', () => {
+  // Sábado 17/10/2026, 14h00. Datas locais, como o alarme as usa.
+  const tarefa = (extra: Partial<TarefaComHrLimite> = {}): TarefaComHrLimite => ({
+    hr_limite: '14:00',
+    dt_previsao: null,
+    data_execucao: '2026-10-17',
+    status: 'PENDENTE',
+    ...extra,
+  })
+  const em = (dia: number, hora: number, minuto = 0) => new Date(2026, 9, dia, hora, minuto) // outubro
+
   it('não está estourado sem HR.LIMITE definido (nullable, aceite conscientemente)', () => {
-    expect(estaHrLimiteEstourado(null, 'PENDENTE', '23:59')).toBe(false)
+    expect(estaHrLimiteEstourado(tarefa({ hr_limite: null }), em(19, 23, 59))).toBe(false)
   })
   it('não está estourado se a tarefa já foi concluída', () => {
-    expect(estaHrLimiteEstourado('14:00', 'CONCLUIDO', '23:59')).toBe(false)
+    expect(estaHrLimiteEstourado(tarefa({ status: 'CONCLUIDO' }), em(19, 23, 59))).toBe(false)
   })
-  it('está estourado quando a hora atual atinge o limite e a tarefa não está concluída', () => {
-    expect(estaHrLimiteEstourado('14:00', 'PENDENTE', '14:00')).toBe(true)
-    expect(estaHrLimiteEstourado('14:00', 'EM_ANDAMENTO', '14:05')).toBe(true)
+  it('está estourado quando o momento atinge o limite e a tarefa não está concluída', () => {
+    expect(estaHrLimiteEstourado(tarefa(), em(17, 14, 0))).toBe(true)
+    expect(estaHrLimiteEstourado(tarefa({ status: 'EM_ANDAMENTO' }), em(17, 14, 5))).toBe(true)
   })
   it('não está estourado antes do limite', () => {
-    expect(estaHrLimiteEstourado('14:00', 'PENDENTE', '13:59')).toBe(false)
+    expect(estaHrLimiteEstourado(tarefa(), em(17, 13, 59))).toBe(false)
   })
-  it('limitação H3 conhecida: hr_limite pós-meia-noite comparado com hora do turno dá falso positivo', () => {
-    // A comparação é feita em strings HH:MM sem contexto de data.
-    // No turno H3 (22h→07h), uma tarefa com hr_limite='02:00' avaliada às 22:30
-    // do dia anterior retorna true ("22:30" >= "02:00"), quando o correto seria false.
-    // Os templates de tarefa não têm hr_limite — este cenário só surge em tarefas
-    // excecionais criadas manualmente. Documentado aqui para detetar se/quando surgir.
-    expect(estaHrLimiteEstourado('02:00', 'PENDENTE', '22:30')).toBe(true) // falso positivo: hr_limite ainda não foi atingido
-    // Comparação intra-dia permanece correta (mesmo cenário sem cruzar meia-noite):
-    expect(estaHrLimiteEstourado('02:00', 'PENDENTE', '01:59')).toBe(false)
-    expect(estaHrLimiteEstourado('02:00', 'PENDENTE', '02:00')).toBe(true)
+
+  it('o dia conta: um limite de sábado às 14h não dispara na quinta às 15h nem na sexta à noite', () => {
+    // Antes só se comparava a hora: "15:00" >= "14:00" dava atrasada logo na quinta.
+    expect(estaHrLimiteEstourado(tarefa(), em(15, 15, 0))).toBe(false) // quinta
+    expect(estaHrLimiteEstourado(tarefa(), em(16, 22, 30))).toBe(false) // sexta
+  })
+  it('depois do dia do limite, a tarefa por concluir continua atrasada (não basta filtrar por hoje)', () => {
+    expect(estaHrLimiteEstourado(tarefa(), em(18, 9, 0))).toBe(true) // domingo
+    expect(estaHrLimiteEstourado(tarefa(), em(19, 9, 0))).toBe(true) // segunda
+  })
+
+  it('o dia previsto (dt_previsao) prevalece sobre o dia marcado: limite às 02h00 de domingo', () => {
+    // Turno H3 (22h00 a 07h00): a tarefa é marcada para sábado, o fim previsto
+    // é domingo. Antes disparava no sábado às 22h30 ("22:30" >= "02:00").
+    const passadaAMeiaNoite = tarefa({ hr_limite: '02:00', dt_previsao: '2026-10-18' })
+    expect(estaHrLimiteEstourado(passadaAMeiaNoite, em(17, 22, 30))).toBe(false)
+    expect(estaHrLimiteEstourado(passadaAMeiaNoite, em(18, 1, 59))).toBe(false)
+    expect(estaHrLimiteEstourado(passadaAMeiaNoite, em(18, 2, 0))).toBe(true)
+  })
+
+  it('a hora-limite vem da base com segundos (14:00:00) e conta como 14:00', () => {
+    expect(estaHrLimiteEstourado(tarefa({ hr_limite: '14:00:00' }), em(17, 14, 0))).toBe(true)
+    expect(estaHrLimiteEstourado(tarefa({ hr_limite: '14:00:00' }), em(17, 13, 59))).toBe(false)
+  })
+  it('valores inválidos nunca alarmam', () => {
+    expect(estaHrLimiteEstourado(tarefa({ hr_limite: 'abc' }), em(19, 23, 59))).toBe(false)
+    expect(estaHrLimiteEstourado(tarefa({ data_execucao: '' }), em(19, 23, 59))).toBe(false)
   })
 })
 
