@@ -1,5 +1,7 @@
 # Turno H3 — Procedimento de Deploy
 
+**Estado: histórico (2026-07-31).** Guia original de preparação para o primeiro deploy — a equipa, o calendário de fases e o CI que descreve já não correspondem à realidade (a CAMADA 1 de CI citada foi removida, a equipa tem hoje outra dimensão). **A referência atual é `docs/operacao.md`.** Fica aqui como registo do que se planeou nessa altura.
+
 Guia completo para deploy da aplicação no Netlify e roll-out para uso oficial.
 
 ---

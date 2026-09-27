@@ -1,74 +1,62 @@
 # Gestão de Turnos — Accenture / Banco Montepio
 
-Central de controlo, planeamento e execução operacional do Turno H3 (equipa DEOS — operação SAS).
+Central de controlo, planeamento e execução operacional do Turno H3 (equipa DEOS — operação SAS): escala H1-H4, férias, trocas de H3, Plano e Checklist do fim de semana, relatório semanal, Headcount Ideal. Em produção desde 2026-07-31, em `https://turno-h3.netlify.app`.
+
+**Toda a documentação funcional — regras, interface, limites, decisões do Gerente — vive em [`CLAUDE.md`](CLAUDE.md) e em [`docs/`](docs); este ficheiro só descreve a stack e como pôr o projeto a correr.**
 
 ## Stack
 
-- **Frontend:** React + Vite + TypeScript, sem framework de UI pesado (CSS próprio em `src/styles/theme.css`).
-- **Backend/Dados:** Supabase (Postgres + Auth + Realtime + Edge Functions). Sem servidor dedicado (Render foi deliberadamente excluído do desenho).
-- **Deploy previsto:** Netlify (frontend) + Supabase (tudo o resto).
+- **Frontend:** React + Vite + TypeScript, Tailwind e shadcn/ui.
+- **Backend/Dados:** Supabase (Postgres + Auth + Realtime + Edge Functions). Sem servidor dedicado.
+- **Deploy:** Netlify (frontend) + Supabase (base de dados e funções) — ver [`docs/operacao.md`](docs/operacao.md).
 
 ## Estrutura
 
 ```
 supabase/
-  migrations/
-    0001_schema.sql   — tabelas, enums, triggers, regras de negócio
-    0002_rls.sql      — políticas de Row Level Security
-    0003_gestao_cadeias.sql — permite adicionar/desativar cadeias (Gerente)
-    0004_concorrencia_ferias.sql — exclusion constraint + lock, corrige condição de corrida
-  functions/
-    sugerir-escala/   — Edge Function: sugestão (não aplica) de H1-H4
-  tests/              — suite pgTAP (CAMADA 1 de homologação)
+  migrations/   — esquema, aplicado por ordem, à mão (ver docs/operacao.md)
+  functions/    — Edge Functions: gerir-utilizadores, sugerir-escala, desactivar-saidos
+  tests/        — suite pgTAP (Camada 1 de testes, ver docs/testes.md)
 tests/
-  camada2-regras/     — Vitest, lógica pura (já corre — ver tests/README.md)
-  camada3-e2e/        — Playwright, interface e fluxos
-  camada4-stress/     — scripts Node, stress e concorrência
+  camada2-regras/  — Vitest, lógica pura — corre sempre, sem serviços externos
+  camada3-e2e/     — Playwright, interface e fluxos
+  camada4-stress/  — scripts Node, stress e concorrência
 src/
-  auth/               — login, contexto de sessão, guarda de rota
-  components/
-    escala/           — férias, trocas, delegação de aprovação
-    checklist/         — item de checklist, cadeia, painel de alertas
-  data/               — hooks de acesso a dados (com subscrição Realtime)
-  lib/                — datas, templates de tarefas/checklist, export, cores
-  layout/             — shell principal, barra de alertas
-  pages/              — as 5 abas: Plano, Checklist, Escala, Relatórios, Histórico
-  types/database.ts   — tipos TypeScript alinhados ao schema
+  auth/         — login, contexto de sessão, guarda de rota
+  components/   — escala (férias/trocas/delegação), checklist, os dois diálogos do Headcount
+  data/         — hooks de acesso a dados (com subscrição Realtime)
+  lib/          — datas, headcount, alertas, templates, export, composição de escala
+  layout/       — moldura da aplicação, barra de alertas
+  pages/        — as páginas: Início, Plano, Checklist, Escala, Relatórios, Histórico, Definições, Utilizadores, Headcount
+  types/database.ts — tipos TypeScript alinhados ao esquema (escritos à mão)
+docs/           — o "cérebro" da solução: uma regra, uma casa (ver CLAUDE.md)
 ```
 
-## Antes de correr
+## Pôr a correr localmente
 
-1. Criar um projeto Supabase (free tier).
-2. Aplicar as migrações, por ordem, no SQL Editor do Supabase (ou via Supabase CLI):
-   `0001_schema.sql` → `0002_rls.sql` → `0003_gestao_cadeias.sql` → `0004_concorrencia_ferias.sql`.
-3. Criar os 6 utilizadores em Supabase Auth (Gerente provisiona manualmente, sem
-   auto-registo público), e inserir a linha correspondente em `usuarios` para cada um
-   (perfil `OPERADOR` / `OPERADOR_H3` / `GERENTE`).
-4. Copiar `.env.example` para `.env.local` e preencher `VITE_SUPABASE_URL` /
-   `VITE_SUPABASE_ANON_KEY` (Project Settings → API no painel Supabase).
-5. `npm install && npm run dev`.
+1. `npm install`.
+2. Copiar `.env.example` para `.env.local` e preencher `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` do projeto Supabase (produção ou um projeto próprio de desenvolvimento — Project Settings → API no painel Supabase).
+3. Para um projeto Supabase **novo**: aplicar as migrações de `supabase/migrations/`, por ordem, no SQL Editor (ou `psql`/CLI); registar as contas em Supabase Auth e a linha correspondente em `usuarios` (perfil `OPERADOR` / `OPERADOR_H3` / `GERENTE`). Contra o projeto de **produção**, isto já está feito — não repetir.
+4. `npm run dev`.
 
-A Edge Function `sugerir-escala` é opcional para já — o algoritmo de sugestão ainda
-não está ligado a um botão na interface (ver "Por fazer" abaixo); pode ser invocada
-diretamente via `supabase functions invoke sugerir-escala` para validação manual.
+Para verificar o ecrã autenticado sem credenciais reais, ver `docs/operacao.md`, secção 6 (Supabase falso, fora do repositório).
 
-## Por fazer (fora do âmbito desta fase de construção)
+## Testes
 
-- Ligar o botão "Sugerir automaticamente" da Escala à Edge Function `sugerir-escala`.
-- Cron/Edge Function agendada que bloqueia o login de utilizadores cuja `data_saida`
-  já passou (ver comentário em `src/auth/RequireAuth.tsx`).
-- Alargar o Histórico aos restantes separadores propostos (Plano, Checklist/Cadeias)
-  além de Escala e Auditoria, já implementados.
-- Extrair tokens de cor definitivos (ficheiro de marca) caso a Accenture/Montepio
-  forneçam um guia de marca formal além da imagem de referência usada agora.
+Quatro camadas — quadro completo, com o estado real e atualizado de cada uma, em [`docs/testes.md`](docs/testes.md) (`tests/README.md` é o mapa original, hoje desatualizado nos números). Resumo:
+
+```bash
+npm run test:regras   # Camada 2 — Vitest, corre sempre
+npm run lint           # oxlint
+npm run build          # tsc -b && vite build
+```
+
+As Camadas 1 (pgTAP), 3 (Playwright) e 4 (stress) precisam de acesso a uma base de dados real — ver `docs/testes.md` e `docs/operacao.md` antes de as correr.
 
 ## Idioma
 
-Toda a interface e geração de relatórios está em português europeu (pt-PT).
+Toda a interface, os relatórios e a documentação estão em português europeu (pt-PT).
 
-## Homologação
+## Outros documentos na raiz
 
-Suite de testes por camadas em `tests/` — ver `tests/README.md` para o
-quadro completo. A CAMADA 2 (`npm run test:regras`) já corre neste
-repositório sem qualquer serviço externo; as restantes três precisam
-de Postgres/Supabase reais e estão descritas, mas não executadas.
+`CRITERIOS_FUNCIONAIS.md`, `DEPLOY.md`, `ROLLOUT_PLAN.md` e `SECURITY_RECOMMENDATIONS.md` são anteriores ao conjunto `docs/` e estão, total ou parcialmente, ultrapassados — cada um diz no topo o que o substitui.

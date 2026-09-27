@@ -1,5 +1,7 @@
 # Security Recommendations — Status
 
+**Estado: parcialmente histórico.** Regista a implementação do checkup de segurança de 2026-07-31 (ainda correto para o que descreve). Trabalho de segurança mais recente e mais abrangente (o varrimento de "quem saiu não conta" de 2026-09-20/25, a correção de `revogar_sessoes_utilizador`, migração 0059, e outros achados de RLS/DDL) não está aqui — ver `docs/base-de-dados.md`, `docs/edge-functions.md`, `docs/perfis-e-permissoes.md` e `docs/limites-e-lacunas.md`, e o dossiê de segurança publicado à parte.
+
 Implementação das recomendações do checkup de segurança (2026-07-31).
 
 ---

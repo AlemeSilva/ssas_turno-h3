@@ -1,5 +1,7 @@
 # Turno H3 — Plano de Roll-Out para Uso Oficial
 
+**Estado: histórico.** O roll-out planeado aqui (Fases 1 a 3, go-live em 2026-08-16) já aconteceu; a aplicação está em uso normal em produção desde então. Fica como registo do plano original — não descreve o estado atual da equipa nem do processo. Para a operação corrente, ver `docs/operacao.md`.
+
 Estratégia faseada de propagação da aplicação para toda a equipa H3.
 
 ---
