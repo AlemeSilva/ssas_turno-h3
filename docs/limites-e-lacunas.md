@@ -28,6 +28,7 @@
 - Comentário de coluna `usuarios.elegivel_h2` cita nomes de pessoas de um backfill de agosto de 2026, sem efeito hoje. Comentário de `ferias.eh_operador_h3` cita uma exclusion constraint que já não existe. → `docs/base-de-dados.md`, secção 12.
 - Comentário de `usuarios.limite_h3_mensal` na base ainda fala do "mês do sábado do ciclo"; a regra em vigor é o mês da maioria dos 7 dias. → `docs/preenchimento-anual-de-novembro.md`, secção 10.
 - `src/styles/theme.css` descreve, no comentário do topo, um "dark mode corporativo" que já não é o aspeto real da aplicação. → `docs/interface.md`, secção 5.
+- O comentário da função `quintaEscalaDe` (`src/lib/datas.ts`) ainda descreve uma "escala" Quinta-a-Quarta que já não existe (a `escala_semanal` é Sábado a Sexta desde sempre, `SEM-01`) — a função hoje só serve para ancorar o período do relatório semanal (`RelatoriosPage.tsx`), não a escala; o nome e o comentário ficaram por atualizar quando a âncora da escala mudou. Comportamento correto (verificado); só o comentário engana. → `docs/calendario-h3.md`, SEM-12; `docs/relatorios.md`.
 - `tests/README.md` (o índice geral de testes) tem números e afirmações da fase inicial do projeto, hoje incorretos (fala em "54/54" e diz que a Camada 1 "não corre"). → `docs/testes.md`.
 - `DEPLOY.md` e `ROLLOUT_PLAN.md`, na raiz do repositório, descrevem uma equipa, um calendário e um CI de 2026-07/08 que já não existem. → `docs/operacao.md`, secção 9.
 

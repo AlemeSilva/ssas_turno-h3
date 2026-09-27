@@ -165,7 +165,7 @@ Regras entre colegas (o porquê, entre pessoas): `docs/regras-entre-colegas.md`.
 
 ## 9. Tempo real (`postgres_changes`)
 
-Publicadas para atualização automática entre sessões: `escala_semanal`, `ferias`, `ferias_semanas`, `plantao_voluntarios`, `trocas_escala`, `delegacoes_aprovacao`, `planos`, `tarefas_plano`, `checklist_itens`, `cadeias_diarias`, `cadeias_catalogo`, `gir_fl_dependencias`. **Não publicadas**: `usuarios`, `feriados_portugal`, `logs_auditoria`, `headcount_mensal`, `headcount_parametros`. Detalhe de quem escuta o quê: `docs/interface.md`, INT-08.
+Publicadas para atualização automática entre sessões (confirmado a 2026-09-27 por consulta direta a `pg_publication_tables`, 11 tabelas): `escala_semanal`, `ferias`, `ferias_semanas`, `plantao_voluntarios`, `trocas_escala`, `planos`, `tarefas_plano`, `checklist_itens`, `cadeias_diarias`, `cadeias_catalogo`, `gir_fl_dependencias`. **Não publicadas**: `usuarios`, `delegacoes_aprovacao`, `feriados_portugal`, `logs_auditoria`, `headcount_mensal`, `headcount_parametros`. Detalhe de quem escuta o quê: `docs/interface.md`, INT-08.
 
 ## 10. Agendamentos (`pg_cron`)
 
