@@ -65,7 +65,7 @@ Calculado com o código real. Coluna a coluna: **ciclo do plano** = `semanaRefDe
 O que se lê daqui, sem erro possível:
 
 - **SEM-11** `semanaRefDe` (ciclo do plano) recua para a quinta mais recente de quinta a segunda, mas **avança para a quinta seguinte** à terça e à quarta ("entre ciclos", ainda não há plano). Por isso o Plano e o Checklist só mudam de ciclo à terça.
-- **SEM-12** `quintaEscalaDe` (relatório) **nunca avança até à própria quinta**: só muda de período às 00h00 de quinta-feira. O relatório da semana seguinte só aparece quando o Gerente o publica, na quinta. **Nome e comentário desatualizados no código**: o comentário da função ainda descreve uma "escala Quinta a Quarta" que já não existe (a escala é Sábado a Sexta, SEM-01); hoje só serve para ancorar o relatório (`docs/limites-e-lacunas.md`).
+- **SEM-12** `quintaEscalaDe` (relatório) **nunca avança até à própria quinta**: só muda de período às 00h00 de quinta-feira. O relatório da semana seguinte só aparece quando o Gerente o publica, na quinta. O nome da função é herdado de quando a escala era Quinta a Quarta; hoje só serve para ancorar o relatório — o comentário da função foi corrigido a 2026-09-27 para dizer isto claramente.
 - **SEM-13** `proximaSextaISO` devolve **hoje** se hoje for sexta, senão a sexta seguinte. É a "sexta administrativa" do cartão "Próxima semana" e do Início.
 - **SEM-14** A semana H3 em curso muda **às 22h de sexta**, não à meia-noite. Só o alarme "H3 por atribuir" aplica esta regra das 22h; a Escala do Mês e o Início mostram a semana pela data civil do dia (na sexta à noite, depois das 22h, continuam a mostrar a linha do sábado anterior).
 

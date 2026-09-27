@@ -169,13 +169,17 @@ export function proximaSextaISO(referencia: Date = agora()): string {
 }
 
 /**
- * Quinta-feira da escala (H1-H4) em vigor nesta data — diferente de
- * semanaRefDe(): essa serve o ciclo Qui→Seg do Plano de Fim de Semana
- * e propositadamente avança Terça/Quarta para a quinta seguinte (não
- * há plano a meio da semana). A escala cobre a semana inteira
- * (Qui→Qua seguinte), por isso recua sempre até à quinta mais
- * recente, todos os dias sem exceção — só avança no próprio dia em
- * que o Gerente publica o relatório novo, nunca antes.
+ * Quinta-feira mais recente (inclusive) a partir da data indicada — usada
+ * hoje só para ancorar o período do relatório semanal (RelatoriosPage.tsx),
+ * nunca para a escala em si (escala_semanal.semana_ref é sempre um SÁBADO,
+ * ver o comentário no topo deste ficheiro; nome e comentário antigos desta
+ * função ainda falavam de uma "escala Quinta a Quarta" que já não existe).
+ * Diferente de semanaRefDe(): essa serve o ciclo Qui→Seg do Plano de Fim de
+ * Semana e propositadamente avança Terça/Quarta para a quinta seguinte (não
+ * há plano a meio da semana); esta função nunca avança cedo — recua sempre
+ * até à quinta mais recente, todos os dias sem exceção, por isso só muda de
+ * valor no próprio dia em que se chega a uma quinta nova (quando o Gerente
+ * publica o relatório novo), nunca antes.
  */
 export function quintaEscalaDe(d: Date): Date {
   const deslocamento = (isoWeekday(d) - 4 + 7) % 7
