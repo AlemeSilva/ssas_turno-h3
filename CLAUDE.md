@@ -43,9 +43,11 @@ Lista completa (uma dúzia, com todos os IDs): `docs/regras.md`, secção 3.
 | `utilizadores-e-saidas.md` | Perfis, registo, saída da equipa, palavras-passe |
 | `perfis-e-permissoes.md` | Como funcionam os poderes e a RLS (o mecanismo) |
 | `interface.md` | Entrada, estrutura do ecrã, convenções comuns a todas as páginas |
+| `arquitetura-tecnica.md` | Stack exata (versões), estrutura de pastas, sistema de design |
 | `base-de-dados.md` | Referência técnica: enums, tabelas, gatilhos, funções, migrações |
 | `edge-functions.md` | As três Edge Functions e os agendamentos |
 | `operacao.md` | Publicar, migrar, verificar — **ler antes de qualquer deploy** |
+| `reconstrucao-do-zero.md` | Passo a passo para montar um ambiente novo de raiz |
 | `testes.md` | As quatro camadas de teste, estado real de cada uma |
 | `decisoes.md` | Registo cronológico de decisões do Gerente, com data |
 | `regras.md` | Índice de todos os IDs de regra, por prefixo |

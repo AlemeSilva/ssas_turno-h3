@@ -37,7 +37,7 @@
 | `OP` | OP-01 – OP-09 | `docs/operacao.md` | Publicar, migrar, verificar |
 | `TES` | TES-01 – TES-05 | `docs/testes.md` | As quatro camadas de teste |
 
-Ficheiros sem prefixo próprio, porque são índices ou inventário (não regras): `docs/base-de-dados.md`, `docs/decisoes.md`, `docs/glossario.md`, `docs/limites-e-lacunas.md`, este ficheiro, `CLAUDE.md`, `README.md`.
+Ficheiros sem prefixo próprio, porque são índices ou inventário (não regras): `docs/base-de-dados.md`, `docs/decisoes.md`, `docs/glossario.md`, `docs/limites-e-lacunas.md`, `docs/arquitetura-tecnica.md`, `docs/reconstrucao-do-zero.md`, este ficheiro, `CLAUDE.md`, `README.md`.
 
 ## 3. Princípios nunca violados
 
