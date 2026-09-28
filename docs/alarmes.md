@@ -1,6 +1,6 @@
 # Alarmes, avisos e acionamentos
 
-**Estado:** os padrões (reativo e preditivo) e as janelas (20h, 15h, 22h) foram fechados no levantamento de requisitos; a hora-limite com dia é decisão do Gerente de 2026-09-26; "H3 por atribuir" foi decidido pelo Gerente a 2026-09-25 ("tem de avisar"). Levantado do código a 2026-09-26. **Cada alarme segue obrigatoriamente os critérios definidos** (instrução do Gerente, 2026-09-25).
+**Estado:** os padrões (reativo e preditivo) e as janelas (20h, 15h, 22h) foram fechados no levantamento de requisitos; a hora-limite com dia é decisão do Gerente de 2026-09-26; "H3 por atribuir" foi decidido pelo Gerente a 2026-09-25 ("tem de avisar"). Levantado do código a 2026-09-26, reconfirmado a 2026-09-28. **Cada alarme segue obrigatoriamente os critérios definidos** (instrução do Gerente, 2026-09-25).
 **Ler quando:** criar, alterar ou validar **qualquer** alarme, aviso ou etiqueta de alerta; explicar por que apareceu ou não apareceu um aviso. **Antes de mexer num alarme:** confirmar o critério com o Gerente, escrevê-lo aqui, e testar com as linhas reais da produção, não só com dados inventados (foi o que faltou ao aviso "H3 por atribuir", que acusou uma semana sem H3 por causa de uma linha solta que só os dados reais tinham).
 
 ## 1. Onde aparecem
@@ -39,7 +39,7 @@ O painel "Alertas ativos" mostra um alarme desde que o seu estado seja diferente
 - A hora-limite vem da base com segundos (`14:00:00`) e conta como `14:00`.
 - Hoje nenhuma tarefa tem hora-limite preenchida (verificado a 2026-09-26: 55 tarefas, nenhuma com HR. LIMITE), por isso o alarme não dispara na prática.
 - Regista-se o **acionamento** com `ESCALONAMENTO_HR_LIMITE`.
-- Os dados de tarefas e planos usados neste alarme (lidos por `AlertBar.tsx`) só são lidos uma vez, ao abrir a página; o tick de 30 segundos da barra de alertas recalcula os alarmes sobre essa lista já carregada, sem voltar a ler a base (secção 1).
+- Os dados de tarefas e planos usados neste alarme (lidos por `AlertBar.tsx`) reagem por realtime a `planos`/`tarefas_plano`, com recarregamento de reserva a cada 5 minutos (secção 1).
 
 ### 4.2 GIR_FL (ALA-04)
 

@@ -1,6 +1,6 @@
 # Calendário do Turno H3: semanas, âncoras e conversões
 
-**Estado:** a semana H3 (sábado a sexta, ativada às 22h de sexta-feira) foi **definida pelo Gerente** a 2026-09-25 e confirmada pelos documentos de origem (`SAS/CheckList.xlsx`, `SAS/Escala_2026.xlsx`). O resto foi levantado do código e da base a 2026-09-26; os exemplos foram calculados com as funções reais.
+**Estado:** a semana H3 (sábado a sexta, ativada às 22h de sexta-feira) foi **definida pelo Gerente** a 2026-09-25 e confirmada pelos documentos de origem (`SAS/CheckList.xlsx`, `SAS/Escala_2026.xlsx`). O resto foi levantado do código e da base a 2026-09-26, com o comentário de `quintaEscalaDe` corrigido a 2026-09-27; os exemplos foram calculados com as funções reais.
 **Ler quando:** qualquer tarefa que envolva semana, turno, sábado, sexta-feira, quinta-feira, 22h, ciclo, período, mês de uma semana, escala, trocas, plano, relatório ou alarme. **Regra de ouro: antes de escrever uma data, decidir qual das âncoras da secção 1 se aplica.**
 
 ## 1. Não existe uma só "semana": existem cinco âncoras

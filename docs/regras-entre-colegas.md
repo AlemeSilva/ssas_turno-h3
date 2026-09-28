@@ -1,6 +1,6 @@
 # Regras entre elementos da equipa
 
-**Estado:** levantado do código e da base em produção a 2026-09-26. As decisões do Gerente estão indicadas onde existem (ver `docs/decisoes.md`). Cada regra tem uma só casa: as que dizem respeito ao turno de cada pessoa vivem em `docs/turnos-e-rotacao.md` (IDs `TUR-`) e aqui só se referem.
+**Estado:** levantado do código e da base em produção a 2026-09-26; reconfirmado a 2026-09-28 (COL-05, COL-06, COL-12, COL-15 — migrações 0062/0063). As decisões do Gerente estão indicadas onde existem (ver `docs/decisoes.md`). Cada regra tem uma só casa: as que dizem respeito ao turno de cada pessoa vivem em `docs/turnos-e-rotacao.md` (IDs `TUR-`) e aqui só se referem.
 **Ler quando:** férias, licenças, substitutos, trocas, delegação, plantões, saídas da equipa, quem pode editar o quê, ou qualquer pergunta do tipo "o que acontece se dois colegas...".
 
 ## 1. Quem é quem
@@ -30,7 +30,7 @@
 
 Aplicam-se no momento de gravar (trigger `trg_valida_ferias`), por isso valem para qualquer caminho, não só para o ecrã.
 
-- **COL-01** **Nenhum período de férias ou licença (pendente ou aprovado) pode sobrepor-se ao de outro colega ativo**, seja qual for o perfil dos dois. Mensagem: "Já existem férias/licença de outro colega sobrepostas a este período." É o requisito original, reafirmado pelo Gerente a 2026-09-06 (migração 0044, que alargou a regra a qualquer par de colegas; antes só valia entre `OPERADOR_H3`). Os períodos de quem já saiu da equipa **não bloqueiam** os colegas (migração 0055, 2026-09-20).
+- **COL-01** **Nenhum período de férias ou licença (pendente ou aprovado) pode sobrepor-se ao de outro colega ativo**, seja qual for o perfil dos dois. Mensagem: "Já existem férias/licença de outro colega sobrepostas a este período." É o requisito original, reafirmado pelo Gerente a 2026-09-06 (migração 0044, que alargou a regra a qualquer par de colegas; antes só valia entre `OPERADOR_H3`). Os períodos de quem já saiu da equipa **não bloqueiam** os colegas (migração 0055, 2026-09-25).
 - **COL-02** Uma pessoa também não pode ter dois períodos seus sobrepostos (pendentes ou aprovados). Mensagem: "Já tens um pedido de férias/licença teu sobreposto a este período." Encurtar um período nunca é bloqueado (migração 0057).
 - **COL-03** Só se pode ter **um pedido pendente** de cada vez ("Já tens um pedido pendente — aguarda que seja decidido antes de submeter outro.") e só se pede para o **ano corrente**: o ano da data de início tem de ser o ano de hoje ("Só é possível pedir férias/licença dentro do ano corrente."). As duas regras só se aplicam ao criar o pedido, nunca a uma decisão do Gerente (decisão de 2026-08-03, migração 0016). Com escala já atribuída o pedido **não** é impedido: o mecanismo de substituto trata da cobertura (decisão de 2026-08-03, migração 0017).
 - **COL-04** **Saldo anual: 22 dias úteis** de férias, somando os pedidos `FERIAS` pendentes e aprovados cuja data de início é do mesmo ano ("Este pedido ultrapassa o saldo anual de 22 dias úteis de férias."). Os dias úteis contam de segunda a sexta, sem descontar feriados. As **licenças** (`LICENCA`) e os pedidos rejeitados não contam para o saldo. Não há ecrã para registar uma licença: hoje só se cria por SQL.

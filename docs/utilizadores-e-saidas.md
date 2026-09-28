@@ -1,13 +1,13 @@
 # Utilizadores, saídas da equipa e palavras-passe
 
-**Estado:** levantado do código e da base a 2026-09-26. Decisões do Gerente: "quem saiu não pode ser contabilizado como ativo em nenhuma funcionalidade" e "ao desativar apaga-se só o que estava marcado a partir da data" (2026-09-25, migrações 0053 a 0060); varrimento das verificações de "ativo" (2026-09-20); um só Gerente titular (2026-09-05, migração 0042); turno fixo e elegibilidade a H2 como atributos (2026-08-12 e 2026-08-27, migrações 0029 e 0035).
+**Estado:** levantado do código e da base a 2026-09-26, reconfirmado a 2026-09-27. Decisões do Gerente: "quem saiu não pode ser contabilizado como ativo em nenhuma funcionalidade" e "ao desativar apaga-se só o que estava marcado a partir da data" (2026-09-25, migrações 0055 a 0060); varrimento das verificações de "ativo" (2026-09-20, migrações 0053, 0054); um só Gerente titular (2026-09-05, migração 0042); turno fixo e elegibilidade a H2 como atributos (2026-08-12 e 2026-08-27, migrações 0029 e 0035).
 **Ler quando:** registar, desativar, reativar ou agendar a saída de alguém; repor ou alterar palavras-passe; criar qualquer lista, regra, validação ou alarme que envolva pessoas (a regra USR-01 é a que mais se esquece); mexer nos perfis.
 
 ## 1. Perfis
 
 | Perfil | Papel | Turno | Vê os ecrãs do Gerente |
 | --- | --- | --- | --- |
-| `GERENTE` | O titular. Um só ativo. Não roda turnos; tem uma linha H4 na escala gerada automaticamente | H4 (fixo) | sim |
+| `GERENTE` | O titular. Um só ativo. Não roda turnos; tem uma linha H4 gerada automaticamente no preenchimento anual de novembro (não na reativação — ver USR-10) | H4 (fixo) | sim |
 | `OPERADOR_H3` | Roda entre H3, H2 e H4; pode propor trocas; pode ter limite mensal de H3 e ser elegível a H2 | rotação | não |
 | `OPERADOR` | Turno fixo H1 ou H4 | H1 ou H4 | não |
 

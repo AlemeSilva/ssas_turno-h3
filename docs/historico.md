@@ -18,7 +18,7 @@ Nas listas de pessoas (filtros "Pessoa"), quem já saiu continua a aparecer, mar
 | **Cadeias** | Data (De, Até) e Nome da cadeia (texto, "ex.: GIR_FL") | Data, Cadeia, Secção, Estado | 300 linhas, da data mais recente |
 | **Auditoria** | Pessoa e Tipo de ação (texto, "ex.: ESCALONAMENTO") | Data/hora, Ação, Utilizador, Descrição | 200 linhas, da mais recente |
 
-- Os estados dos planos mostram-se em português (Rascunho, Pendente, Aprovado, Em execução, Concluído) e os das cadeias com etiquetas de cor (verde concluída, vermelho atrasada, índigo em andamento, cinzento pendente).
+- Os estados dos planos mostram-se em português (Rascunho, Pendente de aprovação, Aprovado, Em execução, Concluído) e os das cadeias com etiquetas de cor (verde concluída, vermelho atrasada, índigo em andamento, cinzento pendente).
 - **HIS-01** O filtro de **texto** da Auditoria procura em **`acao`** (não no tipo de referência nem na descrição), sem distinguir maiúsculas. Para as automações de 1 de novembro, escrever `PREENCHIMENTO` (`docs/preenchimento-anual-de-novembro.md`).
 - **HIS-02** A coluna **Utilizador** mostra "—" quando a ação foi feita pela própria base (por exemplo, as automações anuais, a limpeza de dados futuros de quem sai) e não por uma pessoa.
 - **HIS-03** A tabela de auditoria **não mostra o tipo de referência** (`ESCALA_ANUAL`, `USUARIO`, `PLANO`, `HEADCOUNT_MENSAL`, …): distingue-se pela ação e pela descrição.
@@ -33,7 +33,8 @@ Tabela `logs_auditoria` (referência, ação, utilizador, descrição, hora, e a
 | `ESCALA_ANUAL` | `PREENCHIMENTO_AUTOMATICO`, `_AVISO`, `_ERRO`, `_FALHOU`, `_IGNORADO` | A base, a 1 de novembro |
 | `FERIADOS_ANUAL` | `PREENCHIMENTO_AUTOMATICO`, `_ERRO`, `_IGNORADO` | A base, a 1 de novembro |
 | `ESCALA_SEMANAL` | Correções manuais da escala, feitas por ação direta na base a pedido do Gerente (por exemplo `EDICAO_MANUAL_LIMITE_IGNORADO`, `CORRECAO_LINHA_FORA_DE_SABADO`) | Quem faz a correção |
-| `USUARIO` | `UTILIZADOR_CRIADO`, `UTILIZADOR_DESATIVADO`, `DESATIVACAO_AUTOMATICA`, `PASSWORD_REPOSTA`, `PASSWORD_ALTERADA_PROPRIA`, `LIMPEZA_DADOS_FUTUROS`, `COMPOSICAO_ESCALA_FALHOU`, `UTILIZADOR_FANTASMA` | Funções do servidor e o trigger de desativação |
+| `USUARIO` | `UTILIZADOR_CRIADO`, `UTILIZADOR_DESATIVADO`, `DESATIVACAO_AUTOMATICA`, `PASSWORD_REPOSTA`, `LIMPEZA_DADOS_FUTUROS`, `COMPOSICAO_ESCALA_FALHOU`, `UTILIZADOR_FANTASMA` | Funções do servidor e o trigger de desativação |
+| `USUARIO` | `PASSWORD_ALTERADA_PROPRIA` | O browser, em nome do próprio (ver HIS-05) |
 | `PLANO` | `CONCLUSAO_TAREFA`, `EDICAO_TAREFA`, `REABERTURA_APROVACAO` | Trigger das tarefas |
 | `TAREFA_PLANO` / `CHECKLIST_ITEM` | `OVERRIDE_TAREFA`, `OVERRIDE_CHECKLIST` | Funções de "destravar" |
 | `HEADCOUNT_MENSAL` | `FECHO_MES`, correções manuais do fecho (`CORRECAO_MANUAL_FECHO`, `CORRECAO_RETROATIVA`) | Função de fecho e correções por SQL |

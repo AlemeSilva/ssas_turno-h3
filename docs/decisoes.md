@@ -1,6 +1,6 @@
 # Registo de decisões do Gerente
 
-**Estado:** compilado a 2026-09-27 a partir das secções "Estado" de cada ficheiro em `docs/` (cada uma cita a data e, quando existe, a migração). Substitui um rascunho anterior mais curto, que referia um único ficheiro de escala e trocas entretanto repartido em `docs/turnos-e-rotacao.md`, `docs/escala.md`, `docs/trocas-e-delegacao.md` e `docs/calendario-h3.md`.
+**Estado:** compilado a 2026-09-27, atualizado a 2026-09-28, a partir das secções "Estado" de cada ficheiro em `docs/` (cada uma cita a data e, quando existe, a migração). Substitui um rascunho anterior mais curto, que referia um único ficheiro de escala e trocas entretanto repartido em `docs/turnos-e-rotacao.md`, `docs/escala.md`, `docs/trocas-e-delegacao.md` e `docs/calendario-h3.md`.
 **Ler quando:** perceber de onde vem um critério; antes de propor reabrir uma decisão já tomada; escrever a data de uma decisão nova.
 
 Uma decisão nova regista-se aqui com a data **e** entra no ficheiro da área que a aplica — **o critério em si vive lá, não aqui**; esta tabela só diz o quê, quando e onde. Ordem: da mais antiga para a mais recente. Não lista toda migração técnica (correções, renomeações) — só decisões de regra ou de comportamento; a lista completa de migrações está em `docs/base-de-dados.md`, secção 11.

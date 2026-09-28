@@ -170,3 +170,12 @@ contadores internos do pgTAP, e `finish()` falharia com `No tests run!`.
   ao inserir e ao mudar a data; aprovar uma troca de sábado continua a passar
   o H3; uma troca antiga já aprovada numa quinta (a #59) continua editável e
   uma proposta antiga numa quinta pode ser rejeitada, mas já não aprovada.
+- `29_ninguem_decide_o_proprio.sql` — migração 0062: ninguém aprova/rejeita
+  o seu próprio pedido de férias/licença nem a sua própria troca de H3, nem
+  por UPDATE nem já a nascer decidido por INSERT; decidir o pedido/troca de
+  outra pessoa continua a funcionar, incluindo por um delegado.
+- `30_substituto_e_delegado_nao_proprio.sql` — migração 0063: o substituto
+  de uma semana de férias não pode ser a própria pessoa ausente
+  (`trg_ferias_semanas_valida`); um delegado de aprovação não pode ser o
+  próprio titular (`chk_delegacao_substituto_diferente`); escolher outra
+  pessoa continua a funcionar nos dois casos.

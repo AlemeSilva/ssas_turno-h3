@@ -55,7 +55,7 @@ Lista completa (uma dúzia, com todos os IDs): `docs/regras.md`, secção 3.
 ## Convenções de trabalho
 
 - **Responder sempre em português de Portugal.**
-- **Nunca publicar sem autorização explícita**: implementar e fazer commit local; perguntar antes de `git push` para `main` (é sempre um deploy de produção) e antes de publicar uma alteração a `supabase/functions/**`. Juntar pedidos pendentes num só push.
+- **Nunca publicar sem autorização explícita**: implementar e fazer commit local; perguntar antes de `git push` para `main` (é sempre um deploy de produção, salvo `[skip ci]`/`[skip netlify]` na mensagem do commit) e antes de publicar uma alteração a `supabase/functions/**`. Juntar pedidos pendentes num só push.
 - **No fim de uma tarefa de implementação**, confirmar ao vivo (nunca de memória) e responder com os dois veredictos, neste vocabulário exato:
   - **Base de Dados:** Tudo implementado | Depende de autorização | Falta implementar
   - **Netlify:** Falta deploy | Tudo implementado | Falta implementar

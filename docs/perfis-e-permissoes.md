@@ -1,6 +1,6 @@
 # Perfis, poderes e permissões
 
-**Estado:** levantado a 2026-09-26 diretamente da base de produção (políticas RLS, permissões de tabelas e funções lidas do catálogo, não só das migrações). Decisões do Gerente: um só Gerente titular (2026-09-05, migração 0042); delegação de aprovação aditiva (migrações 0001, 0043, 0056); a base é a proteção real e o ecrã só esconde (regra desde o início do projeto).
+**Estado:** levantado a 2026-09-26 diretamente da base de produção (políticas RLS, permissões de tabelas e funções lidas do catálogo, não só das migrações); reconfirmado a 2026-09-28 (migração 0064, backfill das 3 políticas de `escala_diaria_*`). Decisões do Gerente: um só Gerente titular (2026-09-05, migração 0042); delegação de aprovação aditiva (migrações 0001, 0043, 0056); a base é a proteção real e o ecrã só esconde (regra desde o início do projeto).
 **Ler quando:** alterar ou validar quem pode ver ou fazer o quê; criar uma tabela, função ou ecrã novo (decidir a política antes do ecrã); investigar "porque é que esta pessoa consegue (ou não consegue)…". As regras de comportamento entre colegas (quem decide o quê sobre quem) estão em `docs/regras-entre-colegas.md`; aqui está o mecanismo.
 
 ## 1. Princípios

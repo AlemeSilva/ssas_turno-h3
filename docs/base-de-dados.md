@@ -1,6 +1,6 @@
 # Base de dados: referência técnica
 
-**Estado:** levantado a 2026-09-27 diretamente da base de produção (catálogo do Postgres — `pg_class`, `pg_proc`, `pg_policies`, `pg_constraint`, comentários de coluna — não só das migrações). É o **inventário**: o que existe e como se liga. **O porquê de cada regra** está no ficheiro da funcionalidade dona (a tabela da secção 8 aponta para lá); este ficheiro não repete essas explicações.
+**Estado:** levantado a 2026-09-27 diretamente da base de produção (catálogo do Postgres — `pg_class`, `pg_proc`, `pg_policies`, `pg_constraint`, comentários de coluna — não só das migrações); reconfirmado a 2026-09-28 (migrações 0062-0064). É o **inventário**: o que existe e como se liga. **O porquê de cada regra** está no ficheiro da funcionalidade dona (a tabela da secção 8 aponta para lá); este ficheiro não repete essas explicações.
 **Ler quando:** criar uma tabela, coluna, função, gatilho ou índice; perceber uma referência entre tabelas; escrever uma migração; investigar o catálogo. Para permissões (RLS) ver `docs/perfis-e-permissoes.md`; para as Edge Functions e os agendamentos, `docs/edge-functions.md`.
 
 ## 1. Como está organizada
@@ -26,7 +26,7 @@ Um único schema `public`, num projeto Supabase (Postgres). **Todas as 17 tabela
 
 ## 3. Extensões instaladas
 
-`pg_cron` (agendamentos, secção 7), `pgcrypto`, `uuid-ossp`, `pg_net` (chamadas HTTP a partir da base — hoje sem uso confirmado, `docs/edge-functions.md` EDG-06), `btree_gist` (índices/exclusões avançadas), `pg_stat_statements`, `supabase_vault` (cofre de segredos — hoje vazio), `plpgsql`.
+`pg_cron` (agendamentos, secção 10), `pgcrypto`, `uuid-ossp`, `pg_net` (chamadas HTTP a partir da base — hoje sem uso confirmado, `docs/edge-functions.md` EDG-06), `btree_gist` (índices/exclusões avançadas), `pg_stat_statements`, `supabase_vault` (cofre de segredos — hoje vazio), `plpgsql`.
 
 ## 4. Tabelas
 

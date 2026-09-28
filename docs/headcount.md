@@ -162,7 +162,7 @@ Um simulador "e se" que **nunca grava nada**. Abre-se em "Estudo de Cenários" (
 - **HDC-25** Mostra o veredito e o Ideal simulados, e um gráfico com duas barras (**Carga** e **Capacidade plena** da equipa simulada) e uma linha tracejada com a capacidade real de hoje. A escala do gráfico recalcula-se a cada ajuste (maior valor × 1,15), por isso nada é cortado. Com equipa simulada 0 não há erro: a capacidade é 0 e, **nos valores em vigor hoje** (piso = 6, banda ±1), o veredito é Sub-dimensionado.
 - **HDC-26** Sem baseline válido (sem meses fechados, ou capacidade 0), mostra "Sem baseline válido para simular…". Na prática o botão já está desativado nesse caso.
 
-**Exemplo** (o de 4.1, com 2 Operadores e 3 Operadores H3): no ponto zero, Ideal 6,0, Aceitável, com aviso de risco H3 (3 é o limiar). Baixar o batch para metade reduz a carga a 348 h, mas o Ideal continua 6,0: o piso manda. Passar os Operadores H3 de 3 para 2 dá equipa 4 e Sub-dimensionado, com o aviso de risco H3.
+**Exemplo** (o de 4.1, com 2 Operadores e 3 Operadores H3): no ponto zero, Ideal 6,0, Aceitável, com aviso de risco H3 (3 é o limiar). Baixar o batch para metade reduz a carga a 348 h, mas o Ideal continua 6,0: o piso manda. Baixar os Operadores H3 de 3 para 2 (sem subir os Operadores) dá equipa 4 e Sub-dimensionado, com o aviso de risco H3 — diferente de **passar** um H3 para Operador, que mantém o total em 5 (HDC-24).
 
 ## 8. Relatório em PDF
 

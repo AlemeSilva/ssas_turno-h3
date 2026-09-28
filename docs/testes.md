@@ -1,6 +1,6 @@
 # Testes: as quatro camadas
 
-**Estado:** levantado a 2026-09-27, com a Camada 2 corrida agora mesmo (380/380) e o estado das outras três confirmado no código, nos fluxos do GitHub e nas memórias de sessões anteriores que as correram. `tests/README.md` (a raiz da pasta `tests/`) tem números e afirmações desatualizados desde a escrita inicial do projeto (fala em "54/54" na Camada 2 e diz que a Camada 1 "não corre"); **este ficheiro é a referência atual**, aquele fica como o mapa original das camadas.
+**Estado:** levantado a 2026-09-27, reconfirmado a 2026-09-28 (270/270 na Camada 1, 380/380 na Camada 2) e o estado das outras três confirmado no código, nos fluxos do GitHub e nas memórias de sessões anteriores que as correram. `tests/README.md` (a raiz da pasta `tests/`) tem números e afirmações desatualizados desde a escrita inicial do projeto (fala em "54/54" na Camada 2 e diz que a Camada 1 "não corre"); **este ficheiro é a referência atual**, aquele fica como o mapa original das camadas.
 **Ler quando:** escrever ou alterar um teste; decidir que camada cobre uma regra nova; correr a suite antes de publicar; explicar por que uma regra não tem teste automático.
 
 ## 1. As quatro camadas, hoje
@@ -21,7 +21,7 @@
 
 ## 3. Camada 1 — Base de dados e contratos (pgTAP)
 
-- 29 ficheiros em `supabase/tests/` (`00_helpers.sql` + `01` a `28`), descritos um a um, com a migração que cada um cobre, em `supabase/tests/README.md` — **essa lista fica lá**, não se duplica aqui.
+- 31 ficheiros em `supabase/tests/` (`00_helpers.sql` + `01` a `30`), descritos um a um, com a migração que cada um cobre, em `supabase/tests/README.md` — **essa lista fica lá**, não se duplica aqui.
 - **Não há Docker nem Supabase CLI neste ambiente**, por isso o caminho "oficial" (`supabase test db`) nunca correu aqui. A suite corre com um script Node descartável, sempre contra a **produção real**, sempre dentro de transações que terminam em `rollback` (`docs/operacao.md`, secção 5). Última corrida completa registada: 30 ficheiros, 270 `ok`, 0 falhas, 0 erros (2026-09-28) — inclui `29_ninguem_decide_o_proprio.sql` e `30_substituto_e_delegado_nao_proprio.sql`, cobertura nova das migrações 0062/0063 (stress-test de documentação); `21_ferias_auto_sobreposicao_e_rejeicao.sql` foi ajustado no mesmo dia (semeava um dos seus próprios fixtures com um INSERT já nascido `APROVADA` pelo próprio dono — exatamente o que a 0062 passou a recusar; corrigido para semear pelos dois passos reais, pedir e depois aprovar por outra pessoa).
 - **TES-02** Não existe workflow de CI para esta camada. Existiu (`pgtap.yml`) e foi **removido a 2026-09-25**: reaplicava as migrações 0001 a 0009 sobre a produção a cada execução, repondo funções para versões antigas. Um substituto seguro precisaria de uma base própria (as migrações não se aplicam do zero numa base nova sem ajustes: a 0006 assume uma tabela antiga, a 0015 e a 0020 precisam do `pg_cron`).
 - **TES-03** Lacuna conhecida: `preencher_feriados_anual()` não tem nenhum teste pgTAP. A função irmã, `preencher_escala_anual()`, tem quatro (`14` a `17`); a dos feriados nunca foi exercida por um teste automático — só por leitura de código e pela auditoria de execuções reais (`docs/preenchimento-anual-de-novembro.md`).

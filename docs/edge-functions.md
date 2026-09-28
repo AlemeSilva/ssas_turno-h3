@@ -1,6 +1,6 @@
 # Funções do servidor (Edge Functions) e agendamentos
 
-**Estado:** levantado a 2026-09-27 do código, da base de produção (só leitura) e de chamadas sem credenciais às três funções. **A desativação automática por data de saída (`desactivar-saidos`) não está agendada em lado nenhum** (EDG-06): é a lacuna mais importante deste ficheiro. As decisões de negócio por trás das funções estão nos ficheiros das funcionalidades (`docs/utilizadores-e-saidas.md`, `docs/sugestao-automatica.md`).
+**Estado:** levantado a 2026-09-27 do código, da base de produção (só leitura) e de chamadas sem credenciais às três funções; reconfirmado a 2026-09-28 (EDG-03, CORS/OPTIONS em `desactivar-saidos`). **A desativação automática por data de saída (`desactivar-saidos`) não está agendada em lado nenhum** (EDG-06): é a lacuna mais importante deste ficheiro. As decisões de negócio por trás das funções estão nos ficheiros das funcionalidades (`docs/utilizadores-e-saidas.md`, `docs/sugestao-automatica.md`).
 **Ler quando:** criar, alterar ou chamar uma Edge Function; explicar por que uma saída agendada não desativou a conta; mexer nos agendamentos (`pg_cron`); publicar funções.
 
 ## 1. Visão geral

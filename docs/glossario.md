@@ -7,7 +7,11 @@
 
 **Ativação do H3** — as 22h de sexta-feira, o momento em que o turno H3 da nova semana H3 começa a valer. `docs/calendario-h3.md`.
 
+**Auditoria** — o registo cronológico só de crescer (`logs_auditoria`) de ações relevantes em toda a aplicação: quem, quando, o quê. Lido por qualquer utilizador autenticado, mostrado ao Gerente e delegado na página Histórico. `docs/historico.md`.
+
 **Banda de tolerância** — margem, em pessoas, à volta do Headcount Ideal dentro da qual a equipa é "Aceitável". `docs/headcount.md`.
+
+**Bloqueio otimista** — grava só se o registo ainda for o mesmo que quando o ecrã abriu (por um carimbo `atualizado_em`); recusa se outra sessão o mudou entretanto. Usado na Escala do Mês e nas tarefas do Plano de Fim de Semana. `docs/escala.md`, `docs/plano-de-fim-de-semana.md`.
 
 **Cadeia** — um processo de batch acompanhado por secção e por dia durante o fim de semana (ex.: GIR_FL, SD_FL). `docs/definicoes.md`, `docs/checklist.md`.
 
@@ -34,6 +38,8 @@
 **Elegível a H2** — atributo de um `OPERADOR_H3` que decide se pode ser escolhido para o turno H2 na rotação automática. `docs/turnos-e-rotacao.md`.
 
 **Escala do Mês** — a grelha mensal de turnos, com os painéis de férias, trocas e delegação. `docs/escala.md`.
+
+**Escalonamento** — o momento em que um alarme, já em curso há tempo suficiente (a janela de tolerância, ou a própria hora-limite de um preditivo), fica elegível para o botão "Registar acionamento ao Gerente". Distinto de "Acionamento", que é só o clique que o regista. `docs/alarmes.md`.
 
 **Estudo de Cenários** — o simulador "e se" do Headcount, efémero, nunca grava nada. `docs/headcount.md`.
 
@@ -63,9 +69,13 @@
 
 **Plano de Fim de Semana** — o plano de tarefas de um ciclo (quinta a segunda), com o checklist e as cadeias associadas. `docs/plano-de-fim-de-semana.md`.
 
-**Plantão** — a pessoa que rende o H3 num feriado em dia útil, das 07h00 ao fim da cadeia diária. `docs/ferias-e-plantoes.md`.
+**Plantão** — a cobertura do H3 num feriado em dia útil, das 07h00 ao fim da cadeia diária. Quem a faz é o **plantonista**. `docs/ferias-e-plantoes.md`.
 
-**Rascunho (do mês de Headcount)** — a linha de `headcount_mensal` de um mês já terminado mas ainda por fechar. `docs/headcount.md`.
+**Plantonista** — a pessoa confirmada para o Plantão de um feriado. `docs/ferias-e-plantoes.md`.
+
+**Preenchimento anual** — a geração automática, a 1 de novembro, da escala e dos feriados do ano seguinte; a única automação que corre sozinha (cron), sem intervenção humana. `docs/preenchimento-anual-de-novembro.md`.
+
+**Rascunho** — dois sentidos: (1) do mês de Headcount, a linha de `headcount_mensal` de um mês já terminado mas ainda por fechar (`docs/headcount.md`); (2) do Plano de Fim de Semana, o estado inicial `RASCUNHO`, antes de submeter para aprovação (`docs/plano-de-fim-de-semana.md`) — o botão "Exportar Draft" usa o sinónimo inglês só nesse rótulo.
 
 **RLS** ("Row-Level Security") — as políticas do Postgres que decidem, linha a linha, quem lê ou escreve cada tabela; é a proteção real da aplicação. `docs/perfis-e-permissoes.md`.
 
@@ -75,7 +85,7 @@
 
 **Sexta administrativa** — a sexta-feira que abre o período do relatório semanal (sexta a quinta seguinte). `docs/calendario-h3.md`, `docs/relatorios.md`.
 
-**Substituto (de férias)** — quem cobre uma ausência aprovada, decidido por semana civil. Não confundir com o substituto de uma troca de H3. `docs/ferias-e-plantoes.md`.
+**Substituto (de férias)** — quem cobre uma ausência aprovada, decidido por semana civil. Não confundir com o substituto de uma troca de H3, nem com o campo "Substituto" do painel de Delegação de Aprovação (candidato a Delegado). `docs/ferias-e-plantoes.md`.
 
 **Sugestão automática** — a proposta de H1 a H4 para uma semana, gerada pela Edge Function `sugerir-escala`, seguindo as mesmas regras do preenchimento anual; nunca grava sozinha. `docs/sugestao-automatica.md`.
 

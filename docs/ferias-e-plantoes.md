@@ -1,6 +1,6 @@
 # Férias, licenças, substitutos e plantões de feriado
 
-**Estado:** levantado do código e da base a 2026-09-26. As regras entre colegas estão em `docs/regras-entre-colegas.md` (IDs `COL-`), aqui só se resumem com a referência. Decisões do Gerente: 2026-08-03 (migrações 0016, 0017), 2026-09-06 (0044), 2026-09-20 (0055), substitutos por semana civil (0025), plantão do titular (0027).
+**Estado:** levantado do código e da base a 2026-09-26. As regras entre colegas estão em `docs/regras-entre-colegas.md` (IDs `COL-`), aqui só se resumem com a referência. Decisões do Gerente: 2026-08-03 (migrações 0016, 0017), 2026-09-06 (0044), 2026-09-25 (0055), substitutos por semana civil (0025), plantão do titular (0027).
 **Ler quando:** pedir, aprovar, rejeitar ou apagar férias; escolher substitutos; escolher o plantonista de um feriado; mexer no saldo de 22 dias; ler ou explicar o que aparece em "Ausências da equipa" e "Plantão de feriados".
 
 ## 1. Conceitos
@@ -77,7 +77,7 @@ Regras: **COL-18**, **COL-19**, **COL-20**. Em resumo:
 ## 6. Onde aparecem as ausências e os plantões
 
 - Escala do Mês: células "Férias", "Férias — substituído por…", "Feriado", "Plantão" (`docs/escala.md`).
-- Início: o resumo pessoal (barra do saldo) e o cockpit do Gerente (`docs/inicio.md`).
+- Início: o resumo pessoal (barra do saldo) e a Visão do Gerente (`docs/inicio.md`).
 - Relatório semanal: Férias/Licenças e substituições (`docs/relatorios.md`).
 - Headcount: dias de ausência descontados na capacidade presente (`docs/headcount.md`).
 

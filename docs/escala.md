@@ -37,7 +37,7 @@ Clicar numa célula **editável** abre o diálogo **Editar turno**: "NOME — se
 
 - A célula só é editável se **existir** uma linha de escala para essa pessoa nessa semana; não se cria uma linha nova por aqui (para semanas vazias, usa-se a Sugestão automática). Num **feriado** só é editável a célula de quem tem H3.
 - Escolher o mesmo turno e gravar fecha o diálogo sem gravar nada.
-- **Gravação com verificação de concorrência:** só grava se o turno ainda for o que era quando o diálogo abriu. Se outra pessoa o mudou entretanto, mostra "Este turno foi alterado por outra sessão entretanto. Fecha e reabre a célula para ver o valor atual.".
+- **Bloqueio otimista:** só grava se o turno ainda for o que era quando o diálogo abriu. Se outra pessoa o mudou entretanto, mostra "Este turno foi alterado por outra sessão entretanto. Fecha e reabre a célula para ver o valor atual.".
 - As regras da base aplicam-se sempre (`docs/turnos-e-rotacao.md`, TUR-04 a TUR-07): por exemplo, passar alguém para H3 falha com "Só utilizadores com perfil OPERADOR_H3 (ativos) podem ser escalados para H3." ou "Já existe um H3 registado para a semana de …. Máximo 1 H3 por semana."; a mensagem aparece no diálogo.
 
 ## 3. O que cada célula mostra
