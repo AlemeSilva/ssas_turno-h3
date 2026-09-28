@@ -15,7 +15,7 @@
 - **Formulário:** "Data de início", "Data de fim" e o botão **Pedir férias** ("A enviar…" enquanto grava). Cria sempre um pedido **em nome de quem está a usar a aplicação**. Depois de gravar, os campos limpam-se.
 - **Lista de pedidos:** quem não é Gerente nem delegado vê os pedidos **pendentes** de todos; o Gerente e o delegado veem os **pendentes e os aprovados**, por ordem de data de início. Só aparecem pedidos de pessoas **ativas**. Sem pedidos: "Sem pedidos pendentes.". Cada linha: "NOME · DD/MM/AAAA a DD/MM/AAAA".
   - Pendente, para o Gerente ou delegado: botões **Aprovar** (balão: "Aprova o pedido — conta para o limite anual de 22 dias úteis") e **Rejeitar** ("Recusa o pedido — não conta para o limite anual"). Cada botão tem uma pausa de 500 ms por pedido, para evitar cliques duplos.
-  - Nos outros casos: uma etiqueta com o estado (PENDENTE âmbar, APROVADA verde, REJEITADA vermelha).
+  - Nos outros casos: uma etiqueta com o estado (PENDENTE âmbar, APROVADA verde, REJEITADA vermelha — esta última existe no código de estilo mas nunca é alcançada com os dados que o painel carrega hoje: a lista só busca pedidos `PENDENTE` e `APROVADA`, nunca `REJEITADA`).
   - O Gerente e o delegado veem ainda **Cancelar**, que apaga o pedido. Pede confirmação em dois cliques (o botão passa a **Confirmar?** durante 4 segundos; "Clica outra vez para apagar em definitivo — não há forma de desfazer"). Serve para corrigir um registo enganado.
 - **Mensagens de erro** traduzidas para linguagem simples:
 
@@ -35,7 +35,7 @@
 - **COL-04** Saldo de 22 dias úteis por ano (só `FERIAS`, pendentes mais aprovadas, dias úteis de segunda a sexta sem descontar feriados).
 - **COL-05** Só o Gerente ou delegado decide; a base deixa a pessoa apagar o seu pedido pendente, o ecrã só oferece "Cancelar" ao Gerente ou delegado.
 - **FER-01** **O ano de um pedido é o ano da sua data de início.** Para o saldo, um pedido conta no ano em que **começa**, mesmo que acabe no seguinte.
-- **FER-02** **Encurtar** um período (mesma pessoa, mesmo estado, mesma data de início, fim anterior) **nunca é bloqueado**; só se validam sobreposição e saldo quando algo muda de forma que possa criar conflito (migração 0045).
+- **FER-02** **Encurtar** um período (mesma pessoa, mesmo estado, mesma data de início, fim anterior) **nunca é bloqueado**; só se validam sobreposição e saldo quando algo muda de forma que possa criar conflito (migração 0057).
 - **FER-03** Rejeitar **nunca** é bloqueado; aprovar volta a verificar sobreposição e saldo.
 - **FER-04** Um pedido de férias de alguém que é entretanto **desativado** fica assim: os que começam de hoje em diante apagam-se (com as decisões de substituto que os acompanham); os que atravessam hoje ficam cortados até ao dia anterior; os anteriores mantêm-se (USR-08).
 - **FER-05** Um período de férias **aprovado** afeta a escala: a célula mostra "Férias" nos dias úteis que não sejam feriado; não se atribui turno a quem tem os 7 dias da semana cobertos (TUR-07); e o relatório semanal só trata como ausência o que cobre **metade ou mais** dos 7 dias do período (REL-03).

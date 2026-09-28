@@ -11,7 +11,14 @@
 - **A Camada 4 de testes (stress/concorrência) não tem onde correr com segurança**: o único projeto Supabase é o de produção. → `docs/testes.md`, TES-05.
 - **Os parâmetros do Headcount não têm validação de intervalos:** fechar um mês com eficiência ou cobertura de férias a 0 dá capacidade 0 nesse mês, sem aviso no ecrã de parâmetros. → `docs/headcount.md`, secção 10.
 - **A auditoria e a lista de utilizadores (com emails) são legíveis, na base, por qualquer conta autenticada**, embora o ecrã as restrinja ao Gerente — a proteção real não existe para essas duas tabelas. → `docs/perfis-e-permissoes.md`, secção 7.
-- **A base de dados ainda não impede uma linha de `escala_semanal` fora de um sábado.** Só o ecrã, a Sugestão automática e as trocas (desde a migração 0061) impõem a âncora de sábado; uma escrita direta na base (SQL manual, um novo caminho de código) podia criar uma linha solta que nenhum cálculo trata como semana. → `docs/calendario-h3.md`, SEM-01.
+- **A base de dados ainda não impede uma linha de `escala_semanal` fora de um sábado.** Só o ecrã, a Sugestão automática e as trocas (desde a migração 0061) impõem a âncora de sábado; uma escrita direta na base (SQL manual, um novo caminho de código) podia criar uma linha solta que nenhum cálculo trata como semana. A mesma falta de CHECK existe, sem estar registada até agora, em `ferias_semanas.semana_inicio` (devia ser sempre segunda) e `planos.data_inicio_ciclo` (devia ser sempre quinta). → `docs/calendario-h3.md`, SEM-01.
+- **Nada na base impede o Gerente titular ou um delegado de aprovar/rejeitar o seu próprio pedido de férias, nem um delegado `OPERADOR_H3` de aprovar a própria troca de H3 que ele próprio propôs** — nenhum trigger/RLS compara quem decide com quem pediu, e o ecrã mostra os botões na mesma. → `docs/regras-entre-colegas.md`, COL-05/COL-12.
+- **Um substituto de férias pode ser a própria pessoa ausente, e um titular pode delegar-se a si mesmo** — as duas regras só estão impostas pelo filtro do ecrã, nunca por constraint na base. → `docs/regras-entre-colegas.md`, COL-06/COL-15.
+- **A barra de alertas e o aviso de saúde da automação anual só carregam as suas tarefas/planos/linhas de auditoria uma vez, ao abrir a página** — o relógio de 30 em 30 segundos reavalia os alarmes, mas contra esses dados já desatualizados, não os recarrega; uma tarefa concluída ou uma execução nova noutra sessão só aparece depois de recarregar a página. → `docs/alarmes.md`, secções 1 e 4.5.
+- **O ecrã "Ver Cálculo" do Headcount recalcula o piso estrutural sem a mesma guarda usada em todo o resto do código** — hoje inofensivo por uma constraint da base impedir o valor que o partiria, mas é o único sítio sem essa proteção própria. → `docs/headcount.md`, secção 10.
+- **A Edge Function `desactivar-saidos` não trata pedidos `OPTIONS` nem envia cabeçalhos CORS**, ao contrário das outras duas — qualquer método corre sempre a lógica de desativação. → `docs/edge-functions.md`, EDG-03.
+- **O esquema da base não é reconstruível do zero só com `supabase/migrations/`**: duas tabelas (`feriados_portugal`, `plantao_voluntarios`), uma vista (`feriados_sem_plantao`) e 3 políticas RLS de `escala_diaria_*` existem em produção sem nenhuma migração a criá-las. → `docs/base-de-dados.md`, secção 11; `docs/perfis-e-permissoes.md`, secção 4.
+- **Não há ambiente de staging**; o workflow `e2e.yml` semeia e apaga dados diretamente em produção. → `docs/operacao.md`, secção 9.
 
 ## 2. Comportamento que pode confundir, mas é desenho conhecido
 
@@ -19,8 +26,14 @@
 - O relatório semanal é uma **fotografia** do momento em que a página abre; não se atualiza sozinho. → `docs/relatorios.md`, secção 6.
 - A Sugestão automática **ignora trocas por decidir e substitutos de férias**; o resultado é sempre o mesmo para os mesmos dados (não há "sugerir outra vez"). → `docs/sugestao-automatica.md`, secção 6.
 - O Estudo de Cenários e o Relatório do Headcount só olham para os meses já fechados e a equipa de hoje — não projetam férias marcadas nem saídas agendadas. → `docs/headcount.md`, secção 10.
-- O Histórico não pagina além das 200 linhas mais recentes de auditoria, e não tem exportação nem separador para trocas, férias ou utilizadores. → `docs/historico.md`, secção 4.
-- Um plantonista ou substituto que sai da equipa faz a decisão "desaparecer" (a semana volta a "por decidir"); não há histórico dessa reversão no próprio ecrã. → `docs/ferias-e-plantoes.md`, FER-08.
+- O Histórico não pagina além das 200 linhas mais recentes de auditoria (nem das 300 de Cadeias), e não tem exportação nem separador para trocas, férias, utilizadores ou headcount. A delegação em vigor (`logs_auditoria.delegacao_id`) fica gravada mas não aparece no ecrã. → `docs/historico.md`, secção 4.
+- Um plantonista ou substituto que sai da equipa faz a decisão "desaparecer" (a semana volta a "por decidir"). → `docs/ferias-e-plantoes.md`, FER-08.
+- O painel "Alertas ativos" do Checklist não tem relógio próprio — só se redesenha quando o ecrã muda. → `docs/alarmes.md`, secção 1.
+- O alerta de headcount mensal só existe se a página Headcount tiver sido aberta depois de o mês terminar. → `docs/alarmes.md`, secção 4.6; `docs/headcount.md`, HDC-13.
+- Não se pode criar nem apagar linhas de escala pela grelha; num feriado ao fim de semana, quem não é H3 vê "Feriado" em vez de "Folga". → `docs/escala.md`, secção 4.
+- A aplicação só está pensada para computador, sem tema escuro nem telemóvel; o menu não indica quantos avisos há em cada separador. → `docs/interface.md`, secção 5.
+- A ordem das cadeias na base só serve de ordenação; no Checklist mostram-se por ordem alfabética. → `docs/definicoes.md`, secção 5.
+- "Mais de um Gerente ativo" continua listado como aviso possível do preenchimento anual, mas é hoje inatingível em produção (índice único desde a migração 0042). → `docs/preenchimento-anual-de-novembro.md`, secção 10.
 
 ## 3. Textos e comentários desatualizados (não mudam o comportamento, mas podem enganar quem lê)
 
@@ -30,6 +43,7 @@
 - `src/styles/theme.css` descreve, no comentário do topo, um "dark mode corporativo" que já não é o aspeto real da aplicação. → `docs/interface.md`, secção 5.
 - `tests/README.md` (o índice geral de testes) tem números e afirmações da fase inicial do projeto, hoje incorretos (fala em "54/54" e diz que a Camada 1 "não corre"). → `docs/testes.md`.
 - `DEPLOY.md` e `ROLLOUT_PLAN.md`, na raiz do repositório, descrevem uma equipa, um calendário e um CI de 2026-07/08 que já não existem. → `docs/operacao.md`, secção 9.
+- `logs_auditoria` descreve a ação em texto livre (sem tipo estruturado); as extensões `pg_net`/`supabase_vault` estão instaladas sem uso real; não há tipos TypeScript gerados automaticamente do esquema. → `docs/base-de-dados.md`, secção 12.
 
 ## 4. Ecrã: botão visível sem permissão real, ou sem mensagem de erro
 
@@ -45,6 +59,8 @@
 - Encurtar ou apagar uma delegação de aprovação. → `docs/trocas-e-delegacao.md`, secção 2.4.
 - Registar uma licença (só férias têm formulário). → `docs/ferias-e-plantoes.md`, secção 1.
 - Alterar nome, email, empresa, perfil ou limite mensal de H3 de um utilizador já registado. → `docs/utilizadores-e-saidas.md`, secção 4.
+- Acrescentar itens ao checklist. → `docs/checklist.md`, secção 4.
+- Apagar uma tarefa excecional (só por SQL). → `docs/plano-de-fim-de-semana.md`, secção 7.
 
 ## 6. Como manter este ficheiro
 

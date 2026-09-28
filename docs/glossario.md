@@ -11,7 +11,7 @@
 
 **Cadeia** — um processo de batch acompanhado por secção e por dia durante o fim de semana (ex.: GIR_FL, SD_FL). `docs/definicoes.md`, `docs/checklist.md`.
 
-**Capacidade plena (por pessoa / da equipa)** — horas produtivas planeadas de uma pessoa ou da equipa num mês, com eficiência e reserva de férias já descontadas. **Capacidade presente** é a mesma conta descontando também as ausências reais desse mês. `docs/headcount.md`.
+**Capacidade plena (por pessoa / da equipa)** — horas produtivas planeadas de uma pessoa ou da equipa num mês, com eficiência e reserva de férias já descontadas. **Capacidade presente** troca essa reserva fixa de férias pelas ausências reais desse mês, não é a mesma conta com uma subtração extra. `docs/headcount.md`.
 
 **Carga** — total de horas de trabalho que a equipa tem de cobrir num mês (pedidos, batch, Olho Vivo, preparação de fim de semana, imparidade, recuperação de cadeia). `docs/headcount.md`.
 
@@ -39,6 +39,8 @@
 
 **Feriado** — dia de `feriados_portugal`, nacional ou municipal de Lisboa; entra na escala, no Início e no cálculo de dias úteis do Headcount. `docs/preenchimento-anual-de-novembro.md`.
 
+**Fim de semana de manutenção** — o último sábado do mês; ativa a checagem crítica das 15h (ALA-06) e um passo extra no Plano/Checklist. `docs/calendario-h3.md`, SEM-09.
+
 **GIR_FL** — a cadeia cujo atraso ao sábado à noite dispara o alarme preditivo do mesmo nome. `docs/definicoes.md`, `docs/alarmes.md`.
 
 **Gerente / Gerente titular** — o perfil `GERENTE`; só pode haver um ativo. `docs/utilizadores-e-saidas.md`, `docs/perfis-e-permissoes.md`.
@@ -50,6 +52,8 @@
 **HR. LIMITE** — a hora-limite de uma tarefa do Plano de Fim de Semana; ultrapassá-la sem a tarefa concluída dispara o alarme reativo do mesmo nome. `docs/plano-de-fim-de-semana.md`, `docs/alarmes.md`.
 
 **Ideal exato / Ideal por horas** — Ideal por horas é a carga média a dividir pela capacidade média; Ideal exato é o maior entre esse valor e o piso estrutural. `docs/headcount.md`.
+
+**Janela de tendência** — os meses fechados que entram na média do Headcount Ideal (carga e capacidade). `docs/headcount.md`.
 
 **Licença** — ausência aprovada fora do saldo de 22 dias de férias. `docs/ferias-e-plantoes.md`.
 

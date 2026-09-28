@@ -39,6 +39,7 @@ Com a equipa de referência (três `OPERADOR_H3` A, B, C, dos quais A e B elegí
 - O cálculo faz-se numa **Edge Function** (`sugerir-escala`), não no browser: lê utilizadores ativos, o histórico de H3 e H2, as semanas do mês e as férias, e devolve `{ semana_ref, H3, H2, H1, H4 }`. A lógica pura, sem acesso à base, está em `supabase/functions/sugerir-escala/algoritmo.ts` (partilhada com os testes).
 - A função é publicada pelo fluxo `deploy-functions.yml` quando algo em `supabase/functions/**` muda e chega ao `main`.
 - Se a função devolver uma resposta antiga (uma só pessoa em H1 e H4), o ecrã aceita as duas formas.
+- O ecrã (`PainelSugestao`, `src/pages/EscalaPage.tsx`) aplica ainda um **segundo filtro**, do lado do browser (`soComEquipaAtiva`), que volta a filtrar toda a proposta pela lista de utilizadores ativos: é este filtro que garante, na prática, "só entram pessoas ativas" mesmo que a função publicada esteja desatualizada.
 
 ## 6. Limites e lacunas conhecidos
 

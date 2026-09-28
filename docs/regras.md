@@ -52,7 +52,7 @@ Uma dúzia de regras que atravessam toda a aplicação — quem só ler esta sec
 - **Um item de checklist ou uma tarefa concluída é imutável**; a única correção é "Destravar", com justificativa, reservado a Gerente ou delegado. → CHK-02.
 - **O Headcount Ideal e o Estudo de Cenários nunca podem divergir no ponto de partida**: os dois usam a mesma sequência de cálculo. → HDC-20.
 - **Nunca publicar (ecrã, funções ou base de dados) sem autorização explícita do Gerente**, mesmo quando o pedido foi "implementa isto". → OP-02.
-- **Uma alteração à base de dados só se considera terminada depois de correr contra dados reais** (transação revertida) e provar por consulta que não sobrou resíduo — nunca só "verificado por leitura". → OP-05.
+- **Uma alteração à base de dados só se considera terminada depois de correr contra dados reais** (transação revertida) e provar por consulta que não sobrou resíduo — nunca só "verificado por leitura". → OP-04/OP-05.
 - **Nunca simular condições em produção** (relógio, funções reescritas) para poupar tempo — só testes reais. → OP-07.
 - **Nunca acionar ao vivo uma ação irreversível "só para verificar"** (ex.: Fechar Mês). → OP-08.
 - **Antes de qualquer alteração ou validação de regra, ler primeiro o ficheiro `docs/` dono dessa regra.** Esta é a razão de existir de todo este conjunto de ficheiros (instrução do Gerente, 2026-09-25/26).

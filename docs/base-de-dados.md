@@ -173,7 +173,7 @@ Ver `docs/edge-functions.md`, secção 6 — só dois trabalhos, ambos a 1 de no
 
 ## 11. Migrações
 
-61 migrações, de 2026-07-29 (`0001_schema`) a 2026-09-26 (`0061_troca_semana_comeca_ao_sabado`), aplicadas por ordem, à mão (`docs/operacao.md`). Não há um esquema "de partida" separado: `0001` já é a base completa das tabelas principais. Datas de criação e o que cada uma decidiu (agrupadas por tema, com a razão): `docs/decisoes.md`. Para o número exato de cada migração referida por uma regra, ver o ficheiro da funcionalidade (cada um cita as migrações relevantes).
+61 migrações, de 2026-07-29 (`0001_schema`) a 2026-09-26 (`0061_troca_semana_comeca_ao_sabado`), aplicadas por ordem, à mão (`docs/operacao.md`). Não há um esquema "de partida" completo: `0001` cria a maioria das tabelas principais, mas **duas tabelas (`feriados_portugal`, `plantao_voluntarios`) e a vista `feriados_sem_plantao` nunca são criadas em nenhuma das 61 migrações** — existem em produção, mas por DDL manual anterior ao histórico de migrações (confirmado por grep exaustivo a `create table`/`create view` nos 61 ficheiros; o próprio comentário da migração `0008_confirmacao_substituto_ferias.sql` regista que "plantao_voluntarios existe desde antes desta sessão, tal como feriados_portugal e a view feriados_sem_plantao"). Ninguém reconstrói o esquema do zero só a partir das migrações. Datas de criação e o que cada uma decidiu (agrupadas por tema, com a razão): `docs/decisoes.md`. Para o número exato de cada migração referida por uma regra, ver o ficheiro da funcionalidade (cada um cita as migrações relevantes).
 
 ## 12. Limites e lacunas conhecidos
 

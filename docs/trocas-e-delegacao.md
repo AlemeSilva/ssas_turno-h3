@@ -7,7 +7,7 @@
 
 ### 1.1 O que é
 
-Uma troca passa o **H3 de uma semana** de um `OPERADOR_H3` (o **proponente**) para outro `OPERADOR_H3` (o **substituto**). Não há passo de aceitação do colega: o proponente propõe e o Gerente ou delegado decide.
+Uma troca passa o **H3 de uma semana** de um `OPERADOR_H3` (o **proponente**) para outro `OPERADOR_H3` (o **substituto**). Não há passo de aceitação do colega: o proponente propõe e o Gerente ou delegado decide. **Nada impede o proponente e quem decide de serem a mesma pessoa:** um delegado que seja também `OPERADOR_H3` pode propor uma troca em seu nome e depois aprová-la ele próprio, sem bloqueio na base (RLS `trocas_update_gerente`, trigger `trg_valida_troca` — ver COL-12 em `docs/regras-entre-colegas.md`).
 
 ### 1.2 Interface (painel "Trocas de H3", Escala do Mês)
 
@@ -28,7 +28,7 @@ As trocas já decididas **saem da lista**; o ecrã não mostra o histórico de t
 
 ### 1.3 Regras
 
-- **COL-09 a COL-13**, em `docs/regras-entre-colegas.md`. Em resumo: só um `OPERADOR_H3` ativo propõe, em seu nome; proponente e substituto têm de estar ativos e o substituto ser `OPERADOR_H3`; a semana é um **sábado**; só o Gerente ou delegado decide; a aprovação passa o H3 dessa semana ao substituto e, se ele tinha outro turno nessa semana, o proponente fica com esse turno.
+- **COL-09 a COL-13**, em `docs/regras-entre-colegas.md`. Em resumo: só um `OPERADOR_H3` ativo propõe, em seu nome; proponente e substituto têm de estar ativos e o substituto ser `OPERADOR_H3`; a semana é um **sábado**; só o Gerente ou delegado decide; a aprovação passa o H3 dessa semana ao substituto e, se ele tinha outro turno nessa semana, o proponente fica com esse turno. **Lacuna (COL-12):** nada impede um delegado `OPERADOR_H3` de aprovar a própria troca que propôs — ver 1.1.
 - **TRO-01** A troca age **na data exata** do `semana_ref`. Foi por isso que uma "quinta de referência" nunca alterava uma semana real e deixava uma linha solta na escala (o caso da troca de 15/10/2026, corrigido a 2026-09-26). A base agora só aceita sábados.
 - **TRO-02** Uma troca **aprovada não tem "anular"** no ecrã: para repor, propõe-se e aprova-se outra troca em sentido contrário (ou corrige-se a célula na Escala do Mês).
 - **TRO-03** `data_aprovacao` e `aprovado_por` de uma troca são gravados pelo **browser** de quem decide (não são forçados pela base, ao contrário do plano).
@@ -64,7 +64,7 @@ Só o **Gerente titular** vê o painel (os restantes não vêem nada).
 
 - **COL-14 a COL-17**, em `docs/regras-entre-colegas.md`. Em resumo: só o titular cria; aditiva; sem sobreposição entre delegações de substitutos ativos; o delegado não faz o que é exclusivo do titular.
 - **TRO-06** O poder do delegado vale **de `data_inicio` a `data_fim`, ambos inclusive**, e **só enquanto ele estiver ativo**. A base avalia isto em cada operação, com a data UTC de hoje.
-- **TRO-07** Cada linha de auditoria escrita por um delegado, em vigor a delegação, fica marcada com o `delegacao_id` (`trg_logs_auditoria_marca_delegacao`).
+- **TRO-07** Cada linha de auditoria escrita por um delegado, em vigor a delegação, fica marcada com o `delegacao_id` (`trg_logs_auditoria_marca_delegacao`). **Lacuna menor:** a função que calcula esse `delegacao_id` (`delegacao_ativa_id()`) nunca foi atualizada para exigir `usuarios.ativo = true` do delegado, ao contrário de `is_gerente_ou_delegado()` (corrigida nas migrações 0053/0056) — um log escrito por um ex-delegado já inativo pode continuar marcado como "em vigor".
 - **TRO-08** Uma delegação **já usada** (referida em auditoria) não se apaga quando o delegado ou o titular sai da equipa; as que ainda não começaram apagam-se e as que atravessam o dia da saída são cortadas até ao dia anterior (USR-08).
 
 ### 2.4 Limites conhecidos

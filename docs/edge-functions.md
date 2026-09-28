@@ -21,7 +21,7 @@ As duas funções SQL estão descritas em `docs/preenchimento-anual-de-novembro.
 
 - **EDG-01** **A chave de serviço só existe no servidor.** Tudo o que precisa de privilégios que o browser não tem (criar contas de acesso, repor palavras-passe, terminar sessões) passa por uma Edge Function. O browser só leva a chave pública.
 - **EDG-02** **O acesso exige um JWT** (`verify_jwt` por omissão): sem cabeçalho `Authorization` as três funções respondem `401 Missing authorization header` (verificado a 2026-09-27). Mas o portão só valida o token: **qualquer token válido do projeto passa, incluindo a chave pública do site**. Quem confirma o perfil de quem chama é o código de cada função: só a `gerir-utilizadores` o faz (EDG-12).
-- **EDG-03** Respondem a `OPTIONS` (pré-voo do browser) e enviam `Access-Control-Allow-Origin: *`; um `POST` com método diferente recebe 405.
+- **EDG-03** `gerir-utilizadores` e `sugerir-escala` respondem a `OPTIONS` (pré-voo do browser) e enviam `Access-Control-Allow-Origin: *`; um método diferente de `POST` recebe 405. **`desactivar-saidos` é exceção**: usa `Deno.serve(async () => {...})` sem sequer receber `req`, por isso nunca verifica o método nem envia `Access-Control-Allow-Origin` em nenhuma resposta — qualquer método, incluindo um `OPTIONS` de pré-voo do browser, corre sempre a lógica de desativação.
 - **EDG-04** **"Hoje" dentro das funções é a data do relógio do servidor da Supabase, que trabalha em UTC.** Perto da meia-noite de Lisboa pode diferir um dia do que se vê no ecrã.
 - **EDG-05** As respostas de erro têm a forma `{ "erro": "mensagem" }`, com o estado HTTP 400, 401, 403, 404, 405 ou 500; as de sucesso, `{ "ok": true }`, `{ "id": "…" }` ou o conteúdo pedido. O ecrã mostra o texto de `erro` tal como vem.
 

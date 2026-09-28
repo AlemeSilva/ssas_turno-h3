@@ -94,10 +94,10 @@ A função percorre **todos os sábados** de 1 de janeiro a 31 de dezembro do an
 Em cada semana, pela ordem:
 
 1. **Datas de referência.** Início da janela de 3 meses = sábado − 3 meses (como no Postgres: se o dia não existir, fica o último do mês). Mês-alvo = o mês do dia `semana_ref + 3`, ou seja, o mês onde cai a maioria dos 7 dias (**NOV-10**).
-2. **Ordenar os candidatos a H3 (NOV-09).** Por esta ordem de critérios: (a) menos semanas de H3 nos últimos 3 meses (de `sábado − 3 meses` até à semana anterior); (b) menos semanas de H3 desde 1 de janeiro do ano-alvo; (c) o `id`, como último desempate (só decide quando tudo está a 0, no início do ano). Conta também as semanas já geradas nesta mesma execução.
+2. **Ordenar os candidatos a H3 (NOV-09).** Por esta ordem de critérios: (a) menos semanas de H3 nos últimos 3 meses (de `sábado − 3 meses` até à semana anterior); (b) menos semanas de H3 desde 1 de janeiro do ano-alvo; (c) o `id`, como último desempate — decide sempre que dois candidatos empatam nos dois critérios anteriores; na equipa de referência (secção 5.2) isso acontece repetidamente até meados de março, não só na primeira semana do ano. Conta também as semanas já geradas nesta mesma execução.
 3. **Aplicar o limite mensal (NOV-10).** Para cada candidato, na ordem acima: conta as semanas de H3 dele no mesmo mês-alvo, **só as anteriores** a esta. Fica "dentro do limite" quem não tem limite (vazio) ou tem menos semanas do que o `limite_h3_mensal`.
 4. **Escolher o H3.** O primeiro candidato dentro do limite. Se ninguém estiver dentro do limite, o código seleciona o primeiro da ordenação; mas essa inserção é **recusada** pelo trigger do limite, a semana falha e fica anotada (**NOV-12**). Ver o exemplo confirmado na secção 10.
-5. **Inserir o H3** em `escala_semanal` (`criado_por` nulo, **NOV-16**). Todos os triggers da tabela se aplicam.
+5. **Inserir o H3** em `escala_semanal` (`criado_por` nulo, **NOV-16**). Todos os triggers da tabela se aplicam: além do limite mensal (NOV-12) e das férias (NOV-15), também `trg_valida_turno_h3` (exige `OPERADOR_H3` ativo) e `trg_valida_um_h3_por_semana` (máximo 1 H3 ativo por semana, versão da migração 0056) — inofensivos aqui porque a função já garante estas duas condições antes de inserir. Lista completa dos triggers da tabela em `docs/base-de-dados.md`.
 6. **Escolher o H2 (NOV-11).** Entre os elegíveis a H2, **exceto** o H3 desta semana: menos semanas de H2 nos últimos 3 meses, depois menos desde 1 de janeiro, depois o `id`. Se não houver nenhum, a semana fica sem H2.
 7. **Atribuir H4 aos restantes candidatos.** Todos os `OPERADOR_H3` que nesta semana não são H3 nem H2 ficam em H4.
 8. **Inserir os fixos.** Cada H1 fixo fica em H1, e cada H4 fixo (mais o Gerente titular) fica em H4.
@@ -123,7 +123,7 @@ A função escreve **uma** linha em `logs_auditoria` (`referencia_tipo = 'ESCALA
 | --- | --- | --- |
 | `PREENCHIMENTO_AUTOMATICO` | Todas as semanas geradas e sem avisos | "Escala de AAAA preenchida automaticamente — N semanas." |
 | `PREENCHIMENTO_AUTOMATICO_AVISO` | Todas as semanas geradas, mas com um ou mais avisos da preparação | Igual, mais "Atenção: …" com cada aviso |
-| `PREENCHIMENTO_AUTOMATICO_ERRO` | Pelo menos uma semana falhou, ou um erro fora do ciclo semanal | "Escala de AAAA: N semana(s) preenchida(s), M falhou/falharam e precisam de preenchimento manual — AAAA-MM-DD: erro; …" (e os avisos, se os houver) |
+| `PREENCHIMENTO_AUTOMATICO_ERRO` | Pelo menos uma semana falhou, ou um erro fora do ciclo semanal | Semana(s) falhada(s): "Escala de AAAA: N semana(s) preenchida(s), M falhou/falharam e precisam de preenchimento manual — AAAA-MM-DD: erro; …" (e os avisos, se os houver). Erro fora do ciclo semanal, antes de processar qualquer sábado: "Falhou a preencher AAAA antes do processamento semana a semana: erro" |
 | `PREENCHIMENTO_AUTOMATICO_FALHOU` | Menos de 3 candidatos (nada gerado) | Ver 5.1, passo 4 |
 | `PREENCHIMENTO_AUTOMATICO_IGNORADO` | Já havia linhas do ano-alvo | Ver 5.1, passo 2 |
 
@@ -138,7 +138,7 @@ Nota: as semanas falhadas nunca ficam meio preenchidas; ou têm as linhas todas,
 | **NOV-03** | Feriados e escala são independentes | migração 0020 |
 | **NOV-04** | Feriados: se o ano-alvo já tem feriados, não faz nada (`IGNORADO`) | `preencher_feriados_anual` |
 | **NOV-05** | Escala: se o ano-alvo tem uma só linha de escala, não faz nada (`IGNORADO`) | `preencher_escala_anual` |
-| **NOV-06** | As funções nunca relançam erros: registam-nos em `logs_auditoria` | migração 0019 |
+| **NOV-06** | As funções nunca relançam erros: registam-nos em `logs_auditoria` | migrações 0019 (escala) e 0020 (feriados, desde a criação) |
 | **NOV-07** | Mínimo de 3 `OPERADOR_H3` ativos, senão não gera nada (`FALHOU`) | `preencher_escala_anual` (0035) |
 | **NOV-08** | Cada semana é atómica: falha isolada, não perde as outras | migração 0036 |
 | **NOV-09** | Rotação de H3: menos H3 em 3 meses, depois menos no ano, depois `id` | migração 0049 |
@@ -196,6 +196,7 @@ Todos confirmados por leitura do código ou por ensaio em transação revertida,
 - **Só corre uma vez por ano, sem repetição.** Se não correr no dia, ninguém é avisado de que não correu: a barra de alertas depende de existir uma linha de auditoria. Verificar sempre a 1 e 2 de novembro (secção 8).
 - **Alterações à equipa depois de 1 de novembro** não voltam a rodar o ano. Uma saída apaga a escala futura da pessoa (regra de desativação; ver `docs/utilizadores-e-saidas.md`), o que deixa semanas sem essa pessoa; o aviso "H3 por atribuir" e a Sugestão automática servem para refazer essas semanas.
 - **Comentários antigos.** Alguns comentários de colunas na base (por exemplo em `usuarios.limite_h3_mensal`, que diz "mês do sábado do ciclo") estão desatualizados face à regra do mês da maioria dos dias. Vale este documento.
+- **O aviso "mais de um Gerente ativo" (secção 5.1, passo 5) está hoje inatingível.** É um dos avisos que a preparação sabe produzir, mas desde a migração 0042 (`ux_usuarios_gerente_titular_unico`, índice único parcial) a base nunca permite mais de um Gerente ativo em simultâneo — esta condição não pode ocorrer em produção. Mantido só como defesa em profundidade.
 
 ## 11. Origem das regras (decisões e migrações)
 
@@ -224,7 +225,7 @@ Suite pgTAP (ver `docs/testes.md`), todos numa transação revertida contra a ba
 
 ## 13. Código
 
-- Funções da base: `preencher_escala_anual()` e `preencher_feriados_anual()` (versões em vigor: as das migrações 0050 e 0020); `calcular_pascoa()`.
+- Funções da base: `preencher_escala_anual()` e `preencher_feriados_anual()` (versões em vigor: as das migrações 0050 e 0048); `calcular_pascoa()`.
 - Agendamentos: `cron.job` (criados nas migrações 0015 e 0020).
 - Interface: `src/data/useSaudeAutomacaoAnual.ts`, `src/lib/alertas.ts` (`avaliarSaudeAutomacaoAnual`, `avaliarAvisoAutomacaoAnual`), `src/layout/AlertBar.tsx`, `src/pages/HistoricoPage.tsx`.
 - Composição da escala de um operador novo: `src/lib/composicaoEscala.ts` e a cópia `supabase/functions/gerir-utilizadores/composicaoEscala.ts`.

@@ -5,14 +5,14 @@
 
 ## 1. Onde aparecem
 
-- **Barra de alertas** (faixa no topo de todas as páginas): "Próximo alerta" e as etiquetas dos avisos. Reavalia-se **de 30 em 30 segundos**.
+- **Barra de alertas** (faixa no topo de todas as páginas): "Próximo alerta" e as etiquetas dos avisos. Reavalia-se **de 30 em 30 segundos** — mas só recalcula os alarmes sobre os dados já carregados: `AlertBar.tsx` lê `tarefas_plano`/`planos` **uma só vez**, num `useEffect` sem canal realtime nem intervalo próprio, ao abrir a página; uma tarefa concluída ou criada noutra sessão só entra em conta depois de recarregar (F5).
 - **Checklist Ativo, cartão "Alertas ativos"**: os alarmes em curso, com o botão **"Registar acionamento ao Gerente"** (`docs/checklist.md`). Só se redesenha quando o ecrã muda (não tem relógio próprio).
 
 **Os alertas são só visuais.** Não há som nem notificações fora da aplicação (verificado a 2026-09-26: nada no código emite som).
 
 ## 2. Os dois padrões
 
-- **ALA-01** Reativo (HR. LIMITE, checagens das 20h e das 15h): o alerta dispara **na hora de referência**; a partir daí está **em alerta** durante 30 minutos de tolerância e depois fica elegível para **escalonamento**.
+- **ALA-01** Reativo (HR. LIMITE, checagens das 20h e das 15h): todos disparam **na hora de referência**. As checagens das 20h e das 15h ficam depois **em alerta** durante 30 minutos de tolerância antes de ficarem elegíveis para **escalonamento**; HR. LIMITE não tem essa fase intermédia — fica logo elegível para escalonamento no instante exato em que dispara, sem tolerância nenhuma.
 - **ALA-02** Preditivo (GIR_FL): o aviso dispara **30 minutos antes** da hora de referência, para dar tempo de agir, e **escalona à própria hora**.
 
 O painel "Alertas ativos" mostra um alarme desde que o seu estado seja diferente de "futuro" (isto é, desde a hora de disparo até ao fim do dia); não distingue visualmente "em alerta" de "escalonar".
@@ -39,11 +39,12 @@ O painel "Alertas ativos" mostra um alarme desde que o seu estado seja diferente
 - A hora-limite vem da base com segundos (`14:00:00`) e conta como `14:00`.
 - Hoje nenhuma tarefa tem hora-limite preenchida (verificado a 2026-09-26: 55 tarefas, nenhuma com HR. LIMITE), por isso o alarme não dispara na prática.
 - Regista-se o **acionamento** com `ESCALONAMENTO_HR_LIMITE`.
+- Os dados de tarefas e planos usados neste alarme (lidos por `AlertBar.tsx`) só são lidos uma vez, ao abrir a página; o tick de 30 segundos da barra de alertas recalcula os alarmes sobre essa lista já carregada, sem voltar a ler a base (secção 1).
 
 ### 4.2 GIR_FL (ALA-04)
 
 - Só ao **sábado** (dia 6 da semana ISO). Depois da meia-noite já não se aplica.
-- Precisa de pelo menos **uma cadeia dependente por concluir** (estado diferente de `CONCLUIDO_AUTOMATICO` e `CONCLUIDO_MANUAL`). Sem cadeias marcadas como dependência, nunca dispara.
+- Precisa de pelo menos **uma cadeia dependente por concluir** (o código testa por prefixo: qualquer estado que não comece por `CONCLUIDO_` — hoje são `CONCLUIDO_AUTOMATICO` e `CONCLUIDO_MANUAL`). Sem cadeias marcadas como dependência, nunca dispara.
 - Acionamento: `ESCALONAMENTO_GIR_FL`.
 
 ### 4.3 Checagens das 20h e das 15h (ALA-05, ALA-06)
@@ -61,6 +62,8 @@ O painel "Alertas ativos" mostra um alarme desde que o seu estado seja diferente
 ### 4.5 Automação anual (ALA-08)
 
 Ver `docs/preenchimento-anual-de-novembro.md`, secção 7.
+
+- `useSaudeAutomacaoAnual` lê `logs_auditoria` **uma só vez**, ao carregar a aplicação, sem canal realtime nem intervalo próprio: os avisos de falha ou de aviso da automação anual não se atualizam sozinhos depois disso (mesmo padrão da barra de alertas, secção 1).
 
 ### 4.6 Headcount mensal (ALA-09)
 

@@ -38,9 +38,11 @@ SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... npx tsx tests/camada3-e2e/seed/li
   vê "Destravar" e precisa de justificativa.
 - `alertas-condicionais.spec.ts` — popups de instrução `*`/`**` ao
   marcar atraso, ausentes numa cadeia normal.
-- `alerta-sonoro-visual.spec.ts` — janelas críticas 20h/15h com o
-  relógio do browser mockado (`page.clock`); confirma que o alerta das
-  15h nunca aparece fora de um ciclo de manutenção.
+- `alerta-sonoro-visual.spec.ts` — janelas críticas 20h/15h com a hora
+  injetada via `window.__TEST_TIME__` (lida por `agora()`, em
+  `src/lib/datas.ts`) — não usa `page.clock`, de propósito, porque esse
+  mock quebraria o JWT do Supabase; confirma que o alerta das 15h nunca
+  aparece fora de um ciclo de manutenção.
 - `permissoes-perfil.spec.ts` — a interface reflete a mesma fronteira
   de permissão que a CAMADA 1 testa diretamente na API.
 - `gestao-cadeias.spec.ts` — adicionar/desativar cadeias na aba

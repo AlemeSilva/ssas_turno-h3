@@ -13,8 +13,10 @@ Aplicação de gestão de turnos da equipa DEOS/SAS (Accenture · Banco Montepio
 - **As cinco âncoras de data nunca se misturam** (escala/H3 = sábado, plano = quinta, relatório = sexta administrativa, férias/substitutos = semana civil, mês de uma semana H3 = o do sábado+3). (`docs/calendario-h3.md`)
 - **Um alarme só existe com o critério escrito e confirmado pelo Gerente, testado com dados reais.** (`docs/alarmes.md`, ALA-11/12)
 - **Nunca publicar (ecrã, funções ou base de dados) sem autorização explícita do Gerente**, mesmo quando o pedido foi "implementa isto". (`docs/operacao.md`, OP-02)
-- **Uma alteração à base de dados só está terminada depois de correr contra dados reais** (transação revertida) e provar por consulta que não sobrou resíduo. (`docs/operacao.md`, OP-05)
+- **Uma alteração à base de dados só está terminada depois de correr contra dados reais** (transação revertida) e provar por consulta que não sobrou resíduo. (`docs/operacao.md`, OP-04/OP-05)
 - **Nunca simular condições em produção**, nem acionar ao vivo uma ação irreversível "só para verificar". (`docs/operacao.md`, OP-07/OP-08)
+- **Nenhum período de férias ou licença se sobrepõe ao de outro colega ativo**, seja qual for o perfil. (`docs/regras-entre-colegas.md`, COL-01)
+- **Uma semana só tem um `OPERADOR_H3` em H3**, e o preenchimento anual exige no mínimo 3 ativos. (`docs/turnos-e-rotacao.md`, TUR-05; `docs/preenchimento-anual-de-novembro.md`, NOV-07)
 
 Lista completa (uma dúzia, com todos os IDs): `docs/regras.md`, secção 3.
 

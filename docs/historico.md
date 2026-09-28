@@ -47,6 +47,8 @@ Tabela `logs_auditoria` (referência, ação, utilizador, descrição, hora, e a
 
 - Não há separador para **trocas**, **férias**, **headcount** nem **utilizadores**; essa informação consulta-se nos ecrãs respetivos ou por auditoria.
 - A Auditoria não pagina: mostra as 200 mais recentes; para ir mais atrás, restringir a pessoa ou o texto da ação.
+- O separador **Cadeias** também não pagina: mostra as 300 linhas mais recentes (mesmo risco de truncar em silêncio que a Auditoria); para ir mais atrás, restringir a data.
+- `logs_auditoria.delegacao_id` (a delegação em vigor quando a ação foi feita por um delegado) fica gravada na base mas não é lida nem mostrada em nenhum ecrã, incluindo o separador Auditoria.
 - Não há exportação.
 
 ## 5. Código e testes

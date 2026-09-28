@@ -58,7 +58,7 @@ O perfil é o valor de `usuarios.perfil`; os poderes que vêm de uma delegação
 | `headcount_parametros` | ninguém (linha única) | só o titular | ninguém | não |
 
 - Além das políticas, os **gatilhos** validam o conteúdo (férias, trocas, escala, delegações, planos, checklist, headcount…). Estão descritos nos ficheiros de cada funcionalidade e reunidos em `docs/base-de-dados.md`.
-- Na `escala_semanal` existem várias políticas sobrepostas (uma só para o titular ativo, outra para Gerente ou delegado, e três de leitura); o efeito é a **união** delas: qualquer autenticado lê tudo, e só o Gerente escreve.
+- Na `escala_semanal` existem várias políticas sobrepostas (uma só para o titular ativo, outra para Gerente ou delegado, e três de leitura); o efeito é a **união** delas: qualquer autenticado lê tudo, e só o Gerente escreve. **3 destas políticas** (`escala_diaria_gerente_all`, `escala_diaria_operador_readonly`, `escala_diaria_operador_select`) **não têm nenhum `CREATE POLICY` em nenhuma das 61 migrações** — existem em produção mas o esquema não é reconstruível do zero só com `supabase/migrations/` (a migração 0056 chega a fazer `ALTER POLICY` sobre uma delas). Ver `docs/base-de-dados.md`, secção 11.
 
 ## 5. Funções e chamadas do servidor
 
