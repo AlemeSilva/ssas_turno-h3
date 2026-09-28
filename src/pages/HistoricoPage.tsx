@@ -7,7 +7,7 @@ import type { CadeiaDiaria, EscalaSemanal, LogAuditoria, Plano, StatusPlano } fr
 import { formatarDataPT } from '@/lib/datas'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
@@ -40,11 +40,15 @@ export function HistoricoPage() {
   }
 
   return (
+    <div className="flex flex-col gap-5">
+    <header className="page-heading">
+      <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--brand-amber-strong)]">Consulta e auditoria</p>
+      <h1 className="text-2xl font-semibold tracking-tight text-[var(--brand-plum)]">Histórico</h1>
+      <p className="mt-1 text-sm text-[var(--text-secondary)]">Pesquise escalas, planos, cadeias e registos de auditoria.</p>
+    </header>
     <Card>
       <CardContent className="flex flex-col gap-4 pt-6">
-        <CardTitle>Histórico / Consulta</CardTitle>
-
-        <div className="flex gap-1.5">
+        <div className="flex w-fit gap-1.5 rounded-lg border border-[var(--border-subtle)] bg-white p-1">
           {TABS.map((t) => (
             <Button key={t.id} variant={separador === t.id ? 'default' : 'outline'} size="sm" onClick={() => setSeparador(t.id)}>
               {t.label}
@@ -58,6 +62,7 @@ export function HistoricoPage() {
         {separador === 'AUDITORIA' && <FiltroAuditoria usuarios={usuarios} />}
       </CardContent>
     </Card>
+    </div>
   )
 }
 

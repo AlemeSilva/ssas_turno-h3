@@ -51,6 +51,17 @@ export function ChecklistPage() {
 
   return (
     <div className="flex flex-col gap-5">
+      <header className="page-heading flex items-end justify-between gap-6">
+        <div>
+          <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--brand-amber-strong)]">Execução operacional</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-[var(--brand-plum)]">Checklist do Ciclo</h1>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">Acompanhamento das tarefas e cadeias do plano ativo.</p>
+        </div>
+        <div className="flex items-center gap-2 text-xs font-medium">
+          <span className="rounded-md border border-[var(--border-subtle)] bg-white px-3 py-2 text-[var(--text-secondary)]">{itensPendentes} tarefas por concluir</span>
+          <span className="rounded-md border border-[var(--border-subtle)] bg-white px-3 py-2 text-[var(--text-secondary)]">{cadeiasPendentes} cadeias pendentes</span>
+        </div>
+      </header>
       <PainelAlertas
         tarefas={tarefas}
         cadeias={cadeias}
@@ -84,9 +95,9 @@ export function ChecklistPage() {
         const itensSecao = itens.filter((i) => i.secao === secao.id)
         const cadeiasSecao = cadeias.filter((c) => c.secao === secao.id)
         return (
-          <Card key={secao.id}>
-            <CardContent className="flex flex-col pt-6">
-              <CardTitle className="mb-2">{secao.titulo}</CardTitle>
+        <Card key={secao.id} className="checklist-section-card">
+            <CardContent className="flex flex-col pt-5">
+              <CardTitle className="mb-2 checklist-section-title">{secao.titulo}</CardTitle>
 
               {itensSecao.map((item) => (
                 <ItemChecklistLinha key={item.id} item={item} usuarios={usuarios} recarregar={recarregar} />
@@ -95,7 +106,7 @@ export function ChecklistPage() {
               {cadeiasSecao.length > 0 && (
                 <>
                   <h4 className="mt-4 mb-2 text-xs text-zinc-400">Acompanhamento das cadeias</h4>
-                  <div className="grid grid-cols-3 gap-x-6 gap-y-2">
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-2">
                     {cadeiasSecao
                       .sort((a, b) => a.nome_cadeia.localeCompare(b.nome_cadeia))
                       .map((c) => (

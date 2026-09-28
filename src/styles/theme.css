@@ -1,107 +1,218 @@
-/* =====================================================================
-   Gestão de Turnos — Design tokens
-   Accenture (roxo de marca) + Banco Montepio (âmbar de marca)
-   Dark mode corporativo de alto contraste — operação desktop, noturna.
-
-   Referência de marca: Identidade_Visual.png
-     Accenture purple chevron  →  #A100FF  (RGB 161 0 255)
-     Accenture purple text     →  #44177A
-     Montepio amber square bg  →  #F0A41C  (RGB 240 164 28)
-   ===================================================================== */
+/* Gestão de Turnos — design tokens
+   Tema claro, desktop operacional, com identidade Accenture/Montepio discreta.
+   Os valores oficiais de marca ficam reservados à marca; os estados usam
+   combinações com contraste legível em texto e fundos neutros.
+*/
 
 :root {
-  /* Marca — valores extraídos do ficheiro Identidade_Visual.png */
-  --accenture-purple:      #a100ff;   /* chevron ">" — cor oficial Accenture    */
-  --accenture-purple-dim:  #7a00c2;   /* variante escurecida para hover         */
-  --accenture-purple-text: #44177a;   /* roxo escuro do logótipo "accenture"    */
-  --accenture-purple-r:    161;
-  --accenture-purple-g:    0;
-  --accenture-purple-b:    255;
+  /* Identidade das marcas */
+  --accenture-purple: #a100ff;
+  --accenture-purple-dim: #7a00c2;
+  --accenture-purple-text: #44177a;
+  --accenture-purple-r: 161;
+  --accenture-purple-g: 0;
+  --accenture-purple-b: 255;
+  --montepio-orange: #f0a41c;
+  --montepio-orange-dim: #c2841a;
+  --montepio-orange-r: 240;
+  --montepio-orange-g: 164;
+  --montepio-orange-b: 28;
+  --brand-purple: #a100ff;
+  --brand-purple-strong: #54266a;
+  --brand-purple-soft: #f4eff7;
+  --brand-plum: #321b3b;
+  --brand-plum-raised: #43234f;
+  --brand-amber: #f0a41c;
+  --brand-amber-strong: #704900;
+  --brand-amber-soft: #fff6e5;
 
-  --montepio-orange:       #f0a41c;   /* fundo âmbar do quadrado com pássaro    */
-  --montepio-orange-dim:   #c2841a;   /* variante escurecida para hover         */
-  --montepio-orange-r:     240;
-  --montepio-orange-g:     164;
-  --montepio-orange-b:     28;
+  /* Superfícies e texto */
+  --bg-app: #f5f6f8;
+  --bg-surface: #ffffff;
+  --bg-surface-raised: #ffffff;
+  --bg-surface-hover: #f1f3f6;
+  --border-subtle: #e1e5eb;
+  --border-strong: #c5ccd6;
+  --text-primary: #202631;
+  --text-secondary: #465160;
+  --text-muted: #5c6877;
 
-  /* Base — dark mode de alto contraste */
-  --bg-app:            #0e0d11;
-  --bg-surface:        #17161b;
-  --bg-surface-raised: #1f1e25;
-  --bg-surface-hover:  #27262e;
-  --border-subtle:     #2e2d35;
-  --border-strong:     #45434e;
+  /* Estados operacionais: combinar sempre cor, texto e/ou ícone */
+  --status-verde: #176b43;
+  --status-verde-bg: #eaf5ee;
+  --status-amarelo: #704900;
+  --status-amarelo-bg: #fff4d6;
+  --status-vermelho: #a61b1b;
+  --status-vermelho-bg: #fff0f0;
+  --status-neutro: #536071;
+  --status-neutro-bg: #eef1f4;
+  --status-andamento: #54266a;
+  --status-andamento-bg: #f4eff7;
 
-  --text-primary:   #f3f2f5;
-  --text-secondary: #b7b4bf;
-  --text-muted:     #817e8a;
-
-  /* Estado operacional */
-  --status-verde:        #2fb867;
-  --status-verde-bg:     rgba(47, 184, 103, 0.14);
-  --status-amarelo:      #e8b923;
-  --status-amarelo-bg:   rgba(232, 185, 35, 0.14);
-  --status-vermelho:     #e5484d;
-  --status-vermelho-bg:  rgba(229, 72, 77, 0.16);
-  --status-neutro:       #6d6a78;
-  --status-neutro-bg:    rgba(109, 106, 120, 0.14);
-
-  /* Acento primário = roxo Accenture; secundário = âmbar Montepio */
-  --accent-primary:       var(--accenture-purple);
-  --accent-primary-hover: #b52bff;
-  --accent-secondary:     var(--montepio-orange);
-  --accent-secondary-hover: #f9b52c;
-
-  /* focus-ring usa componentes RGB para evitar hardcode do hex */
-  --focus-ring: 0 0 0 3px rgba(
-    var(--accenture-purple-r),
-    var(--accenture-purple-g),
-    var(--accenture-purple-b),
-    0.35
-  );
-
-  /* Texto sobre fundo de acento */
-  --text-on-accent:   #ffffff;
-  --text-on-secondary: #1a1204;  /* texto escuro sobre âmbar Montepio */
-
+  /* Componentes e tipografia */
+  --accent-primary: var(--brand-purple-strong);
+  --accent-primary-hover: #452057;
+  --accent-secondary: var(--brand-amber-strong);
+  --accent-secondary-hover: #5d3d00;
+  --focus-ring: 0 0 0 3px rgba(84, 38, 106, 0.24);
+  --text-on-accent: #ffffff;
+  --text-on-secondary: #241800;
   --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
-
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
-
-  --font-sans: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
-  --font-mono: "SFMono-Regular", "JetBrains Mono", Consolas, monospace;
+  --radius-md: 9px;
+  --radius-lg: 12px;
+  --shadow-card: 0 1px 2px rgba(23, 31, 43, 0.06), 0 2px 8px rgba(23, 31, 43, 0.04);
+  --font-ui: 'Geist Variable', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'SFMono-Regular', Consolas, monospace;
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 html,
 body,
-#root {
-  height: 100%;
-}
+#root { height: 100%; }
 
 body {
   margin: 0;
   background: var(--bg-app);
   color: var(--text-primary);
-  font-family: var(--font-sans);
+  font-family: var(--font-ui);
   font-size: 14px;
   -webkit-font-smoothing: antialiased;
 }
 
-/* App de operação — só desktop, largura mínima para não colapsar o layout */
+/* Aplicação operacional exclusivamente para desktop. */
 #root {
   min-width: 1180px;
   overflow-x: auto;
 }
 
-/* Todo o app já está migrado para Tailwind/shadcn — as antigas classes
-   .btn/.card/.badge* e o andaime .legacy-theme (que restringia as
-   regras não-camadas de input/select/a às rotas ainda não migradas)
-   foram removidas por não terem mais nenhuma utilização. Os tokens em
-   :root acima mantêm-se: cores de marca (AppShell) e os estados de
-   carregamento/sessão (RequireAuth) ainda os usam diretamente. */
+
+/* Composição institucional inspirada na transição âmbar-roxo da referência. */
+.brand-ribbon {
+  background: linear-gradient(90deg, var(--brand-amber) 0%, #bd72a5 44%, var(--accenture-purple) 100%);
+}
+
+.app-sidebar {
+  background: linear-gradient(160deg, var(--brand-plum) 0%, #3c2148 58%, #492653 100%);
+  box-shadow: 6px 0 24px rgba(35, 19, 42, 0.12);
+}
+
+.workspace-canvas {
+  background-color: var(--bg-app);
+  background-image:
+    radial-gradient(ellipse 34rem 18rem at 100% 0%, rgba(161, 0, 255, 0.055), transparent 74%),
+    radial-gradient(ellipse 24rem 14rem at 0% 0%, rgba(240, 164, 28, 0.07), transparent 76%);
+}
+
+.dashboard-masthead {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 100% 0%, rgba(240, 164, 28, 0.24), transparent 34%),
+    linear-gradient(112deg, #321b3b 0%, #4b245c 57%, #644272 100%);
+  box-shadow: 0 14px 32px rgba(49, 26, 58, 0.16);
+}
+
+.dashboard-masthead::after {
+  position: absolute;
+  z-index: -1;
+  top: -34%;
+  right: -2%;
+  width: 35%;
+  height: 170%;
+  border-left: 1px solid rgba(255, 255, 255, 0.13);
+  background: linear-gradient(140deg, rgba(255, 255, 255, 0.08), rgba(240, 164, 28, 0.08));
+  content: '';
+  transform: skewX(-24deg);
+}
+
+.dashboard-kpi {
+  border-top: 3px solid var(--kpi-accent, var(--brand-purple-strong));
+  box-shadow: var(--shadow-card);
+}
+
+.dashboard-kpi--amber { --kpi-accent: var(--brand-amber); }
+.dashboard-kpi--purple { --kpi-accent: var(--brand-purple-strong); }
+.dashboard-kpi--plum { --kpi-accent: var(--brand-plum-raised); }
+
+.dashboard-section-title {
+  border-left: 3px solid var(--brand-amber);
+  padding-left: 0.7rem;
+}
+
+
+.page-heading {
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 0.2rem 0 0.9rem 0.85rem;
+  border-left: 3px solid var(--brand-amber);
+}
+
+.schedule-matrix-card {
+  box-shadow: var(--shadow-card);
+}
+
+.schedule-matrix thead th {
+  background: #f7f5f8;
+  border-color: var(--border-subtle);
+}
+
+.schedule-matrix tbody th,
+.schedule-matrix tbody td {
+  border-color: #e6e8ed;
+}
+
+.schedule-matrix tbody tr:hover td,
+.schedule-matrix tbody tr:hover th {
+  background-color: #f8f6fa;
+}
+
+.schedule-matrix thead th:first-child,
+.schedule-matrix tbody th:first-child {
+  box-shadow: 1px 0 0 var(--border-subtle), 5px 0 9px rgba(40, 30, 48, 0.035);
+}
+
+.checklist-section-card {
+  border-left: 3px solid #d8c9df;
+  box-shadow: var(--shadow-card);
+}
+
+.checklist-section-title {
+  color: var(--brand-plum);
+  letter-spacing: -0.015em;
+}
+
+.plan-status-card {
+  border-top: 3px solid var(--brand-amber);
+  box-shadow: var(--shadow-card);
+}
+
+.sidebar-brand-lockup {
+  filter: drop-shadow(0 3px 5px rgba(12, 6, 17, 0.2));
+}
+
+.sidebar-logo-plate {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  height: 42px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 7px;
+  box-shadow:
+    0 3px 0 rgba(18, 10, 25, 0.2),
+    0 5px 9px rgba(12, 6, 17, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  transform: perspective(240px) rotateX(1.5deg) translateY(-1px);
+}
+
+.sidebar-logo-plate--montepio {
+  width: 42px;
+  border-color: #f7c35f;
+  background: linear-gradient(145deg, #f8b52b 0%, var(--montepio-orange) 60%, #db9411 100%);
+}
+
+.sidebar-logo-plate--accenture {
+  width: 126px;
+  background: linear-gradient(145deg, #fff 0%, #f7f2fa 100%);
+}

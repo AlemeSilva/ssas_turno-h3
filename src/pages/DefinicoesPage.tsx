@@ -81,6 +81,11 @@ export function DefinicoesPage() {
 
   return (
     <div className="flex flex-col gap-5">
+      <header className="page-heading">
+        <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--brand-amber-strong)]">Administração da plataforma</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-[var(--brand-plum)]">Definições</h1>
+        <p className="mt-1 text-sm text-[var(--text-secondary)]">Parâmetros que orientam o planeamento e o acompanhamento da operação.</p>
+      </header>
       <Card>
         <CardContent className="flex flex-col gap-4 pt-6">
           <div>

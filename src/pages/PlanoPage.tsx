@@ -303,7 +303,12 @@ export function PlanoPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <Card>
+      <header className="page-heading">
+        <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--brand-amber-strong)]">Coordenação da operação</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-[var(--brand-plum)]">Plano de Fim de Semana</h1>
+        <p className="mt-1 text-sm text-[var(--text-secondary)]">Preparação, aprovação e acompanhamento do ciclo operacional.</p>
+      </header>
+      <Card className="plan-status-card">
         <CardContent className="flex items-center justify-between pt-6">
           <div>
             <CardTitle className="flex items-center gap-2">

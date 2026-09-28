@@ -97,10 +97,18 @@ export function RelatoriosPage() {
   }
 
   return (
+    <div className="flex flex-col gap-5">
+    <header className="page-heading flex items-end justify-between gap-6">
+      <div>
+        <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--brand-amber-strong)]">Comunicação de gestão</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-[var(--brand-plum)]">Relatório Semanal de Escala</h1>
+        <p className="mt-1 text-sm text-[var(--text-secondary)]">Texto operacional preparado para revisão e envio.</p>
+      </div>
+      <div className="rounded-md border border-[var(--border-subtle)] bg-white px-3 py-2 text-sm font-medium text-[var(--text-secondary)]">Semana de {formatarDataPT(semanaRef)}</div>
+    </header>
     <Card>
-      <CardHeader className="flex-row items-center justify-between space-y-0">
-        <CardTitle>Relatório Semanal de Escala</CardTitle>
-        <div className="text-sm text-zinc-500">Semana de {formatarDataPT(semanaRef)}</div>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Pré-visualização do conteúdo</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <p className="text-sm text-zinc-500">
@@ -124,5 +132,6 @@ export function RelatoriosPage() {
         )}
       </CardContent>
     </Card>
+    </div>
   )
 }

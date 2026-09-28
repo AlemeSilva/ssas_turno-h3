@@ -23,6 +23,14 @@ const ESTILO_ESTADO: Record<StatusCadeia, string> = {
   ATRASADO: 'border-red-100 bg-red-50 text-red-700',
 }
 
+const ROTULO_ESTADO: Record<StatusCadeia, string> = {
+  PENDENTE: 'Pendente',
+  EM_ANDAMENTO: 'Em curso',
+  CONCLUIDO_AUTOMATICO: 'Concluído · automático',
+  CONCLUIDO_MANUAL: 'Concluído · manual',
+  ATRASADO: 'Atrasado',
+}
+
 export function CadeiaLinha({
   cadeia,
   catalogo,
@@ -56,9 +64,9 @@ export function CadeiaLinha({
   }
 
   return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-center justify-between text-xs">
-        <span className="text-zinc-700">
+    <div className="checklist-chain-row flex flex-col gap-1.5 rounded-md border border-[var(--border-subtle)] bg-white px-2.5 py-2">
+      <div className="flex items-center justify-between gap-2 text-xs">
+        <span className="min-w-0 font-medium text-zinc-700">
           {cadeia.nome_cadeia}
           {categoria === 'ASTERISCO' && ' *'}
           {categoria === 'DUPLO_ASTERISCO' && ' **'}
@@ -68,12 +76,12 @@ export function CadeiaLinha({
             <TooltipTrigger asChild>
               <button
                 className={cn(
-                  'inline-flex cursor-pointer items-center rounded-md border px-1.5 py-0.5 text-[0.65rem] font-medium',
+                  'inline-flex shrink-0 cursor-pointer items-center rounded-md border px-2 py-1 text-[0.7rem] font-medium',
                   ESTILO_ESTADO[cadeia.status]
                 )}
                 onClick={avancarEstado}
               >
-                {cadeia.status}
+                {ROTULO_ESTADO[cadeia.status]}
               </button>
             </TooltipTrigger>
             <TooltipContent>Clica para avançar para {PROXIMO_ESTADO[cadeia.status].replace(/_/g, ' ')}</TooltipContent>
@@ -81,7 +89,7 @@ export function CadeiaLinha({
           {cadeia.status !== 'ATRASADO' && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button size="xs" variant="ghost" onClick={marcarAtraso}>
+                <Button size="xs" variant="outline" onClick={marcarAtraso}>
                   Marcar atraso
                 </Button>
               </TooltipTrigger>

@@ -335,11 +335,24 @@ export function InicioPage() {
   }
 
   return (
-    <div className="flex flex-col gap-8">
-      <h1 className="text-3xl font-bold text-zinc-900">Bem-vindo, {usuario?.nome ?? '—'}</h1>
+    <div className="flex flex-col gap-6">
+      <section className="dashboard-masthead flex min-h-[176px] items-end justify-between gap-6 rounded-xl px-8 py-7 text-white">
+        <div className="relative z-10">
+          <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold tracking-[0.18em] text-white/70">
+            <span className="size-2 rounded-full bg-brand-amber" />
+            CENTRO DE OPERAÇÕES · MONTEPIO
+          </div>
+          <h1 className="text-3xl font-semibold tracking-[-0.035em]">Bem-vindo, {usuario?.nome ?? '—'}</h1>
+          <p className="mt-2 text-sm text-white/75">Resumo da equipa e do serviço para hoje.</p>
+        </div>
+        <div className="relative z-10 hidden min-w-[150px] rounded-lg border border-white/20 bg-white/[0.08] px-4 py-3 text-right xl:block">
+          <div className="text-[10px] font-semibold tracking-[0.16em] text-white/60">DATA OPERACIONAL</div>
+          <div className="mt-1 text-sm font-medium tabular-nums text-white">{formatarDataPT(hojeISO)}</div>
+        </div>
+      </section>
 
-      <div className="grid grid-cols-3 gap-5">
-        <Card>
+      <div className="grid grid-cols-3 gap-4">
+        <Card className="dashboard-kpi dashboard-kpi--amber">
           <CardContent className="pt-6">
             {ehGerenteOuDelegado ? (
               <ListaEquipe
@@ -368,7 +381,7 @@ export function InicioPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="dashboard-kpi dashboard-kpi--purple">
           <CardContent className="pt-6">
             {ehGerenteOuDelegado ? (
               <ListaEquipe
@@ -390,7 +403,7 @@ export function InicioPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="dashboard-kpi dashboard-kpi--plum">
           <CardContent className="flex flex-col gap-2.5 pt-6">
             <div className="text-xs font-bold tracking-wide text-zinc-400 uppercase">Próxima semana</div>
             <div className="text-4xl font-bold text-zinc-900">{turnoProxima.valor}</div>
@@ -404,7 +417,7 @@ export function InicioPage() {
 
       {ehGerenteOuDelegado && (
         <div>
-          <h2 className="mb-4 text-lg font-semibold text-zinc-900">Visão do Gerente</h2>
+          <h2 className="dashboard-section-title mb-4 text-lg font-semibold text-zinc-900">Visão do Gerente</h2>
           <div className="grid grid-cols-2 items-start gap-5">
             <Card>
               <CardHeader>

@@ -8,7 +8,7 @@ import { adicionarDias, agora, duracaoEmAnosEMeses, formatarDataPT, paraISO } fr
 import { semanasParaNovoOperador } from '@/lib/composicaoEscala'
 import type { PerfilUsuario, Usuario } from '@/types/database'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -250,13 +250,16 @@ export function UtilizadoresPage() {
 
   return (
     <div className="flex flex-col gap-5">
+      <header className="page-heading flex items-end justify-between gap-6">
+        <div>
+          <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--brand-amber-strong)]">Acessos e equipa</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-[var(--brand-plum)]">Utilizadores</h1>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">Perfis, vínculo à equipa e estado de acesso.</p>
+        </div>
+        <Button onClick={() => setARegistarAberto(true)}>Registar utilizador</Button>
+      </header>
       <Card>
         <CardContent className="flex flex-col gap-4 pt-6">
-          <div className="flex items-center justify-between">
-            <CardTitle>Gestão de Utilizadores</CardTitle>
-            <Button onClick={() => setARegistarAberto(true)}>Registar utilizador</Button>
-          </div>
-
           {aCarregar ? (
             <p className="text-sm text-zinc-500">A carregar…</p>
           ) : (

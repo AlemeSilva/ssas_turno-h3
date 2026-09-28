@@ -28,8 +28,8 @@ export function Login() {
     <div className="flex min-h-screen items-center justify-center bg-zinc-50">
       <Card className="w-full max-w-sm">
         <CardHeader className="flex-row items-center gap-2.5 space-y-0">
-          <span className="flex size-9 items-center justify-center rounded-lg bg-indigo-50">
-            <Lock className="size-4 text-indigo-600" />
+          <span className="flex size-9 items-center justify-center rounded-lg bg-brand-purple-soft">
+            <Lock className="size-4 text-brand-purple-strong" />
           </span>
           <div>
             <div className="text-base font-bold text-zinc-900">Gestão de Turnos</div>

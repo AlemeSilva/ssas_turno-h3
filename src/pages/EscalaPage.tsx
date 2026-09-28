@@ -64,17 +64,17 @@ const DIAS_SEMANA_ABREV = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
 // manhã/tarde/noite) — H3 leva ainda um ícone de cadeado, por ser o
 // turno restrito a operadores com perfil OPERADOR_H3.
 const ESTILO_TURNO: Record<TurnoTipo, string> = {
-  H1: 'bg-sky-50 text-sky-700 border-sky-100',
-  H2: 'bg-amber-50 text-amber-700 border-amber-100',
+  H1: 'bg-amber-50 text-amber-700 border-amber-100',
+  H2: 'bg-violet-50 text-violet-800 border-violet-100',
   H3: 'bg-indigo-50 text-indigo-700 border-indigo-100',
-  H4: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+  H4: 'bg-zinc-100 text-zinc-700 border-zinc-200',
 }
 
 const ESTILO_LEGENDA: Record<TurnoTipo, string> = {
-  H1: 'bg-sky-100 border-sky-200',
-  H2: 'bg-amber-100 border-amber-200',
+  H1: 'bg-amber-100 border-amber-200',
+  H2: 'bg-violet-100 border-violet-200',
   H3: 'bg-indigo-100 border-indigo-200',
-  H4: 'bg-emerald-100 border-emerald-200',
+  H4: 'bg-zinc-100 border-zinc-300',
 }
 
 const OPCOES_TURNO: { valor: TurnoTipo; rotulo: string }[] = [
@@ -195,8 +195,19 @@ export function EscalaPage() {
     : undefined
 
   return (
-    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_320px] lg:items-start">
-      <Card className="overflow-hidden">
+    <div className="flex flex-col gap-4">
+      <header className="page-heading flex items-center justify-between gap-4">
+        <div>
+          <div className="mb-1 text-[10px] font-semibold tracking-[0.16em] text-brand-purple-strong">PLANEAMENTO DA EQUIPA</div>
+          <h1 className="text-2xl font-semibold tracking-[-0.025em] text-zinc-900">Escala do Mês</h1>
+          <p className="mt-1 text-sm text-zinc-500">Distribuição mensal dos turnos H1 a H4 e respetivas ausências.</p>
+        </div>
+        <span className="hidden rounded-md border border-brand-amber/30 bg-brand-amber-soft px-3 py-1.5 text-xs font-semibold text-brand-amber-strong xl:inline-flex">
+          OPERAÇÃO · ESCALA
+        </span>
+      </header>
+      <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
+      <Card className="schedule-matrix-card overflow-hidden">
         <CardHeader className="flex items-center justify-between gap-3 border-b border-zinc-100 pb-4">
           <div className="flex items-center gap-1">
             <Tooltip>
@@ -240,7 +251,7 @@ export function EscalaPage() {
             <p className="px-4 text-sm text-zinc-500">A carregar…</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-xs">
+              <table className="schedule-matrix w-full border-collapse text-xs">
                 <thead>
                   <tr>
                     <th className="sticky left-0 z-10 min-w-40 border-b border-zinc-100 bg-white px-4 py-2 text-left text-xs font-medium tracking-wider text-zinc-400 uppercase">
@@ -347,6 +358,7 @@ export function EscalaPage() {
           onFechar={() => setCelulaEmEdicao(null)}
         />
       )}
+      </div>
     </div>
   )
 }
