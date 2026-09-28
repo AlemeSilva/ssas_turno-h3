@@ -5,7 +5,7 @@
 
 ## 1. Onde aparecem
 
-- **Barra de alertas** (faixa no topo de todas as páginas): "Próximo alerta" e as etiquetas dos avisos. Reavalia-se **de 30 em 30 segundos** — mas só recalcula os alarmes sobre os dados já carregados: `AlertBar.tsx` lê `tarefas_plano`/`planos` **uma só vez**, num `useEffect` sem canal realtime nem intervalo próprio, ao abrir a página; uma tarefa concluída ou criada noutra sessão só entra em conta depois de recarregar (F5).
+- **Barra de alertas** (faixa no topo de todas as páginas): "Próximo alerta" e as etiquetas dos avisos. Reavalia-se **de 30 em 30 segundos**. `AlertBar.tsx` reage também a mudanças reais: subscreve `planos` e `tarefas_plano` por realtime, com um recarregamento de reserva a cada 5 minutos (mesmo padrão de `useAlertaSemanasSemH3`) — corrigido no stress-test de documentação de 2026-09-28; antes só lia estas duas tabelas uma vez, ao abrir a página.
 - **Checklist Ativo, cartão "Alertas ativos"**: os alarmes em curso, com o botão **"Registar acionamento ao Gerente"** (`docs/checklist.md`). Só se redesenha quando o ecrã muda (não tem relógio próprio).
 
 **Os alertas são só visuais.** Não há som nem notificações fora da aplicação (verificado a 2026-09-26: nada no código emite som).
@@ -63,7 +63,7 @@ O painel "Alertas ativos" mostra um alarme desde que o seu estado seja diferente
 
 Ver `docs/preenchimento-anual-de-novembro.md`, secção 7.
 
-- `useSaudeAutomacaoAnual` lê `logs_auditoria` **uma só vez**, ao carregar a aplicação, sem canal realtime nem intervalo próprio: os avisos de falha ou de aviso da automação anual não se atualizam sozinhos depois disso (mesmo padrão da barra de alertas, secção 1).
+- `useSaudeAutomacaoAnual` subscreve por realtime as novas linhas de `logs_auditoria` com `referencia_tipo` `ESCALA_ANUAL`/`FERIADOS_ANUAL`, com um recarregamento de reserva a cada 5 minutos (corrigido no stress-test de documentação de 2026-09-28; antes só lia uma vez, ao abrir a página).
 
 ### 4.6 Headcount mensal (ALA-09)
 

@@ -53,6 +53,21 @@ export function AlertBar() {
       setTarefasExcecionais((tarefasData as TarefaPlano[]) ?? [])
     }
     carregar()
+    // Achado do stress-test de documentação (2026-09-28): antes disto,
+    // planos/tarefas_plano só eram lidos uma vez ao abrir a página — o
+    // relógio de 30s recalculava os alarmes contra dados já
+    // desatualizados. Mesmo padrão de useAlertaSemanasSemH3: realtime
+    // mais um recarregar periódico de reserva.
+    const canal = supabase
+      .channel('alert-bar-plano-ciclo')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'planos' }, carregar)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tarefas_plano' }, carregar)
+      .subscribe()
+    const relogio = setInterval(carregar, 5 * 60_000)
+    return () => {
+      clearInterval(relogio)
+      supabase.removeChannel(canal)
+    }
   }, [])
 
   const proximo = calcularProximoAlerta(agora, ehManutencao)

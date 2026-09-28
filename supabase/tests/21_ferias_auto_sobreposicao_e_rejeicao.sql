@@ -15,6 +15,15 @@
 -- não é usuario_id=auth.uid() and status='PENDENTE'), só
 -- is_gerente_ou_delegado() cobre isso — tal como a UI real, que só
 -- mostra Aprovar/Rejeitar a Gerente/delegado (PainelFerias.tsx).
+--
+-- Desde a migração 0062 (stress-test de documentação, 2026-09-28),
+-- ninguém decide o próprio pedido — nem por UPDATE nem por INSERT já
+-- nascido APROVADA/REJEITADA. Os registos "já aprovados" que este
+-- ficheiro semeia como fixture deixaram de poder nascer com um INSERT
+-- direto do próprio dono; semeiam-se agora pelo caminho real (INSERT
+-- como PENDENTE pelo próprio, seguido de UPDATE para APROVADA pelo
+-- Gerente) — RLS ferias_insert_propria só aceita usuario_id=auth.uid(),
+-- por isso o Gerente nunca pode inserir em nome de outra pessoa.
 -- =====================================================================
 begin;
 select plan(5);
@@ -35,7 +44,11 @@ select tests.criar_usuario('Delta Vinteum', 'delta21@teste.pt', 'OPERADOR') as d
 -- Datas do ano corrente e calculadas (tests.dia, 00_helpers.sql):
 -- trg_valida_ferias só aceita INSERT de férias do ano em curso.
 select tests.autenticar_como(:'alfa_id');
-insert into ferias (usuario_id, data_inicio, data_fim, status) values (:'alfa_id', tests.dia(3, 2), tests.dia(3, 6), 'APROVADA');
+insert into ferias (usuario_id, data_inicio, data_fim) values (:'alfa_id', tests.dia(3, 2), tests.dia(3, 6))
+    returning id as alfa_aprovada_id \gset
+select tests.autenticar_como(:'gerente_id');
+update ferias set status = 'APROVADA', aprovado_por = :'gerente_id' where id = :'alfa_aprovada_id';
+select tests.autenticar_como(:'alfa_id');
 
 select throws_ok(
     format($f$ insert into ferias (usuario_id, data_inicio, data_fim) values (%L, tests.dia(3, 5), tests.dia(3, 10)) $f$, :'alfa_id'),
@@ -93,7 +106,10 @@ select lives_ok(
 -- rejeição é isenta) — usa um novo par limpo, sem o estado semeado
 -- acima.
 select tests.autenticar_como(:'gama_id');
-insert into ferias (usuario_id, data_inicio, data_fim, status) values (:'gama_id', tests.dia(10, 12), tests.dia(10, 16), 'APROVADA');
+insert into ferias (usuario_id, data_inicio, data_fim) values (:'gama_id', tests.dia(10, 12), tests.dia(10, 16))
+    returning id as gama_aprovada_id \gset
+select tests.autenticar_como(:'gerente_id');
+update ferias set status = 'APROVADA', aprovado_por = :'gerente_id' where id = :'gama_aprovada_id';
 reset role;
 set session_replication_role = replica;
 insert into ferias (usuario_id, data_inicio, data_fim, status)

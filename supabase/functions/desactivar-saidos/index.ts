@@ -20,7 +20,32 @@ function hojeISO(): string {
   return `${ano}-${mes}-${dia}`
 }
 
-Deno.serve(async () => {
+// Achado do stress-test de documentação (2026-09-28): ao contrário das
+// outras duas Edge Functions (gerir-utilizadores, sugerir-escala), esta
+// não tratava o pré-voo OPTIONS nem enviava cabeçalhos CORS — qualquer
+// método corria sempre a lógica de desativação. Mesmo padrão das outras
+// duas a partir de agora.
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  })
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
+  if (req.method !== 'POST') {
+    return json({ erro: 'Método não permitido' }, 405)
+  }
+
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -36,11 +61,11 @@ Deno.serve(async () => {
     .lte('data_saida', hoje)
 
   if (erroBusca) {
-    return new Response(JSON.stringify({ erro: erroBusca.message }), { status: 500 })
+    return json({ erro: erroBusca.message }, 500)
   }
 
   if (!saidos || saidos.length === 0) {
-    return new Response(JSON.stringify({ desativados: 0 }), { status: 200 })
+    return json({ desativados: 0 }, 200)
   }
 
   const ids = saidos.map((u) => u.id)
@@ -51,7 +76,7 @@ Deno.serve(async () => {
     .in('id', ids)
 
   if (erroUpdate) {
-    return new Response(JSON.stringify({ erro: erroUpdate.message }), { status: 500 })
+    return json({ erro: erroUpdate.message }, 500)
   }
 
   // Invalida sessões já abertas — mesma chamada do caminho manual (ver
@@ -80,8 +105,5 @@ Deno.serve(async () => {
     }))
   )
 
-  return new Response(
-    JSON.stringify({ desativados: saidos.length, nomes: saidos.map((u) => u.nome) }),
-    { status: 200 }
-  )
+  return json({ desativados: saidos.length, nomes: saidos.map((u) => u.nome) }, 200)
 })

@@ -30,7 +30,7 @@ Não há um único botão de publicar: o ecrã, as funções do servidor e a bas
 
 ## 4. Aplicar uma migração na base de dados
 
-- **Não há `supabase db push` nem CI a aplicar migrações.** As 61 migrações em `supabase/migrations/` (`docs/base-de-dados.md`, secção 11) foram todas aplicadas **à mão**, por ordem, contra a produção.
+- **Não há `supabase db push` nem CI a aplicar migrações.** As 64 migrações em `supabase/migrations/` (`docs/base-de-dados.md`, secção 11) foram todas aplicadas **à mão**, por ordem, contra a produção.
 - **Ligação:** `.db_conn`, na raiz do repositório (gitignored, nunca commitado) — a connection string direta (forma "pooler") do projeto Supabase `usqzsprhqxpupizhpenz`. Verificar este ficheiro **antes** de pedir credenciais ao Gerente; já existe.
 - **Sem `psql`, Docker nem a CLI da Supabase** disponíveis neste ambiente. As ligações fazem-se com um pequeno script Node (`pg`, instalado à parte na pasta de rascunho) que lê `.db_conn` e liga com `ssl: { rejectUnauthorized: false }`.
 - **OP-04** Uma migração real que fica aplica-se autónoma (uma instrução de cada vez, sem embrulhar em transação — a maioria já traz o seu próprio `begin`/`commit` quando precisa). Uma consulta ou teste **exploratório** embrulha-se sempre em `begin; … rollback;`, mesmo que altere ou substitua uma função (`create or replace function` é transacional: a versão em produção só muda de facto num `commit`).
@@ -38,7 +38,7 @@ Não há um único botão de publicar: o ecrã, as funções do servidor e a bas
 
 ## 5. Testar as regras da base de dados (pgTAP) contra produção
 
-- **Não existe CI para a suite** `supabase/tests/*.sql` (61 ficheiros → hoje 28; um fluxo `pgtap.yml` existiu e foi **removido a 2026-09-25** por reaplicar as migrações 0001 a 0009 sobre a produção a cada execução — não recriar sem perceber por que foi removido). Corre-se com o mesmo script Node da secção 4.
+- **Não existe CI para a suite** `supabase/tests/*.sql` (hoje 31 ficheiros — `00_helpers.sql` + 30 de teste, `00` a `30`; um fluxo `pgtap.yml` existiu e foi **removido a 2026-09-25** por reaplicar as migrações 0001 a 0009 sobre a produção a cada execução — não recriar sem perceber por que foi removido). Corre-se com o mesmo script Node da secção 4.
 - **Forma:** uma só ligação; `begin`; opcionalmente as migrações ainda por aplicar, na mesma transação, para comparar "antes" e "depois"; cada ficheiro de teste dentro de `savepoint`/`rollback to savepoint`; a execução **termina sempre em `rollback`** — nada fica gravado.
 - **OP-06** Desde 2026-09-25 a produção **não tem** a extensão `pgtap` nem o schema `tests` instalados (removidos a pedido do Gerente). Cada execução tem de os criar **dentro da própria transação** (`create extension pgtap with schema extensions`, depois `supabase/tests/00_helpers.sql`) — desaparecem com o `rollback` final.
 - **A concatenação migração+teste tem uma armadilha:** uma migração nova **não** traz o seu próprio `begin`/`rollback` (autocommita quando aplicada a sério); um ficheiro de teste tem o seu **próprio** `begin`/`rollback`, só à volta do seu corpo. Colar os dois ficheiros com um simples `cat` faz a migração correr **antes** do `begin` do teste — aplica-se a sério, mesmo se o teste depois reverter. Solução: montar um script com **um único** `begin`/`rollback` exterior, tirando as linhas `begin;`/`rollback;` de cada ficheiro individual.

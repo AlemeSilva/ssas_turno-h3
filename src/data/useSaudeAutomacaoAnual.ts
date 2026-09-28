@@ -18,6 +18,13 @@ const ESTADO_INICIAL: SaudeAutomacaoAnual = {
   feriadosDetalhe: null,
 }
 
+// Achado do stress-test de documentação (2026-09-28): este hook só lia
+// logs_auditoria uma vez, ao abrir a página — a barra de alertas nunca
+// refletia uma execução nova do cron sem recarregar. Mesmo padrão de
+// useAlertaSemanasSemH3: reage a novas linhas por realtime e, como
+// rede alguma é garantida, também recarrega de vez em quando.
+const INTERVALO_RECARGA_MS = 5 * 60_000
+
 /**
  * Olha só para a ação mais recente de cada preenchimento automático
  * anual (escala e feriados, ambos correm no cron de 1 de Novembro) —
@@ -62,8 +69,17 @@ export function useSaudeAutomacaoAnual(): SaudeAutomacaoAnual {
     }
 
     carregar()
+    const canal = supabase
+      .channel('saude-automacao-anual')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'logs_auditoria', filter: 'referencia_tipo=eq.ESCALA_ANUAL' }, carregar)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'logs_auditoria', filter: 'referencia_tipo=eq.FERIADOS_ANUAL' }, carregar)
+      .subscribe()
+    const relogio = setInterval(carregar, INTERVALO_RECARGA_MS)
+
     return () => {
       cancelado = true
+      clearInterval(relogio)
+      supabase.removeChannel(canal)
     }
   }, [])
 

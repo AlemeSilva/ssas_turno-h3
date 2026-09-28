@@ -51,6 +51,8 @@ Uma decisão nova regista-se aqui com a data **e** entra no ficheiro da área qu
 | 2026-09-26 | Uma troca de H3 só pode incidir sobre um sábado (o início da semana H3) — antes uma referência a "quinta" podia deixar uma linha solta na escala | `docs/trocas-e-delegacao.md` (migração 0061) |
 | 2026-09-26 | A hora-limite (HR. LIMITE) de uma tarefa passa a contar com o **dia** previsto de fim, não só a hora — um limite às 14h00 de sábado deixa de disparar às 15h00 de quinta | `docs/alarmes.md` |
 | 2026-09-26 | A Sugestão automática de escala é reconstruída para seguir exatamente as mesmas regras já em prática em cada turno (as do preenchimento anual), em vez de uma lógica própria | `docs/sugestao-automatica.md` |
+| 2026-09-28 | **Ninguém decide (aprova/rejeita) o seu próprio pedido de férias/licença ou a sua própria troca de H3** — nem por decisão direta, nem já a nascer decidido por INSERT; até aqui só o papel (Gerente/delegado) era verificado, nunca se essa pessoa era também a dona do pedido. Achado do stress-test de documentação, corrigido no mesmo dia | `docs/regras-entre-colegas.md` (COL-05, COL-12; migração 0062) |
+| 2026-09-28 | **Um substituto de férias não pode ser a própria pessoa ausente; um delegado de aprovação não pode ser o próprio titular** — as duas regras já existiam, mas só como filtro do ecrã; passam a impostas na base. Achado do stress-test de documentação, corrigido no mesmo dia | `docs/regras-entre-colegas.md` (COL-06, COL-15; migração 0063) |
 
 ## 2. Decisões sobre como a equipa e a aplicação trabalham (processo)
 

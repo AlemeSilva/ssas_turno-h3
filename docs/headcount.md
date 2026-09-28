@@ -191,7 +191,6 @@ Um simulador "e se" que **nunca grava nada**. Abre-se em "Estudo de Cenários" (
 - A página lê os dados uma vez ao abrir e depois de cada gravação; **não há atualização em tempo real** entre sessões (o "Guardar" de um mês protege contra edições simultâneas).
 - O alarme mensal só existe se a página foi aberta depois de o mês terminar (HDC-13).
 - O Estudo de Cenários e o Relatório só usam os meses da janela e a equipa de hoje; não projetam o futuro (férias marcadas, saídas agendadas).
-- **"Ver Cálculo" recalcula o piso estrutural sem a guarda `calcularPisoEstrutural`** (divide `minimo_turnos_criticos` por `garantia_contratual_fracao` diretamente) — é a única chamada não-guardada em `src/`. Hoje é inofensivo porque a CHECK `chk_garantia_contratual_fracao` impede gravar uma fração ≤0, mas o ecrã não tem proteção própria: se essa constraint alguma vez faltar, mostraria "Infinity" em vez de "não aplicável" (o mesmo bug que o relatório PDF já corrigiu).
 
 ## 11. Código e testes
 

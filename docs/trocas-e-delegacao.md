@@ -7,7 +7,7 @@
 
 ### 1.1 O que é
 
-Uma troca passa o **H3 de uma semana** de um `OPERADOR_H3` (o **proponente**) para outro `OPERADOR_H3` (o **substituto**). Não há passo de aceitação do colega: o proponente propõe e o Gerente ou delegado decide. **Nada impede o proponente e quem decide de serem a mesma pessoa:** um delegado que seja também `OPERADOR_H3` pode propor uma troca em seu nome e depois aprová-la ele próprio, sem bloqueio na base (RLS `trocas_update_gerente`, trigger `trg_valida_troca` — ver COL-12 em `docs/regras-entre-colegas.md`).
+Uma troca passa o **H3 de uma semana** de um `OPERADOR_H3` (o **proponente**) para outro `OPERADOR_H3` (o **substituto**). Não há passo de aceitação do colega: o proponente propõe e o Gerente ou delegado decide. **O proponente e quem decide nunca podem ser a mesma pessoa:** `trg_valida_troca` recusa a decisão quando `auth.uid() = usuario_proponente`, mesmo para um delegado que seja também `OPERADOR_H3` a decidir a sua própria proposta (migração 0062 — ver COL-12 em `docs/regras-entre-colegas.md`).
 
 ### 1.2 Interface (painel "Trocas de H3", Escala do Mês)
 
@@ -28,7 +28,7 @@ As trocas já decididas **saem da lista**; o ecrã não mostra o histórico de t
 
 ### 1.3 Regras
 
-- **COL-09 a COL-13**, em `docs/regras-entre-colegas.md`. Em resumo: só um `OPERADOR_H3` ativo propõe, em seu nome; proponente e substituto têm de estar ativos e o substituto ser `OPERADOR_H3`; a semana é um **sábado**; só o Gerente ou delegado decide; a aprovação passa o H3 dessa semana ao substituto e, se ele tinha outro turno nessa semana, o proponente fica com esse turno. **Lacuna (COL-12):** nada impede um delegado `OPERADOR_H3` de aprovar a própria troca que propôs — ver 1.1.
+- **COL-09 a COL-13**, em `docs/regras-entre-colegas.md`. Em resumo: só um `OPERADOR_H3` ativo propõe, em seu nome; proponente e substituto têm de estar ativos e o substituto ser `OPERADOR_H3`; a semana é um **sábado**; só o Gerente ou delegado decide, e nunca o próprio proponente (COL-12) — ver 1.1; a aprovação passa o H3 dessa semana ao substituto e, se ele tinha outro turno nessa semana, o proponente fica com esse turno.
 - **TRO-01** A troca age **na data exata** do `semana_ref`. Foi por isso que uma "quinta de referência" nunca alterava uma semana real e deixava uma linha solta na escala (o caso da troca de 15/10/2026, corrigido a 2026-09-26). A base agora só aceita sábados.
 - **TRO-02** Uma troca **aprovada não tem "anular"** no ecrã: para repor, propõe-se e aprova-se outra troca em sentido contrário (ou corrige-se a célula na Escala do Mês).
 - **TRO-03** `data_aprovacao` e `aprovado_por` de uma troca são gravados pelo **browser** de quem decide (não são forçados pela base, ao contrário do plano).
@@ -76,5 +76,5 @@ Só o **Gerente titular** vê o painel (os restantes não vêem nada).
 ## 3. Código e testes
 
 - Ecrã: `src/components/escala/PainelTrocas.tsx`, `src/components/escala/PainelDelegacao.tsx`, `src/lib/datas.ts` (`ehSabadoISO`, `descreverSemanaH3`, `MENSAGEM_SEMANA_SABADO`), `src/auth/AuthContext.tsx`.
-- Base: tabelas `trocas_escala`, `delegacoes_aprovacao`; triggers `trg_valida_troca`, `trg_aplica_troca_aprovada`, `trg_valida_delegacao`, `trg_logs_auditoria_marca_delegacao`; funções `is_gerente_ou_delegado`, `is_gerente_titular`, `delegacao_ativa_id`.
-- Testes: `supabase/tests/06_trocas_e_delegacao.sql`, `07_rls_permissoes.sql`, `20_delegacao_id_auditoria.sql`, `28_troca_semana_ao_sabado.sql`.
+- Base: tabelas `trocas_escala`, `delegacoes_aprovacao`; triggers `trg_valida_troca`, `trg_aplica_troca_aprovada`, `trg_valida_delegacao`, `trg_logs_auditoria_marca_delegacao`; CHECK `chk_delegacao_substituto_diferente`; funções `is_gerente_ou_delegado`, `is_gerente_titular`, `delegacao_ativa_id`.
+- Testes: `supabase/tests/06_trocas_e_delegacao.sql`, `07_rls_permissoes.sql`, `20_delegacao_id_auditoria.sql`, `28_troca_semana_ao_sabado.sql`, `29_ninguem_decide_o_proprio.sql`, `30_substituto_e_delegado_nao_proprio.sql`.

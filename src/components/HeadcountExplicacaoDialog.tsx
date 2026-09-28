@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { decomporCalculoMes, mediasJanela, fraseVeredicto, PARCELAS_CARGA_INFO, type ClassificacaoHeadcount } from '@/lib/headcount'
+import { decomporCalculoMes, mediasJanela, fraseVeredicto, calcularPisoEstrutural, PARCELAS_CARGA_INFO, type ClassificacaoHeadcount } from '@/lib/headcount'
 import { formatarMesAnoPT } from '@/lib/datas'
 import type { HeadcountMensal, HeadcountParametros } from '@/types/database'
 
@@ -66,8 +66,8 @@ export function HeadcountExplicacaoDialog({
 
   const mesRecente = mesesJanela[0]
   const decomposicao = decomporCalculoMes(mesRecente)
-  const piso = parametros.minimo_turnos_criticos / parametros.garantia_contratual_fracao
-  const pisoVenceu = piso > idealPorHoras
+  const piso = calcularPisoEstrutural(parametros.minimo_turnos_criticos, parametros.garantia_contratual_fracao)
+  const pisoVenceu = piso !== null && piso > idealPorHoras
   const diferencaCarga = Math.abs(decomposicao.somaParcelasCarga - decomposicao.cargaRegistada)
   const diferencaCapacidade = Math.abs(decomposicao.capacidadeCalculada - decomposicao.capacidadeRegistada)
 
@@ -130,9 +130,14 @@ export function HeadcountExplicacaoDialog({
               Ideal por horas = Carga média ÷ Capacidade média = {medias.cargaMedia.toFixed(1)} ÷ {medias.capacidadeMedia.toFixed(1)} = <b className="text-zinc-50">{idealPorHoras.toFixed(2)}</b> pessoas
             </p>
             <p>
-              Piso estrutural = Mínimo turnos críticos ÷ Garantia contratual = {parametros.minimo_turnos_criticos} ÷ {parametros.garantia_contratual_fracao} =
-              {' '}
-              <b className="text-zinc-50">{piso.toFixed(2)}</b> pessoas
+              Piso estrutural = Mínimo turnos críticos ÷ Garantia contratual ={' '}
+              {piso !== null ? (
+                <>
+                  {parametros.minimo_turnos_criticos} ÷ {parametros.garantia_contratual_fracao} = <b className="text-zinc-50">{piso.toFixed(2)}</b> pessoas
+                </>
+              ) : (
+                <i>não aplicável (garantia contratual inválida)</i>
+              )}
             </p>
             <p>
               Ideal exato = maior dos dois = <b className="text-zinc-50">{idealExato.toFixed(1)}</b> pessoas — {pisoVenceu ? 'o piso estrutural venceu' : 'o cálculo por horas venceu'}.

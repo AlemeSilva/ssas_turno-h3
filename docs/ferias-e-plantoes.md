@@ -84,5 +84,5 @@ Regras: **COL-18**, **COL-19**, **COL-20**. Em resumo:
 ## 7. Código e testes
 
 - Ecrã: `src/components/escala/PainelFerias.tsx`, `src/pages/InicioPage.tsx`, `src/data/useResumoGerente.ts`, `src/data/useResumoUsuario.ts`, `src/lib/datas.ts` (`semanasTocadas`, `diasUteis`).
-- Base: tabelas `ferias`, `ferias_semanas`, `plantao_voluntarios`, `feriados_portugal`; triggers `trg_valida_ferias`, `trg_ferias_marca_perfil_h3`; vista `feriados_sem_plantao`.
-- Testes: `supabase/tests/03_trigger_ferias.sql`, `09_ferias_semanas_turno_fixo_plantao.sql`, `21_ferias_auto_sobreposicao_e_rejeicao.sql`, `23_ferias_sobreposicao_ignora_inativos.sql`, `27_feriados_sem_plantao_ignora_inativos.sql`.
+- Base: tabelas `ferias`, `ferias_semanas`, `plantao_voluntarios`, `feriados_portugal`; triggers `trg_valida_ferias`, `trg_ferias_marca_perfil_h3`, `trg_ferias_semanas_valida`; vista `feriados_sem_plantao`.
+- Testes: `supabase/tests/03_trigger_ferias.sql`, `09_ferias_semanas_turno_fixo_plantao.sql`, `21_ferias_auto_sobreposicao_e_rejeicao.sql`, `23_ferias_sobreposicao_ignora_inativos.sql`, `27_feriados_sem_plantao_ignora_inativos.sql`, `29_ninguem_decide_o_proprio.sql`, `30_substituto_e_delegado_nao_proprio.sql`.

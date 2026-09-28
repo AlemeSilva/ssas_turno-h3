@@ -46,7 +46,7 @@ Um pedido de férias ou licença. PK `id`. `tipo` (`tipo_ausencia`), `status` (`
 
 ### `ferias_semanas`
 
-A decisão de substituto de **uma semana civil** de um pedido de férias. PK `id`, FK `ferias_id` (`ON DELETE CASCADE`), `substituto_id`, `confirmado_por`/`confirmado_em`. Único (`ferias_id`, `semana_inicio`). Detalhe: `docs/ferias-e-plantoes.md`.
+A decisão de substituto de **uma semana civil** de um pedido de férias. PK `id`, FK `ferias_id` (`ON DELETE CASCADE`), `substituto_id`, `confirmado_por`/`confirmado_em`. Único (`ferias_id`, `semana_inicio`). Gatilho: `trg_ferias_semanas_valida` (recusa `substituto_id` igual ao `usuario_id` da ausência; migração 0063). Detalhe: `docs/ferias-e-plantoes.md`.
 
 ### `plantao_voluntarios`
 
@@ -54,7 +54,7 @@ Quem cobre um feriado. PK `id`, único (`data_feriado`, `usuario_id`); **índice
 
 ### `delegacoes_aprovacao`
 
-Uma janela em que `substituto` tem os poderes de `gerente_titular`. PK `id`; `data_fim ≥ data_inicio`. Gatilho: `trg_delegacao_valida`.
+Uma janela em que `substituto` tem os poderes de `gerente_titular`. PK `id`; `data_fim ≥ data_inicio`; `substituto ≠ gerente_titular` (`chk_delegacao_substituto_diferente`, migração 0063). Gatilho: `trg_delegacao_valida`.
 
 ### `trocas_escala`
 
@@ -129,6 +129,7 @@ A lista funcional (o que cada uma decide) está nos ficheiros de cada funcionali
 | `escala_semanal` | `trg_escala_semanal_valida_ferias` | antes de inserir/alterar | `trg_valida_escala_sobre_ferias` |
 | `ferias` | `trg_ferias_valida` | antes de inserir/alterar | `trg_valida_ferias` |
 | `ferias` | `trg_ferias_marca_perfil_h3_before` | antes de inserir/alterar | `trg_ferias_marca_perfil_h3` |
+| `ferias_semanas` | `trg_ferias_semanas_valida` | antes de inserir/alterar | `trg_valida_ferias_semanas` |
 | `trocas_escala` | `trg_trocas_valida` | antes de inserir/alterar | `trg_valida_troca` |
 | `trocas_escala` | `trg_trocas_aplica` | depois de alterar | `trg_aplica_troca_aprovada` |
 | `delegacoes_aprovacao` | `trg_delegacao_valida` | antes de inserir/alterar | `trg_valida_delegacao` |
@@ -173,7 +174,7 @@ Ver `docs/edge-functions.md`, secção 6 — só dois trabalhos, ambos a 1 de no
 
 ## 11. Migrações
 
-61 migrações, de 2026-07-29 (`0001_schema`) a 2026-09-26 (`0061_troca_semana_comeca_ao_sabado`), aplicadas por ordem, à mão (`docs/operacao.md`). Não há um esquema "de partida" completo: `0001` cria a maioria das tabelas principais, mas **duas tabelas (`feriados_portugal`, `plantao_voluntarios`) e a vista `feriados_sem_plantao` nunca são criadas em nenhuma das 61 migrações** — existem em produção, mas por DDL manual anterior ao histórico de migrações (confirmado por grep exaustivo a `create table`/`create view` nos 61 ficheiros; o próprio comentário da migração `0008_confirmacao_substituto_ferias.sql` regista que "plantao_voluntarios existe desde antes desta sessão, tal como feriados_portugal e a view feriados_sem_plantao"). Ninguém reconstrói o esquema do zero só a partir das migrações. Datas de criação e o que cada uma decidiu (agrupadas por tema, com a razão): `docs/decisoes.md`. Para o número exato de cada migração referida por uma regra, ver o ficheiro da funcionalidade (cada um cita as migrações relevantes).
+64 migrações, de 2026-07-29 (`0001_schema`) a 2026-09-28 (`0064_backfill_feriados_plantao_e_policies_escala_diaria`), aplicadas por ordem, à mão (`docs/operacao.md`). `0001` cria a maioria das tabelas principais, mas **duas tabelas (`feriados_portugal`, `plantao_voluntarios`) e a vista `feriados_sem_plantao` nunca foram criadas por nenhuma das primeiras 61 migrações** — existiam em produção desde antes do histórico de migrações (o comentário da migração `0008_confirmacao_substituto_ferias.sql` já registava isso: "plantao_voluntarios existe desde antes desta sessão, tal como feriados_portugal e a view feriados_sem_plantao"), tal como 3 políticas RLS de `escala_semanal` (`escala_diaria_gerente_all`, `escala_diaria_operador_readonly`, `escala_diaria_operador_select` — ver `docs/perfis-e-permissoes.md`, secção 4). A migração `0064` (stress-test de documentação, 2026-09-28) fecha essa lacuna com `CREATE TABLE/POLICY IF NOT EXISTS`/`DROP POLICY IF EXISTS` — não mudou nada em produção (os objetos já existiam), só passou a permitir reconstruir o esquema do zero só a partir das migrações. Datas de criação e o que cada uma decidiu (agrupadas por tema, com a razão): `docs/decisoes.md`. Para o número exato de cada migração referida por uma regra, ver o ficheiro da funcionalidade (cada um cita as migrações relevantes).
 
 ## 12. Limites e lacunas conhecidos
 
