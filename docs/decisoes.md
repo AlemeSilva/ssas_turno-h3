@@ -1,6 +1,6 @@
 # Registo de decisões do Gerente
 
-**Estado:** compilado a 2026-09-27, atualizado a 2026-09-28, a partir das secções "Estado" de cada ficheiro em `docs/` (cada uma cita a data e, quando existe, a migração). Substitui um rascunho anterior mais curto, que referia um único ficheiro de escala e trocas entretanto repartido em `docs/turnos-e-rotacao.md`, `docs/escala.md`, `docs/trocas-e-delegacao.md` e `docs/calendario-h3.md`.
+**Estado:** compilado a 2026-09-27, atualizado a 2026-09-29, a partir das secções "Estado" de cada ficheiro em `docs/` (cada uma cita a data e, quando existe, a migração). Substitui um rascunho anterior mais curto, que referia um único ficheiro de escala e trocas entretanto repartido em `docs/turnos-e-rotacao.md`, `docs/escala.md`, `docs/trocas-e-delegacao.md` e `docs/calendario-h3.md`.
 **Ler quando:** perceber de onde vem um critério; antes de propor reabrir uma decisão já tomada; escrever a data de uma decisão nova.
 
 Uma decisão nova regista-se aqui com a data **e** entra no ficheiro da área que a aplica — **o critério em si vive lá, não aqui**; esta tabela só diz o quê, quando e onde. Ordem: da mais antiga para a mais recente. Não lista toda migração técnica (correções, renomeações) — só decisões de regra ou de comportamento; a lista completa de migrações está em `docs/base-de-dados.md`, secção 11.
@@ -53,6 +53,7 @@ Uma decisão nova regista-se aqui com a data **e** entra no ficheiro da área qu
 | 2026-09-26 | A Sugestão automática de escala é reconstruída para seguir exatamente as mesmas regras já em prática em cada turno (as do preenchimento anual), em vez de uma lógica própria | `docs/sugestao-automatica.md` |
 | 2026-09-28 | **Ninguém decide (aprova/rejeita) o seu próprio pedido de férias/licença ou a sua própria troca de H3** — nem por decisão direta, nem já a nascer decidido por INSERT; até aqui só o papel (Gerente/delegado) era verificado, nunca se essa pessoa era também a dona do pedido. Achado do stress-test de documentação, corrigido no mesmo dia | `docs/regras-entre-colegas.md` (COL-05, COL-12; migração 0062) |
 | 2026-09-28 | **Um substituto de férias não pode ser a própria pessoa ausente; um delegado de aprovação não pode ser o próprio titular** — as duas regras já existiam, mas só como filtro do ecrã; passam a impostas na base. Achado do stress-test de documentação, corrigido no mesmo dia | `docs/regras-entre-colegas.md` (COL-06, COL-15; migração 0063) |
+| 2026-09-28 | **Identidade visual Accenture × Banco Montepio**: tema claro e profissional, alto contraste, Geist, fundo de trabalho neutro e acentos ameixa/roxo/âmbar. A referência visual inspira a paleta e a relação entre marcas, sem ser copiada como fundo. A navegação mantém os grupos OPERAÇÃO/GESTÃO; os logos ficam juntos no rodapé da barra lateral, abaixo de "SERVIÇO DE OPERAÇÃO · SAS", e o nome "Gestão de Turnos" permanece sem símbolo ao lado. A distribuição densa de dados continua prioritária e a aplicação permanece desktop | `docs/interface.md`, `docs/arquitetura-tecnica.md` secção 3 |
 
 ## 2. Decisões sobre como a equipa e a aplicação trabalham (processo)
 
@@ -61,6 +62,7 @@ Uma decisão nova regista-se aqui com a data **e** entra no ficheiro da área qu
 | 2026-09-25 | Todo o conhecimento da solução passa a viver em ficheiros Markdown de consulta obrigatória: um ficheiro mestre e um por funcionalidade, sempre lidos antes de qualquer alteração ou validação de regra | `CLAUDE.md`, `docs/` (este conjunto de ficheiros) |
 | 2026-09-26 | Nenhuma alteração de código, de função do servidor ou de base de dados vai para produção sem autorização explícita, mesmo quando o pedido original era "implementa isto" — implementa-se e faz-se commit local, só se publica depois de perguntar | `docs/operacao.md`, OP-02 |
 | 2026-09-27 | Confirmação em duas frases, sempre no fim de uma tarefa de implementação: o estado na Base de Dados e o estado no Netlify, verificados ao vivo | `docs/operacao.md`, OP-09 |
+| 2026-09-28 | Depois da aprovação do Gerente, a identidade visual final foi publicada em produção no Netlify (commit `58faa7a`); o deploy alterou apenas o frontend, sem migração de base de dados | `docs/operacao.md`, `docs/interface.md`, `docs/arquitetura-tecnica.md` |
 
 ## 3. Como manter esta lista
 

@@ -17,6 +17,8 @@ Uma pessoa com uma **delegação** em vigor ganha os poderes de Gerente sem muda
 
 Só o Gerente e o delegado a veem ("Esta área é reservada ao Gerente." para os outros).
 
+A página apresenta o cabeçalho contextual "Gestão de Utilizadores" e mantém a ação **Registar utilizador** junto ao topo da área de conteúdo; a tabela densa permanece numa superfície neutra.
+
 - **Tabela** com uma linha por utilizador (também os inativos): Nome, Email, **Perfil**, Empresa, **Estado** e as ações.
   - **Perfil:** para um `OPERADOR`, o rótulo com um seletor do **turno fixo** (H1/H4; balão "Turno fixo — só muda a partir da próxima composição automática, não afeta a escala já gerada"); para um `OPERADOR_H3`, um seletor **"H2: sim / H2: não"** (balão "Elegível para H2 na rotação automática — só afeta composições futuras, não a escala já gerada").
   - **Estado:** **Ativo** ou **Desativado**; para um ativo com saída agendada, **"Sai em DD/MM/AAAA"** (balão "Desativação automática agendada — corre todos os dias às 01h00"); para um desativado com data, **"Saiu em DD/MM/AAAA · N anos e M meses"** (balão "Tempo de permanência na equipa, desde o registo até à saída").

@@ -14,7 +14,7 @@ As alterações aparecem em tempo real em todas as sessões abertas (subscriçã
 1. **Alertas ativos** (cartão com borda vermelha): só aparece quando há um alarme em curso (HR. LIMITE ultrapassada, risco GIR_FL, checagem das 20h ou das 15h). Cada linha tem o botão **"Registar acionamento ao Gerente"**, que fica "Acionamento registado" e desativado depois de clicado. Ver `docs/alarmes.md`.
 2. **Resumo de pendências do ciclo** (cartão âmbar): **só à segunda-feira**, e só se houver algo por marcar: "N item(ns) de checklist e M cadeia(s) ficaram por marcar neste ciclo." (cadeias por marcar = as que ainda estão em `PENDENTE`).
 3. **Tarefas excecionais** (só se o plano tiver alguma): uma linha por tarefa com a data, hora de arranque, descrição, equipa e "HR. LIMITE: hh:mm" se houver.
-4. **Cinco secções**, por esta ordem, cada uma num cartão: *Preparação*, *Reunião de Planeamento*, *Batch Sexta → Sábado*, *Batch Sábado → Domingo*, *Batch Domingo → Segunda*. Cada secção mostra os seus **itens** e, nas três de batch, o bloco **"Acompanhamento das cadeias"** numa grelha de três colunas, por ordem alfabética.
+4. **Cinco secções**, por esta ordem, cada uma num cartão: *Preparação*, *Reunião de Planeamento*, *Batch Sexta → Sábado*, *Batch Sábado → Domingo*, *Batch Domingo → Segunda*. Cada secção mostra os seus **itens** e, nas três de batch, o bloco **"Acompanhamento das cadeias"** numa grelha de duas colunas, por ordem alfabética.
 
 ### 2.1 Um item de checklist
 
@@ -29,6 +29,8 @@ Igual ao item, com **Marcar concluída** e "Concluída por NOME em …". A etiqu
 ### 2.3 Uma cadeia
 
 Uma linha com o nome (com ` *` ou ` **` no fim conforme a categoria), o estado como etiqueta clicável e o botão **Marcar atraso**.
+
+Os rótulos apresentados ao operador são **Pendente**, **Em curso**, **Concluído · automático**, **Concluído · manual** e **Atrasado**. Os códigos persistidos na base mantêm-se inalterados.
 
 - Clicar na etiqueta do estado **avança** para o estado seguinte (o balão diz para qual).
 - **Marcar atraso** passa logo a `ATRASADO`, sem passar pelos estados intermédios. Desaparece quando a cadeia já está atrasada.

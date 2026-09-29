@@ -19,6 +19,8 @@ Um plano por **ciclo de fim de semana**: de **quinta a segunda** (5 dias), ident
 
 **Com plano.** De cima para baixo:
 
+O título contextual da página antecede a área do ciclo; os cartões e a grelha do plano ficam em superfícies neutras para manter a densidade de tarefas legível.
+
 1. **Cabeçalho.** Título "Plano Prévio · DD/MM/AAAA" enquanto o estado é Rascunho ou Pendente de aprovação; "Plano Definitivo · data" depois de aprovado (a data da aprovação, ou a do ciclo). Se for de manutenção, mostra a etiqueta **MANUTENÇÃO**. Por baixo, o estado: *Rascunho*, *Pendente de aprovação*, *Aprovado*, *Em execução*, *Concluído*. Botões: **Exportar Draft**, **Exportar Definitivo** (desativado em Rascunho e em Pendente), **Submeter para aprovação** (em Rascunho) e **Aprovar Plano** (em Pendente, a quem pode geri-lo).
 2. **Aviso âmbar** (fechável) quando uma alteração feita pelo operador do ciclo reabriu o plano (PLA-08).
 3. **"Texto pronto a copiar"**: depois de exportar, uma caixa só de leitura com o texto e o botão **Copiar** ("Copiado!" ou "Falhou — copia à mão").

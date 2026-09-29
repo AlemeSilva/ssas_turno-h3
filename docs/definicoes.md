@@ -11,6 +11,8 @@ Texto do ecrã: "Adicionar ou desativar uma cadeia da matriz de acompanhamento d
 
 ## 2. Interface
 
+A página tem um cabeçalho contextual próprio; o formulário e a tabela do catálogo ficam agrupados num cartão claro e neutro, mantendo a leitura da gestão separada da moldura de marca.
+
 - **Formulário:** "Nome da cadeia" (ex.: SD_NOVA), "Categoria" (Normal, `*` (cópia automática para Cloud), `**` (input AML/MAB)) e o botão **Adicionar cadeia**. Um nome vazio é ignorado sem mensagem; erros da base aparecem tal como vêm (por exemplo, nome repetido).
 - **Tabela** com uma linha por cadeia, por ordem: **Cadeia**, **Categoria**, **Dependência GIR_FL (22h)**, **Estado** (Ativa/Desativada) e o botão **Desativar** ou **Reativar**.
 - **Dependência GIR_FL:** um botão **Incluída** / **Não incluída** por cadeia (não aparece na própria GIR_FL). Balão: "Esta cadeia atrasa o alerta de risco da GIR_FL às 22h — clica para retirar" ou "Clica para esta cadeia passar a atrasar o alerta de risco da GIR_FL às 22h".

@@ -47,7 +47,7 @@ Para cada pessoa e cada dia, por esta ordem de decisão:
 1. **Férias ou licença aprovadas a cobrir o dia, num dia útil que não seja feriado** → **Férias** (etiqueta cinzenta tracejada); se existir substituto confirmado para essa semana civil e ele estiver ativo, mostra "seta + NOME" em violeta ("Férias — substituído por NOME").
 2. **Feriado, e o valor não é H3** → **Plantão** (rosa, com sol) se essa pessoa é a plantonista confirmada, senão **Feriado** (rosa tracejado).
 3. **Sem turno para esse dia:** ao **fim de semana** mostra **Folga**; num **dia útil** fica **em branco** (falta de dados, deixada visível de propósito como anomalia).
-4. Caso contrário, o **turno** (H1 azul-claro, H2 âmbar, H3 índigo com cadeado, H4 verde).
+4. Caso contrário, o **turno** (H1 âmbar, H2 violeta, H3 índigo com cadeado, H4 cinzento neutro). A grelha e os separadores permanecem neutros; as cores identificam os turnos e não substituem texto/legenda.
 
 O turno de um dia é o da linha de escala que o cobre, isto é, a linha com `semana_ref ≤ dia ≤ semana_ref + 6` (uma semana de sábado a sexta). Ao **fim de semana**, quem não é H3 não tem turno (célula vazia, "Folga"). Ver `docs/calendario-h3.md` para as conversões.
 

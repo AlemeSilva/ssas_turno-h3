@@ -5,6 +5,8 @@
 
 ## 1. Interface
 
+A página usa um masthead ameixa com a identificação da área e apontamentos discretos âmbar/roxo. Os cartões de indicadores e a informação operacional mantêm superfícies claras e neutras para leitura rápida; a identidade da parceria não altera os valores nem as regras funcionais abaixo.
+
 Título **"Bem-vindo, NOME"** e, por baixo, três cartões. O conteúdo dos dois primeiros muda consoante o utilizador seja Gerente ou delegado (**vista do Gerente**) ou não (**vista pessoal**).
 
 ### 1.1 Vista pessoal (qualquer utilizador)

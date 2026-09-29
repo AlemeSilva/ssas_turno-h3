@@ -9,7 +9,7 @@ Um texto pronto a **copiar e colar num email** com a escala da semana (quem est�
 
 ## 2. Interface (página "Relatório Semanal de Escala")
 
-- **Cabeçalho:** o título e, à direita, "Semana de DD/MM/AAAA" (a sexta que rotula o período).
+- **Cabeçalho da página:** título contextual "Relatório Semanal de Escala"; dentro da área de trabalho, "Semana de DD/MM/AAAA" fica alinhada à direita (a sexta que rotula o período). A pré-visualização do relatório surge num cartão claro, com o conteúdo pronto a copiar.
 - **Nota:** "Texto pronto a copiar/colar para envio manual por email — publicação semanal às quintas-feiras. As alterações que ocorrerem ficam sempre a cargo do Gerente."
 - **Estados:** "A carregar…" enquanto lê a escala, as férias e os utilizadores; se a leitura falhar, "Não foi possível carregar os dados da escala/férias: MENSAGEM. Não copies um relatório gerado sem estes dados — tenta recarregar a página.".
 - **Texto:** uma caixa de leitura com o relatório (letra de largura fixa) e o botão **Copiar texto** ("Copiado!" durante 2 segundos).

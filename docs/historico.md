@@ -5,6 +5,8 @@
 
 ## 1. O que é
 
+A página tem o cabeçalho contextual "Consulta e auditoria"; os quatro separadores e os respetivos filtros e resultados mantêm apresentação neutra e orientada à consulta.
+
 Uma página de **consulta** (`/historico`), só para o Gerente e o delegado ("Esta área é reservada ao Gerente." para os outros), com quatro separadores. Só lê: nunca altera nada. Cada separador tem um pequeno formulário de filtros e um botão **Pesquisar**; **os resultados só aparecem depois de pesquisar** (a tabela começa vazia, com "Sem resultados — ajusta os filtros e pesquisa.").
 
 Nas listas de pessoas (filtros "Pessoa"), quem já saiu continua a aparecer, marcado **"(inativo)"**: o histórico dele tem de poder ser consultado, mas não pode passar por equipa ativa. As listas de ações futuras (delegar, propor troca, atribuir turno) não mostram quem saiu.

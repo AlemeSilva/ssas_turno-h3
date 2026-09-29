@@ -1,6 +1,6 @@
 # Limites e lacunas conhecidos — registo consolidado
 
-**Estado:** compilado a 2026-09-27 juntando a secção "Limites conhecidos"/"Limites e lacunas conhecidos" de cada ficheiro em `docs/`. **Este ficheiro é um índice**: cada linha tem uma frase curta e o ficheiro/ID onde está o detalhe completo — não se repete aqui o raciocínio todo. Existe um dossiê de segurança à parte (auditoria de IAM/RLS/DDL, publicado como documento próprio) com achados adicionais de infraestrutura; não duplicado neste ficheiro.
+**Estado:** compilado a 2026-09-27 e revisto a 2026-09-29, juntando a secção "Limites conhecidos"/"Limites e lacunas conhecidos" de cada ficheiro em `docs/`. **Este ficheiro é um índice**: cada linha tem uma frase curta e o ficheiro/ID onde está o detalhe completo — não se repete aqui o raciocínio todo. Existe um dossiê de segurança à parte (auditoria de IAM/RLS/DDL, publicado como documento próprio) com achados adicionais de infraestrutura; não duplicado neste ficheiro.
 **Ler quando:** avaliar o risco de uma área antes de lhe mexer; responder "isto já se sabe que...?"; priorizar o que corrigir a seguir.
 
 ## 1. Risco operacional real (podem produzir um resultado errado sem ninguém notar)
@@ -34,7 +34,6 @@
 - `src/auth/RequireAuth.tsx` cita uma função `desativar-saidas` que não existe (a real é `desactivar-saidos`) e diz que o corte é "a partir do dia seguinte"; seria, se corresse, no próprio dia. → `docs/edge-functions.md`, secção 8.
 - Comentário de coluna `usuarios.elegivel_h2` cita nomes de pessoas de um backfill de agosto de 2026, sem efeito hoje. Comentário de `ferias.eh_operador_h3` cita uma exclusion constraint que já não existe. → `docs/base-de-dados.md`, secção 12.
 - Comentário de `usuarios.limite_h3_mensal` na base ainda fala do "mês do sábado do ciclo"; a regra em vigor é o mês da maioria dos 7 dias. → `docs/preenchimento-anual-de-novembro.md`, secção 10.
-- `src/styles/theme.css` descreve, no comentário do topo, um "dark mode corporativo" que já não é o aspeto real da aplicação. → `docs/interface.md`, secção 5.
 - `tests/README.md` (o índice geral de testes) tem números e afirmações da fase inicial do projeto, hoje incorretos (fala em "54/54" e diz que a Camada 1 "não corre"). → `docs/testes.md`.
 - `DEPLOY.md` e `ROLLOUT_PLAN.md`, na raiz do repositório, descrevem uma equipa, um calendário e um CI de 2026-07/08 que já não existem. → `docs/operacao.md`, secção 9.
 - `logs_auditoria` descreve a ação em texto livre (sem tipo estruturado); as extensões `pg_net`/`supabase_vault` estão instaladas sem uso real; não há tipos TypeScript gerados automaticamente do esquema. → `docs/base-de-dados.md`, secção 12.

@@ -1,6 +1,6 @@
 # Arquitetura técnica: stack, estrutura e sistema de design
 
-**Estado:** levantado a 2026-09-28 diretamente de `package.json`, `vite.config.ts`, `components.json`, `src/index.css`, `src/styles/theme.css`, `tsconfig*.json` e `netlify.toml` — nenhum número aqui é de memória. Ficheiro novo (não existia nas rondas anteriores de documentação); complementa `docs/base-de-dados.md` (o quê existe na base) e `docs/operacao.md` (como publicar) com o quê é preciso para **montar o projeto do zero**: versões exatas, convenções de código e o sistema visual.
+**Estado:** stack levantada a 2026-09-28 e sistema visual confirmado/atualizado a 2026-09-29 diretamente de `package.json`, `vite.config.ts`, `components.json`, `src/index.css`, `src/styles/theme.css`, `src/layout/AppShell.tsx`, `tsconfig*.json` e `netlify.toml`. Complementa `docs/base-de-dados.md` (o quê existe na base) e `docs/operacao.md` (como publicar) com o quê é preciso para **montar o projeto do zero**: versões exatas, convenções de código e o sistema de design.
 **Ler quando:** preparar um ambiente novo; escolher uma biblioteca ou upgrade; perceber porque é que o ecrã tem duas paletes (a maior parte clara, um diálogo escuro); antes de pedir a qualquer inteligência (humana ou não) para recriar este projeto sem acesso ao código.
 
 ## 1. Stack (versões exatas de `package.json`)
@@ -55,13 +55,48 @@ docs/ + CLAUDE.md  — este conjunto de ficheiros
 
 ## 3. Sistema de design
 
-- **Base:** shadcn/ui, estilo `radix-nova`, cor-base `neutral`, CSS gerado em `src/index.css` (`components.json`: `tailwind.css: "src/index.css"`, `cssVariables: true`, `prefix: ""`, `iconLibrary: "lucide"`). Os tokens ficam em OKLCH, tema **claro** por omissão: `--background: oklch(1 0 0)` (branco), `--foreground: oklch(0.145 0 0)` (quase preto), `--radius: 0.625rem`. Não há `.dark` a aplicar-se em lado nenhum do código — confirmado por grep: a classe `dark` (que o `@custom-variant dark` de `src/index.css` prevê) nunca é adicionada a `<html>`/`<body>` por nenhum componente.
-- **Componentes shadcn/ui instalados** (`src/components/ui/`, 8 no total): `badge`, `button`, `card`, `dialog`, `input`, `select`, `textarea`, `tooltip`. Não há mais nenhum — um componente novo instala-se com a CLI (`npx shadcn add <nome>`), não se escreve à mão para não perder as atualizações do registo.
-- **`src/styles/theme.css`**: tokens de **marca**, não do shadcn — roxo Accenture (`--accenture-purple: #a100ff`) e âmbar Montepio (`--montepio-orange: #f0a41c`), usados pelo `AppShell` (menu) e pelos estados de carregamento/sessão do `RequireAuth`. **O comentário no topo deste ficheiro fala de "dark mode corporativo de alto contraste" — isto é histórico, já não é o aspeto real da app** (lacuna de texto já registada em `docs/interface.md`, secção 5, e `docs/limites-e-lacunas.md`); a app é maioritariamente **clara**. A exceção deliberada é o diálogo "Ver Cálculo" do Headcount (`HeadcountExplicacaoDialog.tsx`), que usa classes Tailwind `zinc-950`/`zinc-50` diretamente para um ecrã escuro de alto contraste, isolado desse componente — não é o tema geral da app.
-- **Convenção mista de cor:** muitos componentes usam os tokens semânticos do shadcn (`bg-background`, `text-foreground`, `border-border`) e outros usam classes Tailwind da paleta `zinc-*`/`amber-*`/`red-*`/`emerald-*` diretamente (ex. `AlertBar.tsx`, os badges de estado em `HeadcountPage.tsx`) — as duas convivem, não há migração pendente entre elas.
-- **Layout:** só desktop — `#root { min-width: 1180px; overflow-x: auto; }` (`theme.css`); sem tema escuro nem versão telemóvel (já registado, `docs/interface.md`).
-- **Tipografia:** Geist Variable (`@fontsource-variable/geist`, carregada via `@import` em `src/index.css`), `--font-sans` do shadcn sobreposto a `'Geist Variable', sans-serif` no bloco `@theme inline`.
-- **Ícones:** `lucide-react` em todo o lado onde há ícone.
+### 3.1 Base técnica e objetivo visual
+
+- **Base:** shadcn/ui, estilo `radix-nova`, cor-base `neutral`, CSS em `src/index.css` (`components.json`: `tailwind.css: "src/index.css"`, `cssVariables: true`, `prefix: ""`, `iconLibrary: "lucide"`). O tema de produto é **claro**; não há tema escuro geral nem versão para telemóvel. A única exceção escura deliberada é o diálogo "Ver Cálculo" do Headcount (`HeadcountExplicacaoDialog.tsx`), que mantém alto contraste próprio.
+- **Direção aprovada pelo Gerente:** profissional, sóbria, reservada e adequada a uso prolongado por operadores; manter densidade útil de dados em monitores desktop e contraste alto em textos pequenos. A imagem fornecida foi referência de identidade cromática e de marcas, não deve ser reproduzida como fundo nem copiada literalmente.
+- **Componentes shadcn/ui instalados** (`src/components/ui/`, 8 no total): `badge`, `button`, `card`, `dialog`, `input`, `select`, `textarea`, `tooltip`. Um componente novo instala-se com a CLI (`npx shadcn add <nome>`), não se escreve à mão para não perder as atualizações do registo.
+
+### 3.2 Tokens visuais finais
+
+Os tokens de marca e apresentação pertencem a `src/styles/theme.css`; os tokens semânticos shadcn em `src/index.css` apontam para as mesmas superfícies e estados. Os tons fortes de marca ficam na moldura e nos apontamentos, enquanto o trabalho tabular se mantém neutro.
+
+| Token / referência | Valor | Uso visual |
+| --- | --- | --- |
+| Accenture purple | `#A100FF` | Chevron Accenture e fim roxo da faixa institucional; uso pontual |
+| Accenture purple text | `#44177A` | Palavra Accenture no suporte claro do rodapé |
+| Montepio amber | `#F0A41C` | Símbolo Montepio e linhas/detalhes de secção |
+| Plum base | `#321B3B` | Fundo principal da barra lateral e início do masthead de Início |
+| Plum accent | `#54266A` | Acento de texto, estado em andamento e superfícies roxas claras |
+| Amber text | `#704900` | Texto legível sobre acentos/fundos âmbar claros |
+| Fundo de aplicação | `#F5F6F8` | Área geral de trabalho |
+| Superfície | `#FFFFFF` | Cartões, tabelas e placa clara Accenture |
+| Borda discreta | `#E1E5EB` | Separação de cartões e grelhas |
+| Texto principal/secundário | `#202631` / `#465160` | Hierarquia textual sobre superfície clara |
+
+Estados operacionais usam pares de texto/fundo legíveis: verde `#176B43`/`#EAF5EE`, âmbar `#704900`/`#FFF4D6`, vermelho `#A61B1B`/`#FFF0F0`, neutro `#536071`/`#EEF1F4` e em andamento `#54266A`/`#F4EFF7`. Estes estados continuam a comunicar o estado funcional e não devem ser alterados só para combinar com a marca.
+
+### 3.3 Moldura, marcas e hierarquia
+
+- **Barra lateral** (`src/layout/AppShell.tsx`): largura fixa de 248 px, fundo ameixa em gradiente discreto; separa os menus OPERAÇÃO e GESTÃO. O item ativo usa régua âmbar e fundo translúcido. "Gestão de Turnos" fica como texto no topo, sem símbolo duplicado junto ao título.
+- **Logos no rodapé:** sob "SERVIÇO DE OPERAÇÃO · SAS", os símbolos Accenture e Banco Montepio ficam lado a lado em suportes com relevo/sombra muito suaves. São SVG inline no próprio `AppShell.tsx`, inspirados na imagem de referência; não há ficheiros bitmap nem pedido de imagem remota. Ao alterar a moldura, manter os logos no rodapé e não voltar a acrescentar o símbolo combinado ao lado do nome do produto sem decisão do Gerente.
+- **Cabeçalho e faixa de marca:** a barra superior é clara, com assinatura textual "ACCENTURE × BANCO MONTEPIO" e uma faixa superior muito fina que transita de âmbar para roxo, passando por um tom intermédio suave.
+- **Área de trabalho:** cinzento-claro com gradientes radiais âmbar/roxo de baixa opacidade. Não usar a fotografia da parede da referência como fundo. Cartões brancos, sombras curtas e bordas neutras preservam leitura e densidade.
+- **Cabeçalhos de página:** rótulo contextual em versais pequenas, título principal e descrição curta; uma régua vertical âmbar estabelece a hierarquia sem competir com o conteúdo. A página Início pode usar o masthead ameixa como exceção de maior presença de marca.
+- **Grelhas e dados:** cabeçalhos em cinzento/lilás muito claro, separadores suaves e coluna de pessoa fixa onde aplicável. Os turnos são distinguíveis por chips de cores próprias; manter texto/ícone e legenda para não depender só da cor.
+- **Relevo:** limitado aos suportes dos logos e a sombras leves de cartões; evitar sombras profundas, vidro, animações ou efeitos que aumentem ruído visual.
+
+### 3.4 Tipografia, desktop e custo de recursos
+
+- **Tipografia:** Geist Variable (`@fontsource-variable/geist`, importada em `src/index.css` e incluída no bundle), `--font-sans` do shadcn sobreposto a `'Geist Variable', sans-serif`. Usar pesos e tamanhos para hierarquia; não reduzir informação operacional para criar impacto decorativo.
+- **Layout:** exclusivamente desktop — `#root { min-width: 1180px; overflow-x: auto; }` (`theme.css`). Não implementar breakpoints móveis sem nova decisão.
+- **Ícones:** `lucide-react` quando necessário; logos de marca são os SVG inline descritos acima.
+- **Custo visual:** a moldura usa CSS, gradientes leves e vetores inline; não usa fotografia, vídeo, imagens externas nem fonte remota. O build de produção de 2026-09-28 passou, mas emitiu aviso de chunks acima de 500 kB devido à geração de PDF (`pdfmake` e fontes); esse peso preexistente não foi introduzido pela identidade visual e pode ser otimizado separadamente.
+- **Implementação mista:** algumas páginas usam tokens semânticos shadcn (`bg-background`, `text-foreground`, `border-border`), outras classes Tailwind mapeadas em `src/index.css` (`zinc-*`, `amber-*`, `red-*`, `emerald-*`, `violet-*`). As duas convivem; novas cores de marca devem ser acrescentadas aos tokens e não espalhadas como hexes arbitrários.
 
 ## 4. Variáveis de ambiente e segredos
 
