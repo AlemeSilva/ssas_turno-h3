@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/auth/AuthContext'
 import { useDebounce } from '@/lib/hooks/useDebounce'
 import type { Ferias, Usuario } from '@/types/database'
-import { formatarDataPT } from '@/lib/datas'
+import { agora, formatarDataPT } from '@/lib/datas'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -115,6 +115,9 @@ export function PainelFerias({ usuarios }: { usuarios: Usuario[] }) {
   // pessoa já tinha em aberto — sem este filtro, ficavam aqui a pedir
   // Aprovar/Rejeitar indefinidamente, mesmo depois de já ter saído.
   const pedidosEquipaAtiva = pedidos.filter((f) => usuarios.some((u) => u.id === f.usuario_id && u.ativo))
+  const hoje = agora()
+  const mostrarAvisoJaneiroSeguinte = hoje.getMonth() === 11
+  const anoJaneiroSeguinte = hoje.getFullYear() + 1
 
   return (
     <Card>
@@ -123,6 +126,15 @@ export function PainelFerias({ usuarios }: { usuarios: Usuario[] }) {
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <form onSubmit={pedirFerias} className="flex flex-col gap-2">
+          {mostrarAvisoJaneiroSeguinte && (
+            <p
+              role="status"
+              className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium leading-relaxed text-amber-900"
+            >
+              A partir de 1 de dezembro, pode pedir férias com início em janeiro de {anoJaneiroSeguinte}. Os restantes
+              meses desse ano ficam disponíveis a partir de janeiro.
+            </p>
+          )}
           <label className="flex flex-col gap-1 text-xs text-zinc-500">
             Data de início
             <Input type="date" required value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} />

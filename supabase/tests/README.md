@@ -179,3 +179,4 @@ contadores internos do pgTAP, e `finish()` falharia com `No tests run!`.
   (`trg_ferias_semanas_valida`); um delegado de aprovação não pode ser o
   próprio titular (`chk_delegacao_substituto_diferente`); escolher outra
   pessoa continua a funcionar nos dois casos.
+- `31_ferias_janeiro_em_dezembro.sql` — migração `20261104120335`: cobre a janela de dezembro para férias com início em janeiro do ano seguinte e confirma que a exceção não abrange licenças, fevereiro ou meses posteriores.
