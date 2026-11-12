@@ -1,6 +1,6 @@
 # Testes: as quatro camadas
 
-**Estado:** Camada 1: execução anterior de 270/270 em 2026-09-28 e teste novo da exceção de janeiro 8/8 em 2026-11-04, dentro de transação revertida. Camada 2: 386/386 em 2026-11-04. O estado das outras três camadas foi confirmado no código e nos fluxos do GitHub. `tests/README.md` (a raiz da pasta `tests/`) tem números e afirmações desatualizados desde a escrita inicial do projeto; **este ficheiro é a referência atual**, aquele fica como o mapa original das camadas.
+**Estado:** Camada 1: execução anterior de 270/270 em 2026-09-28 e teste novo da exceção de janeiro 8/8 em 2026-11-04, dentro de transação revertida; o teste local do Gerente foi executado em 2026-11-12, terminando em `ok 15`, dentro de transação revertida. Camada 2: 386/386 em 2026-11-12. O estado das outras três camadas foi confirmado no código e nos fluxos do GitHub. `tests/README.md` (a raiz da pasta `tests/`) tem números e afirmações desatualizados desde a escrita inicial do projeto; **este ficheiro é a referência atual**, aquele fica como o mapa original das camadas.
 **Ler quando:** escrever ou alterar um teste; decidir que camada cobre uma regra nova; correr a suite antes de publicar; explicar por que uma regra não tem teste automático.
 
 ## 1. As quatro camadas, hoje
@@ -15,15 +15,16 @@
 ## 2. Camada 2 — Regras e algoritmos (Vitest)
 
 - `npm run test:regras` (ou `test:regras:watch`). Configuração: `vitest.config.ts`, ambiente `node`, ficheiros `tests/camada2-regras/**/*.test.ts`.
-- **Hoje: 12 ficheiros, 386 testes, todos a passar** (corrido a 2026-11-04; ~0,3 s). Um décimo terceiro ficheiro (`fixtures-headcount.ts`) não é um teste, são os dados fixos partilhados pelos testes de headcount.
+- **Hoje: 12 ficheiros, 386 testes, todos a passar** (corrido a 2026-11-12; ~0,3 s). Um décimo terceiro ficheiro (`fixtures-headcount.ts`) não é um teste, são os dados fixos partilhados pelos testes de headcount.
 - Cobre: `alertas.test.ts`, `algoritmo-sugestao-h3.test.ts`, `cenarios-headcount.test.ts`, `composicaoEscala.test.ts`, `datas.test.ts`, `docs.test.ts` (a integridade estrutural de `docs/` e `CLAUDE.md`, não o seu conteúdo), `export.test.ts`, `headcount.test.ts`, `relatorio-headcount.test.ts`, `relatorio-headcount-pdf.test.ts`, `templates.test.ts`, `usuarios.test.ts` — a lógica que vive em `src/lib/` e nas duas Edge Functions sem I/O (`algoritmo.ts` de `sugerir-escala`, `composicaoEscala.ts`).
 - **TES-01** É a única camada sem nenhuma dependência externa; por isso é a que se corre **sempre**, antes de qualquer publicação (`docs/operacao.md`).
 
 ## 3. Camada 1 — Base de dados e contratos (pgTAP)
 
 - `31_ferias_janeiro_em_dezembro.sql`: **8/8 verificações** passaram em produção a 2026-11-04 com a migração carregada só dentro de uma transação revertida; cobrem a exceção de janeiro, a rejeição de fevereiro/licença em dezembro e o início normal do ano seguinte. Após a aplicação permanente, as permissões e os mesmos limites foram confirmados por consulta.
+- `32_gerente_ferias_autonomas.sql`: verifica a exceção exclusiva do titular Gerente, incluindo aprovação automática, ausência de limite anual, conflitos que continuam a bloquear e o fluxo normal do delegado. Executado em 2026-11-12 dentro de uma transação revertida; o retorno visível terminou em `ok 15` e sem erro SQL. A ferramenta apresentou apenas a última linha do resultado. A migração e o teste estão apenas locais até revisão; não foram aplicados em produção.
 
-- 32 ficheiros em `supabase/tests/` (`00_helpers.sql` + `01` a `31`), descritos um a um em `supabase/tests/README.md`.
+- 33 ficheiros em `supabase/tests/` (`00_helpers.sql` + `01` a `32`), descritos um a um em `supabase/tests/README.md`.
 - **Não há Docker nem Supabase CLI neste ambiente**, por isso o caminho "oficial" (`supabase test db`) nunca correu aqui. A suite pode ser executada com um script Node descartável ou pela ferramenta SQL do Supabase, sempre contra a **produção real** e dentro de transações que terminam em `rollback` (`docs/operacao.md`, secção 5). Última corrida completa registada: 30 ficheiros, 270 `ok`, 0 falhas, 0 erros (2026-09-28) — inclui `29_ninguem_decide_o_proprio.sql` e `30_substituto_e_delegado_nao_proprio.sql`, cobertura nova das migrações 0062/0063 (stress-test de documentação); `21_ferias_auto_sobreposicao_e_rejeicao.sql` foi ajustado no mesmo dia (semeava um dos seus próprios fixtures com um INSERT já nascido `APROVADA` pelo próprio dono — exatamente o que a 0062 passou a recusar; corrigido para semear pelos dois passos reais, pedir e depois aprovar por outra pessoa).
 - **TES-02** Não existe workflow de CI para esta camada. Existiu (`pgtap.yml`) e foi **removido a 2026-09-25**: reaplicava as migrações 0001 a 0009 sobre a produção a cada execução, repondo funções para versões antigas. Um substituto seguro precisaria de uma base própria (as migrações não se aplicam do zero numa base nova sem ajustes: a 0006 assume uma tabela antiga, a 0015 e a 0020 precisam do `pg_cron`).
 - **TES-03** Lacuna conhecida: `preencher_feriados_anual()` não tem nenhum teste pgTAP. A função irmã, `preencher_escala_anual()`, tem quatro (`14` a `17`); a dos feriados nunca foi exercida por um teste automático — só por leitura de código e pela auditoria de execuções reais (`docs/preenchimento-anual-de-novembro.md`).

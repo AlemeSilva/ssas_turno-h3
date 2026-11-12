@@ -9,7 +9,7 @@ A página usa um masthead ameixa com a identificação da área e apontamentos d
 
 Título **"Bem-vindo, NOME"** e, por baixo, três cartões. O conteúdo dos dois primeiros muda consoante o utilizador seja Gerente ou delegado (**vista do Gerente**) ou não (**vista pessoal**).
 
-### 1.1 Vista pessoal (qualquer utilizador)
+### 1.1 Vista pessoal (Operador e Operador H3)
 
 | Cartão | O que mostra |
 | --- | --- |
@@ -26,7 +26,7 @@ Título **"Bem-vindo, NOME"** e, por baixo, três cartões. O conteúdo dos dois
 
 ## 2. Regras
 
-- **INI-01** O saldo de férias de cada pessoa conta **só** pedidos do tipo férias (`FERIAS`, não `LICENCA`), **aprovados e pendentes**, cuja **data de início é do ano corrente**, em **dias úteis** (segunda a sexta, sem descontar feriados). É a mesma conta do limite da base (COL-04). Um pedido antecipado em dezembro para janeiro do ano seguinte não reduz o saldo mostrado para o ano corrente; entra no resumo quando esse ano começar.
+- **INI-01** O saldo mostrado na vista pessoal conta **só** pedidos do tipo férias (`FERIAS`, não `LICENCA`), **aprovados e pendentes**, cuja **data de início é do ano corrente**, em **dias úteis** (segunda a sexta, sem descontar feriados). Para Operador e Operador H3, é a mesma conta do limite da base (COL-04). Um pedido antecipado em dezembro para janeiro do ano seguinte não reduz o saldo mostrado para o ano corrente; entra no resumo quando esse ano começar. O titular Gerente não tem este cartão pessoal nem está sujeito ao limite anual.
 - **INI-02** O **turno atual** é o da linha de escala que cobre a **data civil de hoje** (o intervalo de sábado a sexta). **Não aplica a regra das 22h de sexta** (SEM-14): na sexta à noite, depois das 22h00, ainda mostra a semana anterior.
 - **INI-03** Ao **sábado e domingo**, quem não é H3 vê "Fim de semana" em vez do turno (ao fim de semana só o H3 trabalha). Nos feriados o cartão não muda (o plantão vê-se na Escala do Mês).
 - **INI-04** A **próxima semana** usa a "sexta administrativa" (hoje, se for sexta, senão a sexta seguinte): o cartão descreve de sexta a quinta e mostra o turno da linha do **sábado imediatamente a seguir** a essa sexta (`docs/calendario-h3.md`, SEM-05 e SEM-13). Como a janela do rótulo (sexta a quinta) e a da escala (sábado a sexta) não coincidem, no dia da sexta o cartão anuncia já a semana que começa nessa noite.

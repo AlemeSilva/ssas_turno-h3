@@ -1,18 +1,19 @@
 # Férias, licenças, substitutos e plantões de feriado
 
-**Estado:** levantado do código e da base a 2026-09-26; exceção de dezembro para férias com início em janeiro implementada e aplicada em produção a 2026-11-04 (migração `20261104120335`). As regras entre colegas estão em `docs/regras-entre-colegas.md` (IDs `COL-`), aqui só se resumem com a referência. Decisões do Gerente: 2026-08-03 (migrações 0016, 0017), 2026-09-06 (0044), 2026-09-25 (0055), substitutos por semana civil (0025), plantão do titular (0027), exceção de janeiro (`20261104120335`).
+**Estado:** levantado do código e da base a 2026-09-26; exceção de dezembro para férias com início em janeiro aplicada em produção a 2026-11-04 (`20261104120335`). A exceção exclusiva do titular Gerente está implementada localmente em 2026-11-12 (`20261112103431`) e aguarda revisão antes de produção. As regras entre colegas estão em `docs/regras-entre-colegas.md` (IDs `COL-`), aqui só se resumem com a referência.
 **Ler quando:** pedir, aprovar, rejeitar ou apagar férias; escolher substitutos; escolher o plantonista de um feriado; mexer no saldo de 22 dias; ler ou explicar o que aparece em "Ausências da equipa" e "Plantão de feriados".
 
 ## 1. Conceitos
 
-- **Férias** (`tipo = FERIAS`): contam para o saldo anual de **22 dias úteis**. **Licença** (`tipo = LICENCA`): ausência aprovada fora desse saldo. **Não há ecrã para registar uma licença**; hoje só por SQL.
+- **Férias** (`tipo = FERIAS`): para os perfis sujeitos ao limite, contam para o saldo anual de **22 dias úteis**. **Licença** (`tipo = LICENCA`): ausência aprovada fora desse saldo. **Não há ecrã para registar uma licença**; hoje só por SQL.
+- Exceção: as férias próprias do titular ativo `GERENTE` são aprovadas ao serem registadas, podem coincidir com férias já aprovadas de colegas e não estão sujeitas ao limite anual de 22 dias. Pedidos pendentes, licenças aprovadas e férias próprias sobrepostas continuam a bloquear. Delegados mantêm o fluxo e os limites normais.
 - Um pedido nasce **pendente** (`PENDENTE`) e o Gerente ou delegado passa-o a **aprovado** (`APROVADA`) ou **rejeitado** (`REJEITADA`). Só os aprovados contam na escala, no relatório e no headcount.
 - **Substituto**: quem cobre uma ausência aprovada, decidido **por semana civil** (segunda a sexta), pelo Gerente ou delegado.
 - **Plantão de feriado**: a pessoa confirmada para render o H3 num feriado em dia útil, das 07h00 ao fim da cadeia diária.
 
 ## 2. Interface: painel "Férias" (Escala do Mês)
 
-- **Formulário:** "Data de início", "Data de fim" e o botão **Pedir férias** ("A enviar…" enquanto grava). Cria sempre um pedido **em nome de quem está a usar a aplicação**. Depois de gravar, os campos limpam-se. Em dezembro mostra um aviso: a partir de 1 de dezembro pode pedir férias com início em janeiro do ano seguinte; os restantes meses desse ano só ficam disponíveis a partir de janeiro.
+- **Formulário:** "Data de início", "Data de fim" e o botão **Pedir férias** ("A enviar…" enquanto grava). Cria sempre um pedido **em nome de quem está a usar a aplicação**. Para o titular ativo `GERENTE`, o botão passa a **Marcar férias** e o registo fica aprovado imediatamente, sem pessoa aprovadora; aparece um aviso explicando as exceções e as validações que continuam. Para os outros perfis, o pedido fica pendente. Em dezembro mostra-se também o aviso de férias com início em janeiro do ano seguinte.
 - **Lista de pedidos:** quem não é Gerente nem delegado vê os pedidos **pendentes** de todos; o Gerente e o delegado veem os **pendentes e os aprovados**, por ordem de data de início. Só aparecem pedidos de pessoas **ativas**. Sem pedidos: "Sem pedidos pendentes.". Cada linha: "NOME · DD/MM/AAAA a DD/MM/AAAA".
   - Pendente, para o Gerente ou delegado: botões **Aprovar** (balão: "Aprova o pedido — conta para o limite anual de 22 dias úteis") e **Rejeitar** ("Recusa o pedido — não conta para o limite anual"). Cada botão tem uma pausa de 500 ms por pedido, para evitar cliques duplos.
   - Nos outros casos: uma etiqueta com o estado (PENDENTE âmbar, APROVADA verde, REJEITADA vermelha — esta última existe no código de estilo mas nunca é alcançada com os dados que o painel carrega hoje: a lista só busca pedidos `PENDENTE` e `APROVADA`, nunca `REJEITADA`).
@@ -23,7 +24,7 @@
 | --- | --- |
 | Sobreposição com outro pedido teu | "Já tens outro pedido teu (pendente ou aprovado) sobreposto a este período — cancela-o primeiro se quiseres ajustar as datas." |
 | Sobreposição com um colega | "Já existem férias pedidas/aprovadas de outro colega neste período." |
-| Saldo esgotado | "Este pedido ultrapassa o saldo anual de 22 dias úteis de férias." |
+| Saldo esgotado (perfis sujeitos ao limite) | "Este pedido ultrapassa o saldo anual de 22 dias úteis de férias." |
 | Já há um pedido pendente | "Já existe um pedido pendente para esta pessoa — tem de ser decidido primeiro." |
 | Fora do ano permitido | "Só é possível pedir férias/licença para o ano corrente; em dezembro, apenas férias com início em janeiro do ano seguinte." |
 
@@ -32,11 +33,11 @@
 - **COL-01** Nenhum período (pendente ou aprovado) se sobrepõe ao de outro colega ativo, seja qual for o perfil. Os de quem saiu não bloqueiam.
 - **COL-02** Uma pessoa não tem dois períodos seus sobrepostos.
 - **COL-03** Um só pedido pendente de cada vez. Ao criar, a data de início pertence ao ano corrente, exceto férias com início em janeiro do ano seguinte, que podem ser pedidas desde 1 de dezembro. A exceção não abrange fevereiro ou meses seguintes, nem licenças. A decisão do Gerente nunca é bloqueada por esta regra. Com escala já atribuída, o pedido não é impedido: o substituto trata da cobertura.
-- **COL-04** Saldo de 22 dias úteis por ano (só `FERIAS`, pendentes mais aprovadas, dias úteis de segunda a sexta sem descontar feriados).
-- **COL-05** Só o Gerente ou delegado decide; a base deixa a pessoa apagar o seu pedido pendente, o ecrã só oferece "Cancelar" ao Gerente ou delegado.
-- **FER-01** **O ano de um pedido é o ano da sua data de início.** Para o saldo, um pedido conta no ano em que **começa**, mesmo que acabe no seguinte. Assim, férias com início em janeiro pedidas em dezembro contam para os 22 dias do ano de janeiro e não reduzem o saldo do ano de dezembro.
+- **COL-04** Saldo de 22 dias úteis por ano para os restantes perfis; o titular `GERENTE` não tem este limite.
+- **COL-05** O titular `GERENTE` regista as próprias férias já aprovadas; os outros pedidos exigem decisão do Gerente ou delegado. Delegados não recebem a aprovação automática.
+- **FER-01** **O ano de um pedido é o ano da sua data de início.** Para o saldo dos perfis sujeitos ao limite, um pedido conta no ano em que **começa**, mesmo que acabe no seguinte. Assim, férias com início em janeiro pedidas em dezembro contam para os 22 dias do ano de janeiro e não reduzem o saldo do ano de dezembro. O Gerente não tem limite anual.
 - **FER-02** **Encurtar** um período (mesma pessoa, mesmo estado, mesma data de início, fim anterior) **nunca é bloqueado**; só se validam sobreposição e saldo quando algo muda de forma que possa criar conflito (migração 0057).
-- **FER-03** Rejeitar **nunca** é bloqueado; aprovar volta a verificar sobreposição e saldo.
+- **FER-03** Rejeitar **nunca** é bloqueado; aprovar volta a verificar sobreposição e saldo para os pedidos que passam pelo fluxo normal. As férias próprias do Gerente são aprovadas automaticamente, com as exceções descritas em COL-01 e COL-04.
 - **FER-04** Um pedido de férias de alguém que é entretanto **desativado** fica assim: os que começam de hoje em diante apagam-se (com as decisões de substituto que os acompanham); os que atravessam hoje ficam cortados até ao dia anterior; os anteriores mantêm-se (USR-08).
 - **FER-05** Um período de férias **aprovado** afeta a escala: a célula mostra "Férias" nos dias úteis que não sejam feriado; não se atribui turno a quem tem os 7 dias da semana cobertos (TUR-07); e o relatório semanal só trata como ausência o que cobre **metade ou mais** dos 7 dias do período (REL-03).
 - **FER-06** A coluna `eh_operador_h3` de `ferias` é uma fotografia do perfil no momento do pedido; deixou de ter efeito na regra de sobreposição desde a migração 0044.
@@ -85,4 +86,4 @@ Regras: **COL-18**, **COL-19**, **COL-20**. Em resumo:
 
 - Ecrã: `src/components/escala/PainelFerias.tsx`, `src/pages/InicioPage.tsx`, `src/data/useResumoGerente.ts`, `src/data/useResumoUsuario.ts`, `src/lib/datas.ts` (`semanasTocadas`, `diasUteis`).
 - Base: tabelas `ferias`, `ferias_semanas`, `plantao_voluntarios`, `feriados_portugal`; triggers `trg_valida_ferias`, `trg_ferias_marca_perfil_h3`, `trg_ferias_semanas_valida`; vista `feriados_sem_plantao`.
-- Testes: `supabase/tests/03_trigger_ferias.sql`, `09_ferias_semanas_turno_fixo_plantao.sql`, `21_ferias_auto_sobreposicao_e_rejeicao.sql`, `23_ferias_sobreposicao_ignora_inativos.sql`, `27_feriados_sem_plantao_ignora_inativos.sql`, `29_ninguem_decide_o_proprio.sql`, `30_substituto_e_delegado_nao_proprio.sql`.
+- Testes: `supabase/tests/03_trigger_ferias.sql`, `09_ferias_semanas_turno_fixo_plantao.sql`, `21_ferias_auto_sobreposicao_e_rejeicao.sql`, `23_ferias_sobreposicao_ignora_inativos.sql`, `27_feriados_sem_plantao_ignora_inativos.sql`, `29_ninguem_decide_o_proprio.sql`, `30_substituto_e_delegado_nao_proprio.sql`, `31_ferias_janeiro_em_dezembro.sql`, `32_gerente_ferias_autonomas.sql`.

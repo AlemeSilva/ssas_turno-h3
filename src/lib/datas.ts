@@ -99,9 +99,9 @@ export function descreverSemanaH3(sabadoISO: string): string {
 
 /**
  * Conta dias úteis (Segunda a Sexta, ambos inclusive) entre duas datas
- * ISO — espelha exatamente a função SQL dias_uteis() usada pelo
- * trigger do limite anual de 22 dias, para o resumo de férias no
- * frontend mostrar sempre o mesmo número que a base de dados aplica.
+ * ISO — espelha exatamente a função SQL dias_uteis() usada pelos
+ * resumos e pela validação do limite anual de 22 dias dos perfis
+ * sujeitos a esse limite.
  */
 export function diasUteis(inicioISO: string, fimISO: string): number {
   let d = new Date(inicioISO + 'T00:00:00')

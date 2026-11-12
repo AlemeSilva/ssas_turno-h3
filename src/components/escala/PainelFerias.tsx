@@ -71,6 +71,7 @@ export function PainelFerias({ usuarios }: { usuarios: Usuario[] }) {
     } else {
       setDataInicio('')
       setDataFim('')
+      await carregar()
     }
   }
 
@@ -115,6 +116,7 @@ export function PainelFerias({ usuarios }: { usuarios: Usuario[] }) {
   // pessoa já tinha em aberto — sem este filtro, ficavam aqui a pedir
   // Aprovar/Rejeitar indefinidamente, mesmo depois de já ter saído.
   const pedidosEquipaAtiva = pedidos.filter((f) => usuarios.some((u) => u.id === f.usuario_id && u.ativo))
+  const ehGerente = usuario?.perfil === 'GERENTE'
   const hoje = agora()
   const mostrarAvisoJaneiroSeguinte = hoje.getMonth() === 11
   const anoJaneiroSeguinte = hoje.getFullYear() + 1
@@ -126,6 +128,16 @@ export function PainelFerias({ usuarios }: { usuarios: Usuario[] }) {
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <form onSubmit={pedirFerias} className="flex flex-col gap-2">
+          {ehGerente && (
+            <p
+              role="status"
+              className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-medium leading-relaxed text-zinc-700"
+            >
+              As férias do Gerente ficam aprovadas ao serem registadas, não têm limite anual e podem coincidir com
+              férias já aprovadas de colegas. Mantêm-se os bloqueios para pedidos pendentes, licenças aprovadas e
+              sobreposição com férias próprias.
+            </p>
+          )}
           {mostrarAvisoJaneiroSeguinte && (
             <p
               role="status"
@@ -145,7 +157,7 @@ export function PainelFerias({ usuarios }: { usuarios: Usuario[] }) {
           </label>
           {erro && <p className="text-xs text-red-600">{erro}</p>}
           <Button type="submit" variant="secondary" disabled={aEnviar}>
-            {aEnviar ? 'A enviar…' : 'Pedir férias'}
+            {aEnviar ? 'A enviar…' : ehGerente ? 'Marcar férias' : 'Pedir férias'}
           </Button>
         </form>
 

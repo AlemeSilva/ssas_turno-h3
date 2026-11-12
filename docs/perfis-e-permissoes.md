@@ -75,7 +75,7 @@ O perfil é o valor de `usuarios.perfil`; os poderes que vêm de uma delegação
 | **Início** | Vista pessoal: saldo de férias, turno atual, próxima semana | Vista do Gerente: férias da equipa, ausências e substitutos, plantão de feriados |
 | **Plano de Fim de Semana** | Vê. Cria, edita e submete só o **operador do ciclo** (nas tarefas excecionais) | Cria, edita, aprova, exporta |
 | **Checklist Ativo** | Vê. Escreve só o **operador do ciclo** | Escreve; destrava com justificativa |
-| **Escala do Mês** | Vê tudo. Pede férias; o `OPERADOR_H3` propõe trocas | Edita células, decide férias e trocas, escolhe substitutos e plantonistas; só o titular delega |
+| **Escala do Mês** | Vê tudo. Pede férias; o `OPERADOR_H3` propõe trocas | Edita células, decide férias e trocas, escolhe substitutos e plantonistas; o titular marca as próprias férias, aprovadas automaticamente e sem limite anual; só o titular delega |
 | **Relatórios, Histórico, Definições, Utilizadores, Headcount** | Não aparecem no menu; se se aceder ao endereço, mostram "Esta área é reservada ao Gerente." | Aparecem; dentro deles, alguns botões são só do titular (parâmetros e fecho do Headcount, PDF, contas `GERENTE`) |
 
 ## 7. Limites e lacunas conhecidos
