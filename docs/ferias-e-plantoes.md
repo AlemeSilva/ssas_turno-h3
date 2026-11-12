@@ -1,6 +1,6 @@
 # Férias, licenças, substitutos e plantões de feriado
 
-**Estado:** levantado do código e da base a 2026-09-26; exceção de dezembro para férias com início em janeiro aplicada em produção a 2026-11-04 (`20261104120335`). A exceção exclusiva do titular Gerente está implementada localmente em 2026-11-12 (`20261112103431`) e aguarda revisão antes de produção. As regras entre colegas estão em `docs/regras-entre-colegas.md` (IDs `COL-`), aqui só se resumem com a referência.
+**Estado:** levantado do código e da base a 2026-09-26; exceção de dezembro para férias com início em janeiro aplicada em produção a 2026-11-04 (`20261104120335`). A exceção exclusiva do titular Gerente foi aplicada e smoke-testada em produção em 2026-11-12 (`20261112103431`). As regras entre colegas estão em `docs/regras-entre-colegas.md` (IDs `COL-`), aqui só se resumem com a referência.
 **Ler quando:** pedir, aprovar, rejeitar ou apagar férias; escolher substitutos; escolher o plantonista de um feriado; mexer no saldo de 22 dias; ler ou explicar o que aparece em "Ausências da equipa" e "Plantão de feriados".
 
 ## 1. Conceitos

@@ -1,6 +1,6 @@
 # Regras entre elementos da equipa
 
-**Estado:** levantado do código e da base em produção a 2026-09-26; reconfirmado a 2026-09-28 (COL-05, COL-06, COL-12, COL-15 — migrações 0062/0063). A exceção de dezembro para férias com início em janeiro foi aplicada à produção em 2026-11-04 (`20261104120335`). A exceção exclusiva do Gerente está implementada localmente em 2026-11-12 (`20261112103431`) e aguarda revisão antes de produção. As decisões do Gerente estão indicadas onde existem (ver `docs/decisoes.md`). Cada regra tem uma só casa: as que dizem respeito ao turno de cada pessoa vivem em `docs/turnos-e-rotacao.md` (IDs `TUR-`) e aqui só se referem.
+**Estado:** levantado do código e da base em produção a 2026-09-26; reconfirmado a 2026-09-28 (COL-05, COL-06, COL-12, COL-15 — migrações 0062/0063). A exceção de dezembro para férias com início em janeiro foi aplicada à produção em 2026-11-04 (`20261104120335`). A exceção exclusiva do Gerente foi aplicada e verificada em produção em 2026-11-12 (`20261112103431`). As decisões do Gerente estão indicadas onde existem (ver `docs/decisoes.md`). Cada regra tem uma só casa: as que dizem respeito ao turno de cada pessoa vivem em `docs/turnos-e-rotacao.md` (IDs `TUR-`) e aqui só se referem.
 **Ler quando:** férias, licenças, substitutos, trocas, delegação, plantões, saídas da equipa, quem pode editar o quê, ou qualquer pergunta do tipo "o que acontece se dois colegas...".
 
 ## 1. Quem é quem

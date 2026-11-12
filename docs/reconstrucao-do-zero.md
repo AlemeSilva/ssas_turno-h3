@@ -13,9 +13,9 @@ Conta Supabase (plano com `pg_cron` disponível), conta Netlify, conta e reposit
 2. **Ativar, no painel (Database → Extensions), as extensões que nenhuma migração cria**: `pg_cron` (crítico — a migração 0015 já chama `cron.schedule`, por isso tem de estar ativa **antes** de aplicar as migrações), `pg_net`, `supabase_vault`, `uuid-ossp`, `pg_stat_statements`. `pgcrypto` e `btree_gist` não precisam deste passo — são criadas pelas próprias migrações 0001 e 0004 (`create extension if not exists`).
 3. `auth.users` e o schema `auth` já existem num projeto novo — são geridos pela plataforma Supabase, nenhuma migração deste repositório os cria.
 
-## 3. Aplicar o esquema (65 migrações publicadas; uma alteração local pendente)
+## 3. Aplicar o esquema (as 66 migrações)
 
-Ligar à base do projeto novo e aplicar, **por ordem, cada ficheiro de `supabase/migrations/0001` a `0064`, seguido de `20261104120335_permissao_ferias_janeiro_proximo_ano.sql` como instrução autónoma** (não embrulhar num `begin`/`commit` à volta de várias de uma vez — `docs/operacao.md`, OP-04). Isto corresponde ao esquema publicado e verificado. A migração `20261112103431_gerente_ferias_autonomas.sql` existe no ramo local e só deve integrar a reconstrução depois de ser revista e aprovada para publicação; ainda não faz parte do estado de produção. A migração `0064` fecha lacunas históricas de tabelas, vista e políticas RLS, e `20261104120335` inclui a regra de pedidos de férias para janeiro seguinte.
+Ligar à base do projeto novo e aplicar, **por ordem, cada ficheiro de `supabase/migrations/0001` a `0064`, seguido de `20261104120335_permissao_ferias_janeiro_proximo_ano.sql` e `20261112103431_gerente_ferias_autonomas.sql` como instruções autónomas** (não embrulhar num `begin`/`commit` à volta de várias de uma vez — `docs/operacao.md`, OP-04). A última migração foi aplicada e verificada em produção a 2026-11-12; aprova automaticamente as férias próprias do Gerente titular, isenta-o do limite anual e permite sobreposição apenas com férias aprovadas de colegas. A migração `0064` fecha lacunas históricas de tabelas, vista e políticas RLS, e `20261104120335` inclui a regra de pedidos de férias para janeiro seguinte.
 
 Cada tabela, coluna, trigger, função e política está descrita (o quê e porquê) em `docs/base-de-dados.md`; este ficheiro não repete esse inventário.
 
