@@ -25,6 +25,7 @@ export function PainelFerias({ usuarios }: { usuarios: Usuario[] }) {
   const [aEnviar, setAEnviar] = useState(false)
   const [erroDecisao, setErroDecisao] = useState<{ id: number; mensagem: string } | null>(null)
   const [aConfirmarCancelar, setAConfirmarCancelar] = useState<number | null>(null)
+  const [aCancelarId, setACancelarId] = useState<number | null>(null)
 
   // Conta invocações de carregar() para descartar respostas antigas que
   // resolvam depois de uma mais recente — a subscrição realtime pode
@@ -102,10 +103,26 @@ export function PainelFerias({ usuarios }: { usuarios: Usuario[] }) {
   }
 
   async function cancelar(id: number) {
+    if (aCancelarId === id) return
+    setACancelarId(id)
     setErroDecisao(null)
-    const { error } = await supabase.from('ferias').delete().eq('id', id)
-    if (error) setErroDecisao({ id, mensagem: traduzirErro(error.message) })
-    setAConfirmarCancelar(null)
+    try {
+      const { data, error } = await supabase.from('ferias').delete().eq('id', id).select('id')
+      if (error) {
+        setErroDecisao({ id, mensagem: traduzirErro(error.message) })
+      } else if (!data?.some((ferias) => ferias.id === id)) {
+        setErroDecisao({
+          id,
+          mensagem: 'O período não foi cancelado. Pode já ter sido removido ou a sessão já não ter permissão. Atualize e tente novamente.',
+        })
+      }
+    } catch {
+      setErroDecisao({ id, mensagem: 'Não foi possível confirmar o cancelamento. Verifique a ligação e atualize a lista.' })
+    } finally {
+      setACancelarId(null)
+      setAConfirmarCancelar(null)
+      await carregar()
+    }
   }
 
   function nomeDe(id: string) {
@@ -203,8 +220,8 @@ export function PainelFerias({ usuarios }: { usuarios: Usuario[] }) {
                     (aConfirmarCancelar === f.id ? (
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Button size="xs" variant="destructive" onClick={() => cancelar(f.id)}>
-                            Confirmar?
+                          <Button size="xs" variant="destructive" onClick={() => cancelar(f.id)} disabled={aCancelarId === f.id}>
+                            {aCancelarId === f.id ? 'A cancelar…' : 'Confirmar?'}
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>Clica outra vez para apagar em definitivo — não há forma de desfazer</TooltipContent>

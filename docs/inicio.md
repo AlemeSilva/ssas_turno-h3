@@ -21,7 +21,7 @@ Título **"Bem-vindo, NOME"** e, por baixo, três cartões. O conteúdo dos dois
 
 - O primeiro cartão passa a **"Férias aprovadas (equipa)"** e o segundo a **"Férias por aprovar (equipa)"**: uma lista de cada pessoa **ativa** (o Gerente não entra), com os dias úteis de cada uma, por ordem decrescente de dias e depois de nome. Os "por aprovar" a âmbar quando diferentes de zero.
 - Clicar num nome abre um diálogo com **título** só o **NOME** e, por baixo, a **descrição** "Férias aprovadas em AAAA" (ou "Férias por aprovar em AAAA"), em duas linhas distintas, sem travessão; dentro, cada período ("DD/MM/AAAA a DD/MM/AAAA" e "Nd") e o **Total**, que passa a vermelho acima de 22 dias.
-- O terceiro cartão, **Próxima semana**, mantém-se (com o turno do próprio utilizador).
+- O terceiro cartão, **Próxima semana**, mantém o turno do próprio utilizador. Para Gerente e delegado, uma linha separada por um divisor em degradê mostra também o operador H3 efetivo da próxima semana, o horário H3 e o mesmo intervalo de sexta a quinta. Se o H3 escalado tiver férias aprovadas, mostra o substituto confirmado para a semana civil que mais se sobrepõe ao intervalo; sem atribuição H3 ou sem substituto confirmado, mostra **Por atribuir**.
 - Por baixo, **"Visão do Gerente"**, com dois cartões: **Plantão de feriados** e **Ausências da equipa** (`docs/ferias-e-plantoes.md`, secções 4 e 5).
 
 ## 2. Regras
@@ -33,6 +33,7 @@ Título **"Bem-vindo, NOME"** e, por baixo, três cartões. O conteúdo dos dois
 - **INI-05** As listas do Gerente mostram **só equipa ativa** e excluem o próprio **Gerente**: "as férias do próprio Gerente são geridas fora desta app". Quem já saiu da equipa deixa de aparecer, mesmo com férias aprovadas.
 - **INI-06** As ausências de "Hoje" são as **aprovadas** que cobrem hoje; as de "Próxima semana" tocam o intervalo de sexta a quinta seguinte e não repetem as de "Hoje".
 - **INI-07** O plantão de feriados lista só feriados **do ano corrente, de hoje em diante e em dia útil**.
+- **INI-08** O bloco H3 do cartão **Próxima semana** usa a linha de escala do sábado que se segue à sexta administrativa (a mesma regra do turno do próprio utilizador). Quando essa pessoa tem uma ausência aprovada que intersecta o intervalo sexta–quinta, mostra o substituto confirmado para a segunda-feira civil que mais se sobrepõe à janela; se não houver substituto, mostra **Por atribuir**. Não mostra o operador original enquanto está ausente.
 
 Todos os números atualizam-se em tempo real (subscrição das tabelas de férias, semanas de substituto, plantões e escala da própria pessoa).
 

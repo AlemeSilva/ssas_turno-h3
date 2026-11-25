@@ -17,7 +17,7 @@
 - **Lista de pedidos:** quem não é Gerente nem delegado vê os pedidos **pendentes** de todos; o Gerente e o delegado veem os **pendentes e os aprovados**, por ordem de data de início. Só aparecem pedidos de pessoas **ativas**. Sem pedidos: "Sem pedidos pendentes.". Cada linha: "NOME · DD/MM/AAAA a DD/MM/AAAA".
   - Pendente, para o Gerente ou delegado: botões **Aprovar** (balão: "Aprova o pedido — conta para o limite anual de 22 dias úteis") e **Rejeitar** ("Recusa o pedido — não conta para o limite anual"). Cada botão tem uma pausa de 500 ms por pedido, para evitar cliques duplos.
   - Nos outros casos: uma etiqueta com o estado (PENDENTE âmbar, APROVADA verde, REJEITADA vermelha — esta última existe no código de estilo mas nunca é alcançada com os dados que o painel carrega hoje: a lista só busca pedidos `PENDENTE` e `APROVADA`, nunca `REJEITADA`).
-  - O Gerente e o delegado veem ainda **Cancelar**, que apaga o pedido. Pede confirmação em dois cliques (o botão passa a **Confirmar?** durante 4 segundos; "Clica outra vez para apagar em definitivo — não há forma de desfazer"). Serve para corrigir um registo enganado.
+  - O Gerente e o delegado veem ainda **Cancelar**, que apaga o pedido. Pede confirmação em dois cliques (o botão passa a **Confirmar?** durante 4 segundos). A interface confirma que a base de dados apagou a linha; se a sessão não tiver permissão, a linha já tiver sido removida ou houver falha de ligação, informa que o período não foi cancelado e atualiza a lista. Serve para corrigir um registo enganado.
 - **Mensagens de erro** traduzidas para linguagem simples:
 
 | Situação | Mensagem no ecrã |
@@ -59,6 +59,7 @@ Regras: **COL-06**, **COL-07** e **COL-08** (`docs/regras-entre-colegas.md`). Em
 - **FER-07** A decisão é **por semana civil**, gravada em `ferias_semanas` (uma linha por período e semana). "Sem linha" é "por decidir"; "Nenhum" é uma decisão explícita.
 - **FER-08** Um substituto que saiu da equipa deixa de contar: a semana volta a "por decidir".
 - **FER-09** **Depois de decidida, a semana não se pode alterar pelo ecrã** (só desaparece a decisão se o substituto sair da equipa). Corrigir uma escolha errada exige alterar a linha em `ferias_semanas` na base.
+- **FER-10** O cancelamento por Gerente/delegado só é apresentado como concluído quando a operação devolve a linha apagada. Uma operação sem erro que não altere qualquer linha (por exemplo, sessão sem autorização) não pode ser tratada como sucesso; a lista é recarregada após a tentativa.
 
 O substituto aparece na Escala do Mês (célula "Férias — substituído por NOME") e no relatório semanal (`docs/relatorios.md`).
 

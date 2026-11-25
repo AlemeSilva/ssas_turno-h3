@@ -19,6 +19,7 @@ export type PeriodoFeriasEquipe = Pick<Ferias, 'id' | 'usuario_id' | 'status' | 
 
 interface ResumoGerente {
   feriadosDoAno: FeriadoDoAno[]
+  operadorH3ProximaSemanaId: string | null
   ausenciasHoje: AusenciaComSemanas[]
   ausenciasProximaSemana: AusenciaComSemanas[]
   feriasAprovadasPorPessoa: Map<string, number>
@@ -52,6 +53,7 @@ interface ResumoGerente {
  */
 export function useResumoGerente(ativo: boolean): ResumoGerente {
   const [feriadosDoAno, setFeriadosDoAno] = useState<FeriadoDoAno[]>([])
+  const [operadorH3ProximaSemanaId, setOperadorH3ProximaSemanaId] = useState<string | null>(null)
   const [ausenciasHoje, setAusenciasHoje] = useState<AusenciaComSemanas[]>([])
   const [ausenciasProximaSemana, setAusenciasProximaSemana] = useState<AusenciaComSemanas[]>([])
   const [feriasAprovadasPorPessoa, setFeriasAprovadasPorPessoa] = useState<Map<string, number>>(new Map())
@@ -76,11 +78,21 @@ export function useResumoGerente(ativo: boolean): ResumoGerente {
       const hojeISO = paraISO(hoje)
       const proximaSexta = proximaSextaISO(hoje)
       const proximaQuinta = paraISO(adicionarDias(new Date(proximaSexta + 'T00:00:00'), 6))
+      const semanaRefH3Proxima = paraISO(adicionarDias(new Date(proximaSexta + 'T00:00:00'), 1))
+      // O relatório e o cartão Próxima Semana usam a segunda-feira civil
+      // que mais se sobrepõe ao período sexta–quinta para resolver o
+      // substituto da pessoa escalada em H3.
+      const semanaCivilH3Proxima = paraISO(adicionarDias(new Date(proximaSexta + 'T00:00:00'), 3))
       const inicioAno = `${hoje.getFullYear()}-01-01`
       const fimAno = `${hoje.getFullYear()}-12-31`
 
-      const [{ data: dadosFeriados }, { data: dadosPlantoes }, { data: dadosAusencias }, { data: dadosFeriasEquipe }] =
-        await Promise.all([
+      const [
+        { data: dadosFeriados },
+        { data: dadosPlantoes },
+        { data: dadosAusencias },
+        { data: dadosFeriasEquipe },
+        { data: dadosEscalaH3Proxima },
+      ] = await Promise.all([
           supabase.from('feriados_portugal').select('data, nome, tipo').gte('data', inicioAno).lte('data', fimAno).order('data'),
           supabase
             .from('plantao_voluntarios')
@@ -101,6 +113,12 @@ export function useResumoGerente(ativo: boolean): ResumoGerente {
             .in('status', ['APROVADA', 'PENDENTE'])
             .gte('data_inicio', inicioAno)
             .lte('data_inicio', fimAno),
+          supabase
+            .from('escala_semanal')
+            .select('usuario_id')
+            .eq('semana_ref', semanaRefH3Proxima)
+            .eq('turno', 'H3')
+            .limit(1),
         ])
 
       if (cancelado || idCarregamentoRef.current !== meuId) return
@@ -116,6 +134,19 @@ export function useResumoGerente(ativo: boolean): ResumoGerente {
       )
 
       const ausencias = (dadosAusencias as AusenciaComSemanas[]) ?? []
+      const idH3Escalado = (dadosEscalaH3Proxima as { usuario_id: string }[] | null)?.[0]?.usuario_id
+      const ausenciaH3 = idH3Escalado
+        ? ausencias.find(
+            (f) =>
+              f.usuario_id === idH3Escalado &&
+              f.data_inicio <= proximaQuinta &&
+              f.data_fim >= proximaSexta
+          )
+        : undefined
+      const decisaoSubstitutoH3 = ausenciaH3?.ferias_semanas.find((fs) => fs.semana_inicio === semanaCivilH3Proxima)
+      setOperadorH3ProximaSemanaId(
+        ausenciaH3 ? decisaoSubstitutoH3?.substituto_id ?? null : idH3Escalado ?? null
+      )
       const hoje_ = ausencias.filter((f) => f.data_inicio <= hojeISO && f.data_fim >= hojeISO)
       const idsHoje = new Set(hoje_.map((f) => f.id))
       setAusenciasHoje(hoje_)
@@ -156,6 +187,7 @@ export function useResumoGerente(ativo: boolean): ResumoGerente {
       .channel('resumo-gerente')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ferias' }, carregar)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ferias_semanas' }, carregar)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'escala_semanal' }, carregar)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'plantao_voluntarios' }, carregar)
       .subscribe()
 
@@ -218,6 +250,7 @@ export function useResumoGerente(ativo: boolean): ResumoGerente {
 
   return {
     feriadosDoAno,
+    operadorH3ProximaSemanaId,
     ausenciasHoje,
     ausenciasProximaSemana,
     feriasAprovadasPorPessoa,

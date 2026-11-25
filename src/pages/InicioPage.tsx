@@ -132,6 +132,11 @@ export function InicioPage() {
   // sem este filtro, a pessoa continuava a aparecer aqui a pedir
   // substituto indefinidamente, mesmo depois de já ter saído da equipa.
   const idsAtivos = new Set(usuarios.filter((u) => u.ativo).map((u) => u.id))
+  const nomeH3ProximaSemana = gerente.aCarregar || aCarregarUsuarios
+    ? 'A carregar…'
+    : gerente.operadorH3ProximaSemanaId && idsAtivos.has(gerente.operadorH3ProximaSemanaId)
+      ? nomeDe(gerente.operadorH3ProximaSemanaId)
+      : 'Por atribuir'
   const ausenciasHojeEquipaAtiva = gerente.ausenciasHoje.filter((f) => idsAtivos.has(f.usuario_id))
   const ausenciasProximaSemanaEquipaAtiva = gerente.ausenciasProximaSemana.filter((f) => idsAtivos.has(f.usuario_id))
 
@@ -411,6 +416,19 @@ export function InicioPage() {
             <div className="text-xs text-zinc-400">
               {formatarDataPT(proximaSexta)} a {formatarDataPT(proximaQuinta)}
             </div>
+            {ehGerenteOuDelegado && (
+              <>
+                <div aria-hidden="true" className="my-1 h-px bg-gradient-to-r from-transparent via-zinc-200 to-transparent" />
+                <div className="flex flex-col gap-1">
+                  <div className="text-3xl font-bold text-zinc-900">H3</div>
+                  <div className="text-base font-semibold text-zinc-800">{nomeH3ProximaSemana}</div>
+                  <div className="text-sm text-zinc-500">{HORARIO_TURNO.H3}</div>
+                  <div className="text-xs text-zinc-400">
+                    {formatarDataPT(proximaSexta)} a {formatarDataPT(proximaQuinta)}
+                  </div>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
